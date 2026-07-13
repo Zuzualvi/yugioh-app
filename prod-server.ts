@@ -1,17 +1,18 @@
 /**
  * prod-server.ts — Production entry point for Fly.io deployment.
  *
- * Serves: static web build (packages/web/dist → ./public/) + /api/* + /images/*
- * from ONE Express process. Does NOT modify packages/server source.
+ * Serves: /api/* routes + /images/* (from volume) + /healthz
+ * The SPA is served separately by Vercel.
  *
  * This file is bundled by esbuild into dist/server.mjs (see Dockerfile).
  * import.meta.url in the bundle → file:///app/server.mjs, so __dirname = /app.
  *
  * Environment variables:
- *   PORT          — HTTP port (default 8080)
- *   DB_PATH       — SQLite file path (default /data/yugioh.db)
- *   IMAGES_PATH   — Card images directory on the volume (default /data/images)
- *   NODE_ENV      — Should be "production" (set in fly.toml / docker env)
+ *   PORT                    — HTTP port (default 8080)
+ *   DB_PATH                 — SQLite file path (default /data/yugioh.db)
+ *   IMAGES_PATH             — Card images directory on the volume (default /data/images)
+ *   NODE_ENV                — Should be "production" (set in fly.toml / docker env)
+ *   CORS_ALLOWED_ORIGINS    — Comma-separated allowed origins (e.g. https://app.example.com)
  *   BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD — See bootstrapAdmin.ts
  */
 
@@ -20,6 +21,12 @@ import cookieParser from "cookie-parser";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
+
+// CORS middleware (Stream A — packages/server/src/middleware/cors.ts)
+import {
+  corsMiddleware,
+  allowedOriginsFromEnv,
+} from "./packages/server/src/middleware/cors.js";
 
 // Server internals (imported directly — not modifying packages/**)
 import { openDb } from "./packages/server/src/db/openDb.js";
@@ -47,7 +54,6 @@ const __dirname = dirname(__filename);
 const PORT = parseInt(process.env["PORT"] ?? "8080", 10);
 const DB_PATH = process.env["DB_PATH"] ?? "/data/yugioh.db";
 const IMAGES_PATH = process.env["IMAGES_PATH"] ?? "/data/images";
-const STATIC_DIR = join(__dirname, "public");
 const CATALOG_DIR = join(__dirname, "packages/card-data/out");
 
 // ---------------------------------------------------------------------------
@@ -118,9 +124,17 @@ console.log(`[prod-server] Catalog loaded: ${catalog.catalog.cards.length} cards
 // ---------------------------------------------------------------------------
 const app = express();
 
+// CORS must be FIRST — before express.json() so preflight OPTIONS is handled immediately
+app.use(corsMiddleware(allowedOriginsFromEnv()));
+
 app.use(express.json());
 app.use(express.text({ type: "text/plain", limit: "1mb" }));
 app.use(cookieParser());
+
+// Service identity (not the app — Vercel serves the SPA)
+app.get("/", (_req, res) => {
+  res.json({ service: "yugioh-edison-api" });
+});
 
 // Health check (no auth required, used by Fly.io health check)
 app.get("/healthz", (_req, res) => {
@@ -130,7 +144,7 @@ app.get("/healthz", (_req, res) => {
 // Card images from mounted volume (/data/images)
 app.use("/images", express.static(IMAGES_PATH));
 
-// API routes (same structure as packages/server/src/app.ts, minus the 404 fallback)
+// API routes
 app.use("/api/auth", createAuthRouter(db));
 app.use("/api/me", requireSession(db), createMeRouter(db));
 app.use("/api/cards", requireSession(db), createCardsRouter(catalog));
@@ -142,18 +156,8 @@ app.use("/api", (_req, res) => {
   res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
 });
 
-// Static web build (packages/web/dist → ./public/)
-app.use(express.static(STATIC_DIR));
-
-// SPA fallback — serve index.html for all non-API, non-image GET routes.
-// Uses regex instead of "*" because Express 5 requires named wildcards.
-app.get(/.*/, (_req, res) => {
-  res.sendFile(join(STATIC_DIR, "index.html"));
-});
-
 app.listen(PORT, () => {
-  console.log(`Yu-Gi-Oh server listening on port ${PORT} (NODE_ENV=${process.env["NODE_ENV"]})`);
+  console.log(`Yu-Gi-Oh API listening on port ${PORT} (NODE_ENV=${process.env["NODE_ENV"]})`);
   console.log(`  DB:     ${DB_PATH}`);
   console.log(`  Images: ${IMAGES_PATH}`);
-  console.log(`  Static: ${STATIC_DIR}`);
 });

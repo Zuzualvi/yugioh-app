@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # ============================================================
-# Yu-Gi-Oh Edison — Production Docker image
-# Serves: React SPA + REST API + card catalog (SQLite + images on volume)
+# Yu-Gi-Oh Edison — Production Docker image (API-only)
+# Serves: REST API + card catalog + /images from volume
+# The SPA is served separately by Vercel.
 # One always-on Machine on Fly.io.
 # ============================================================
 
@@ -17,7 +18,7 @@ COPY packages/card-data/package.json  packages/card-data/
 COPY packages/server/package.json     packages/server/
 COPY packages/web/package.json        packages/web/
 
-# Install ALL deps (dev deps needed for vite + esbuild).
+# Install ALL deps (dev deps needed for esbuild).
 # In sandboxed environments with a corporate CA, pass the CA bundle as a BuildKit secret:
 #   docker build --secret id=cacert,src=/etc/ssl/certs/ca-certificates.crt .
 # On standard internet (e.g. Fly.io builder), the secret is absent and npm ci works normally.
@@ -27,15 +28,12 @@ RUN --mount=type=secret,id=cacert \
     fi && \
     npm ci
 
-# Copy root tsconfig files (Vite + esbuild need them to resolve extends)
+# Copy root tsconfig files (esbuild needs them to resolve extends)
 COPY tsconfig.json tsconfig.base.json ./
 
 # Copy source (after npm ci so the layer above is cached)
 COPY packages/ packages/
 COPY prod-server.ts ./
-
-# Build web frontend (Vite → packages/web/dist/)
-RUN npm run build --workspace @yugioh-app/web
 
 # Bundle production server (TypeScript → single ESM file).
 # --banner:js provides createRequire so CJS packages (express, body-parser, debug)
@@ -57,9 +55,6 @@ WORKDIR /app
 
 # Copy bundled server entry
 COPY --from=builder /app/dist/server.mjs ./server.mjs
-
-# Copy web static build
-COPY --from=builder /app/packages/web/dist ./public/
 
 # Copy card catalog JSON (baked into image — NOT the image blobs)
 COPY --from=builder /app/packages/card-data/out/edison-card-catalog.json \
