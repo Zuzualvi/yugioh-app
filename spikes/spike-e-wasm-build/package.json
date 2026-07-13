@@ -1,0 +1,14 @@
+{
+  "name": "spike-e-wasm-build",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "e2": "node src/e2-gy-ignition.js",
+    "e3": "node src/e3-regression.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2"
+  }
+}
