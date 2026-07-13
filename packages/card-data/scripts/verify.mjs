@@ -31,9 +31,6 @@ const allowlist = JSON.parse(
 const dt01Excluded = JSON.parse(
   fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"),
 );
-const aliasMap = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "edison-alias-map.json"), "utf8"),
-);
 
 // ---------------------------------------------------------------------------
 // Helpers

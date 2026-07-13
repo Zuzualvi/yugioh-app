@@ -11,15 +11,16 @@ enabled); violating them breaks the build.
 The dependency graph is a strict directed acyclic graph:
 
 ```
-contracts  ←  engine  ←  server
-    ↑
+contracts  ←  engine     ←  server
+    ↑         card-data  ↗
    web
 ```
 
 - **contracts** imports nothing internal. It is the innermost ring.
 - **engine** imports contracts only.
-- **server** imports contracts and engine only.
-- **web** imports contracts only — **never server or engine**.
+- **card-data** imports contracts only.
+- **server** imports contracts, engine, and card-data only.
+- **web** imports contracts only — **never server, engine, or card-data**.
 
 This is enforced by `npm run arch:check` (dependency-cruiser). Any forbidden
 import fails the build immediately. If you think you need to cross a boundary,
@@ -68,10 +69,15 @@ first and have it reviewed, then update contracts. Do not invent wire formats.
 
 ## Git / push protocol (shared repo, parallel writers)
 
-1. Commit locally with a clear, imperative message.
-2. Before every push: `git pull --rebase origin master`
-   (your file paths are disjoint from other writers, so rebase is clean).
-3. Push: `git push -u origin <branch>` — or for master: `git push origin master`.
+1. Commit locally with a clear, imperative message. Only `git add` the paths you
+   own — **never `git add -A`, `git clean`, manual `git stash`, or `git checkout --`
+   on paths you don't own** (a sibling's live, uncommitted work lives in the same
+   working tree).
+2. Before every push: `git pull --rebase --autostash origin master`.
+   `--autostash` is required on this shared tree: a sibling's uncommitted changes to
+   tracked files would otherwise abort a plain rebase. Since writers own DISJOINT
+   paths, the autostash pop can't conflict.
+3. Push: `git push origin master`.
 4. On network error, retry with exponential back-off: 2 s → 4 s → 8 s → 16 s.
 5. Verify remote == local:
    ```sh
@@ -80,6 +86,13 @@ first and have it reviewed, then update contracts. Do not invent wire formats.
    [ "$local" = "$remote" ] && echo VERIFIED || echo MISMATCH
    ```
 6. Report the pushed SHA as proof of delivery in your task report.
+
+### Verify gate while working in parallel
+A repo-wide `npm run verify` fails on siblings' half-finished code sitting in the
+shared working tree. While other workstreams are mid-flight, **gate on YOUR OWN
+package(s)** (scoped `tsc --noEmit`, `eslint`, and `vitest` for your package). The
+CTO runs the full repo-wide `verify` on a clean checkout once a slice's workstreams
+all land, and resolves any integration issue then.
 
 ---
 
