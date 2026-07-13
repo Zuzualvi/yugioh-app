@@ -48,6 +48,10 @@ jobs:
             BOOTSTRAP_ADMIN_PASSWORD="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}"
       - name: Deploy image to Fly (remote build from Dockerfile)
         run: flyctl deploy --remote-only --app yugioh-app
+      - name: Ensure public IPs (shared IPv4 + IPv6 are free)
+        run: |
+          flyctl ips allocate-v4 --shared --app yugioh-app || true
+          flyctl ips allocate-v6 --app yugioh-app || true
       - name: Ensure TLS cert for the custom domain (idempotent)
         run: flyctl certs add api.zuhayr.io --app yugioh-app || true
 
