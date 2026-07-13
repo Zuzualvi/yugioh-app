@@ -60,7 +60,7 @@ These are locked so downstream code, import/export, and QA all agree.
 - **Bounds are inclusive.** A deck of exactly 40 Main is legal; 39 is not; 60 is legal; 61 is not. Extra of exactly 15 is legal; 16 is not. Side of exactly 15 is legal; 16 is not.
 - **Copy cap:** at most **3** copies of a given card **name** across **Main + Extra + Side combined**, further restricted by banlist: **Forbidden = 0, Limited = 1, Semi-Limited = 2**. The March 2010 TCG F&L List is the banlist (EF §2). Forbidden cards may not appear in **any** of the three decks.
 - **"Same name" / alias:** cards that share an `alias` in `cards.cdb` (alt-arts, e.g., multiple Harpie Lady printings) count as the **same card** for the copy cap. Counting is by the resolved base card, not by distinct passcode (EL §1c).
-- **Side-deck "exactly 15" ambiguity:** the game rule is 0–15. A 2010 tournament policy requiring an *exactly-15-if-used* side deck could not be verified from a primary source (EF §3 note, §8). **V1 default = 0–15.** Any strict toggle is an OPEN QUESTION (§16), not a V1 requirement.
+- **Side-deck "exactly 15" ambiguity:** the game rule is 0–15. A 2010 tournament policy requiring an *exactly-15-if-used* side deck could not be verified from a primary source (EF §3 note, §8). **V1 default = 0–15.** Any strict toggle is an OPEN QUESTION (§17), not a V1 requirement.
 
 ### 2.2 Duel constants (EF §6 "same as modern")
 
@@ -109,8 +109,8 @@ These are locked so downstream code, import/export, and QA all agree.
 ## 4. Home / lobby & challenge-a-friend — REQ-LOBBY (UX §B7)
 
 - **REQ-LOBBY-01 (MUST):** The home screen MUST present the three primary actions **Duel a friend**, **Build a deck**, **Rules & rulings**, each reachable in one action from landing.
-- **REQ-LOBBY-02 (SHOULD):** The lobby SHOULD show which group members are currently **online** and SHOULD show any **pending challenges** addressed to or from the current user.
-- **REQ-LOBBY-03 (MUST):** A user MUST be able to **challenge** another group member by selecting them, which sends that member a challenge they can **Accept** or **Decline**.
+- **REQ-LOBBY-02 (SHOULD):** The lobby SHOULD show which group members are currently **online** and SHOULD show any **pending challenges** addressed to or from the current user. *(The home/lobby is also the required home of the "Your move" queue and the "waiting on opponent" list; those obligations are specified in REQ-TIMER-08 (MUST) and REQ-TIMER-09 (SHOULD), not here.)*
+- **REQ-LOBBY-03 (MUST):** A user MUST be able to **challenge** another group member by selecting them, which sends that member a challenge they can **Accept** or **Decline**. The challenge MUST carry the **per-move timer value chosen by the challenger (inviter)** (REQ-TIMER-01/02), and the invitee MUST be shown that value **before** they Accept (REQ-TIMER-11).
   - *Edge:* challenging an **offline** member — the challenge is either queued/notified or blocked with clear feedback (define one behavior; do not silently drop). *Edge:* challenge **declined** returns the challenger to the lobby with feedback. *Edge:* challenge **times out** with no response — it MUST expire and free both users (no zombie challenge).
 - **REQ-LOBBY-04 (SHOULD):** A user SHOULD be able to create a shareable **invite/challenge link** (to paste into an external group chat) that, when opened by an authenticated member, drops them into the pre-duel room. Non-members opening the link MUST be denied (REQ-AUTH-01).
 - **REQ-LOBBY-05 (MUST):** A user who is already in an active duel or pre-duel room MUST NOT be able to silently start a second concurrent duel; a new challenge in that state MUST be blocked or queued with clear feedback.
@@ -122,16 +122,18 @@ These are locked so downstream code, import/export, and QA all agree.
 
 ## 5. Pre-duel room — REQ-ROOM (UX §B7)
 
-- **REQ-ROOM-01 (MUST):** The room MUST show both seats, each player's **ready state**, and the **deck each has selected**.
+- **REQ-ROOM-01 (MUST):** The room MUST show both seats, each player's **ready state**, the **deck each has selected**, and the duel's configured **per-move timer** (REQ-ROOM-09).
 - **REQ-ROOM-02 (MUST):** A player MUST select one of **their own saved decks** before they can ready-up. A deck that fails legality (§2.1) MUST NOT be selectable for a duel (see REQ-DECK-09).
   - *Edge:* a player edits/deletes the selected deck between selection and start — the room MUST re-validate at Start and block if the deck is now missing/illegal.
 - **REQ-ROOM-03 (MUST):** The duel MUST NOT start until **both** players are ready with legal decks selected.
 - **REQ-ROOM-04 (MUST):** The room MUST determine **who goes first** by a method **neither player can rig**, and MUST show the result to both players before the duel starts.
   - *Edge:* a player disconnects **during** the first-turn determination — on reconnect the determined result MUST be consistent for both (no re-roll that could differ per client).
-- **REQ-ROOM-05 (SHOULD):** V1 SHOULD implement the tournament-accurate flow: the **winner of the toss chooses to go first or second** (rather than the app forcing an assignment). If not implemented, the fallback MUST be a fair random assignment (REQ-ROOM-04). *(Which of these the group wants is an OPEN QUESTION, §16.)*
+- **REQ-ROOM-05 (SHOULD):** V1 SHOULD implement the tournament-accurate flow: the **winner of the toss chooses to go first or second** (rather than the app forcing an assignment). If not implemented, the fallback MUST be a fair random assignment (REQ-ROOM-04). *(Which of these the group wants is an OPEN QUESTION, §17.)*
 - **REQ-ROOM-06 (COULD):** The room COULD provide lightweight text chat between the two players (friends want to talk trash — UX §B7). Chat MUST NOT carry any hidden game information.
 - **REQ-ROOM-07 (MUST):** Either player MUST be able to **leave** the room before Start, which returns both to the lobby and voids the pending duel.
-- **REQ-ROOM-08 (SHOULD):** V1 targets **single games** per duel by default. Best-of-3 matches with **side-decking between games** are NOT required for V1; if a match mode is added, side-deck swaps MUST re-validate against §2.1. *(Match support is an OPEN QUESTION, §16 — it interacts with the side-deck's purpose.)*
+- **REQ-ROOM-08 (SHOULD):** V1 targets **single games** per duel by default. Best-of-3 matches with **side-decking between games** are NOT required for V1; if a match mode is added, side-deck swaps MUST re-validate against §2.1. *(Match support is an OPEN QUESTION, §17 — it interacts with the side-deck's purpose.)*
+- **REQ-ROOM-09 (MUST):** The pre-duel room MUST **display the duel's configured per-move timer** (set by the inviter at challenge creation, REQ-TIMER-01/02) to **both** players before Start. The value the invitee accepted (REQ-TIMER-11) MUST be the value carried into the duel; it MUST NOT be silently altered between challenge, room, and Start.
+  - *Edge:* if the room ever allows the inviter to change the timer before Start, any change MUST be re-shown to the invitee for re-confirmation (informed consent, REQ-TIMER-11); it MUST NOT take effect silently.
 
 ---
 
@@ -183,7 +185,7 @@ These are locked so downstream code, import/export, and QA all agree.
 ### Board & state rendering
 
 - **REQ-DUEL-01 (MUST):** The field MUST render, for both players, the Edison zone set: 5 Monster Zones, 5 Spell/Trap Zones, 1 Field Spell zone, Deck, **Extra Deck (Fusion/Synchro)**, Graveyard, and Banished zone. It MUST NOT render Extra Monster Zones, Pendulum scales, or Link arrows (not in Edison — EF §4, UX §B2).
-- **REQ-DUEL-02 (MUST):** At all times the field MUST answer three questions at a glance (UX §B0.3): **whose turn & which phase**, **both players' Life Points**, and **what the game is currently waiting on this player to do**.
+- **REQ-DUEL-02 (MUST):** At all times the field MUST answer three questions at a glance (UX §B0.3): **whose turn & which phase**, **both players' Life Points**, and **what the game is currently waiting on this player to do**. Because every duel carries a per-move timer, the field MUST additionally surface the **remaining time for whoever is currently on the clock** and make clear **which player** that is (REQ-TIMER-10).
 - **REQ-DUEL-03 (MUST):** The current phase MUST be shown on a persistent phase indicator, with only the legal next phase(s)/actions enabled; the player MUST be able to advance phases and **end their turn** through it (UX §B2).
 - **REQ-DUEL-04 (MUST):** Life Points MUST be shown as a **number** (bar is a SHOULD) for both players and MUST update to reflect every engine-reported LP change.
 - **REQ-DUEL-05 (SHOULD):** LP changes SHOULD render a visible delta (e.g., "−1800") so damage math is auditable/legible (UX §B2, teaching value).
@@ -203,7 +205,7 @@ These are locked so downstream code, import/export, and QA all agree.
 ### Hand size, win/loss/draw, surrender
 
 - **REQ-DUEL-11 (MUST):** At the End Phase, if the player's hand exceeds 6, the app MUST render the engine's **discard-to-6** prompt and submit the player's choice (§2.2).
-- **REQ-DUEL-12 (MUST):** The app MUST detect and render **game end** as reported by the engine and route both players to the post-duel summary (REQ-LOG-04). Recognized end states: a player's LP reaches **0**; **deck-out**; an **alternate win condition** fired by a card effect (e.g., assembling all five Exodia pieces — the pieces are in-pool/Limited, EF §2); mutual/simultaneous end = **DRAW**; **surrender**.
+- **REQ-DUEL-12 (MUST):** The app MUST detect and render **game end** as reported by the engine and route both players to the post-duel summary (REQ-LOG-04). Recognized end states: a player's LP reaches **0**; **deck-out**; an **alternate win condition** fired by a card effect (e.g., assembling all five Exodia pieces — the pieces are in-pool/Limited, EF §2); mutual/simultaneous end = **DRAW**; **surrender**; **timeout** (per-move deadline expiry — the awaited player auto-forfeits, REQ-TIMER-06).
   - *Edge (deck-out):* a player loses when they are **required to draw and cannot** (empty deck at draw), **not** merely when their deck becomes empty (EF §6 — Master Rule draw rule). QA must confirm the timing.
   - *Edge (simultaneous):* both players reach 0 LP in the same resolution → **DRAW**, rendered as such for both.
   - *Edge (Exodia):* assembling all five pieces in hand triggers an immediate win — the app must render this win reason.
@@ -216,8 +218,9 @@ These are locked so downstream code, import/export, and QA all agree.
 ## 8. Chains, priority & quick-effect response windows — REQ-CHAIN (EF §6.1, §6.6; UX §B4; locked decision — this is IN V1)
 
 - **REQ-CHAIN-01 (MUST):** The app MUST present a **response/priority window to a player only when the engine indicates that player currently has ≥1 legal response** (quick effect / Trap / Spell Speed 2+). When the engine reports no legal response, the app MUST **auto-pass** without prompting (locked decision; EL §2a — the engine drives this).
+  - *Edge (on the clock):* a response/priority window is an **awaited decision**, so the duel's per-move auto-forfeit timer runs against the responding player; failing to act before the deadline auto-forfeits them (REQ-TIMER-03/06, REQ-CHAIN-03).
 - **REQ-CHAIN-02 (MUST):** A response prompt MUST clearly offer **Respond/Activate…** vs **Pass**, and MUST keep the board readable behind it (non-blocking of context — UX §B4). A player MUST NOT be able to accidentally pass a response they intended to make in a single stray tap (the choice is explicit).
-- **REQ-CHAIN-03 (MUST):** V1 response windows have **no countdown timer** (friends, UX §B4/open-Q3); the prompt UI MUST leave structural room for a future soft timer without requiring one now.
+- **REQ-CHAIN-03 (MUST):** A response/priority window is an **awaited decision** and is therefore on the duel's **per-move auto-forfeit clock** (REQ-TIMER-03): the field shows the **same server-authoritative countdown** during a response window as during any other awaited decision, and expiry during a response window **auto-forfeits** the awaited (responding) player (REQ-TIMER-06). *(Supersedes the earlier V1 stance that response windows carried no countdown — the per-move timer now applies. There is still **no separate per-window pacing timer** beyond the duel's single per-move deadline.)*
 - **REQ-CHAIN-04 (MUST):** As chain links are added, the app MUST render a **chain stack**: each link shown with its card and its **owner**, in resolution order (Link 1 resolves last; the most-recently-added link resolves first) (UX §B4).
 - **REQ-CHAIN-05 (MUST):** The app MUST play back **resolution step-by-step**, indicating which link is resolving, in the order the engine resolves them. (V1 shows *what* resolves and in *what order*; it does not add a plain-language *why* — §0 boundary.)
 - **REQ-CHAIN-06 (MUST):** Targeting prompts MUST clearly distinguish **valid targets** (selectable) from invalid ones (not selectable), using shape/state, not colour alone (UX §B3, REQ-UX-06).
@@ -229,13 +232,13 @@ These are locked so downstream code, import/export, and QA all agree.
 
 ## 9. Edison-era rule correctness — REQ-RULE (engine configuration + QA checklist) (EF §6)
 
-**These are correctness expectations of the reused engine, not app-implemented rules.** The app's obligation is (a) to run the engine **configured to Edison-era behavior**, and (b) to faithfully render/pass whatever the engine produces. QA MUST verify each item against a live duel. If the chosen engine build cannot reproduce an item, that is a **flow break** (see §15, R1) to escalate — not something the app should paper over.
+**These are correctness expectations of the reused engine, not app-implemented rules.** The app's obligation is (a) to run the engine **configured to Edison-era behavior**, and (b) to faithfully render/pass whatever the engine produces. QA MUST verify each item against a live duel. If the chosen engine build cannot reproduce an item, that is a **flow break** (see §16, R1) to escalate — not something the app should paper over.
 
 - **REQ-RULE-01 (MUST):** The engine MUST be configured to the **Master Rule (1st edition, 2008–2011) / March 2010** ruleset and the **March 2010 TCG banlist** (`lflist.conf`), with the frozen Edison pool loaded (EF §6.7, §2; EL §5). QA verifies via the checklist below.
 - **REQ-RULE-02 (MUST — verify):** **Ignition Effect Priority is IN EFFECT.** After a Summon, if no Trigger Effect activates, the **turn player may activate a monster Ignition Effect as Chain Link 1 with priority**, before the opponent can respond with a Spell-Speed-2 effect (e.g., Bottomless Trap Hole / Torrential Tribute) — and it need not be the just-summoned monster (EF §6.1). *QA test:* Summon a monster with an ignition effect while the opponent holds Bottomless Trap Hole; confirm the turn player is offered priority to activate before the opponent's response window.
 - **REQ-RULE-03 (MUST — verify):** **The player who goes first draws on turn 1** (EF §6.2). *QA test:* start hands = 5; after going first and entering Draw Phase, the first player's hand becomes 6 (they drew).
 - **REQ-RULE-04 (MUST — verify):** **Damage Step activation follows the pre-2014 model** (restrictive: Counter Traps, mandatory triggers, direct ATK/DEF modifiers like Honest) (EF §6.3). *QA test:* attempt to activate a non-Damage-Step-legal card during the Damage Step and confirm it is not offered; confirm Honest-type and Counter Traps are offered.
-- **REQ-RULE-05 (MUST — verify):** **Field Spell behavior is pre-MR3**: a single shared Field Spell context, and activating a new Field Spell **destroys** the existing one (including the opponent's) rather than the modern per-player field zone that sends the old one to the GY (EF §6.4, labelled an inference grounded in the MR3 change text). *QA test:* with a Field Spell active, activate a new Field Spell and confirm the previous one is destroyed per pre-2014 behavior. *(This item carries the most uncertainty in the research — flag if engine differs; §16.)*
+- **REQ-RULE-05 (MUST — verify):** **Field Spell behavior is pre-MR3**: a single shared Field Spell context, and activating a new Field Spell **destroys** the existing one (including the opponent's) rather than the modern per-player field zone that sends the old one to the GY (EF §6.4, labelled an inference grounded in the MR3 change text). *QA test:* with a Field Spell active, activate a new Field Spell and confirm the previous one is destroyed per pre-2014 behavior. *(This item carries the most uncertainty in the research — flag if engine differs; §17.)*
 - **REQ-RULE-06 (MUST — verify):** **Synchro Summon procedure** = 1 Tuner + one or more non-Tuners whose Levels sum **exactly** to the Synchro Monster's Level, from the Extra Deck (EF §6.5). Card-specific exceptions accommodated (REQ-DUEL-09 edge).
 - **REQ-RULE-07 (MUST — verify):** Duel constants hold: **8000** starting LP, **5**-card opening hand, hand limit **6**, one Normal Summon/Set per turn, standard phase order (§2.2, EF §6).
 - **REQ-RULE-08 (MUST):** The app MUST NOT allow any in-pool card that belongs to an **out-of-era mechanic** (Xyz/Pendulum/Link) to enter a duel — this is guaranteed upstream by the frozen pool (REQ-DECK-02) but MUST also hold at duel start validation (REQ-DECK-09).
@@ -251,11 +254,11 @@ These are locked so downstream code, import/export, and QA all agree.
 - **REQ-NET-03 (MUST):** All rules/ruling resolution during a duel MUST use the **self-hosted** engine + card data; the app MUST make **no external network call to any third-party rules/ruling service mid-duel** (EL §6, project constraint "no external ruling calls").
 - **REQ-NET-04 (MUST):** On a player **disconnect**, the duel state MUST be preserved (no corruption, no loss of the pending decision) and the opponent MUST be informed the player disconnected. Hidden information MUST remain hidden throughout.
   - *Edge (mid-chain):* disconnect while a chain is building or resolving MUST resume at the exact same decision point on reconnect, with no double-resolution and no skipped link.
-  - *Edge (mid-response-window):* if a player disconnects while it is their response window, V1 behavior MUST be defined and consistent (candidate: hold the window open pending reconnect for the friends use-case, vs auto-pass). *This exact policy is an OPEN QUESTION — §16.*
-- **REQ-NET-05 (MUST):** A disconnected player MUST be able to **reconnect** to the in-progress duel (via their authenticated session, REQ-AUTH-03) and be restored to the **current, correctly-redacted** state.
+  - *Edge (mid-response-window):* if a player disconnects while it is their response window, the pending decision MUST be preserved for reconnect **but the per-move clock keeps running** against them (REQ-TIMER-03/04); if they do not return before the deadline they auto-forfeit (REQ-TIMER-06). *(This resolves the former hold-vs-auto-pass open question: the window is neither held indefinitely nor auto-passed — it is time-boxed by the duel's per-move timer.)*
+- **REQ-NET-05 (MUST):** A disconnected player MUST be able to **reconnect** to the in-progress duel (via their authenticated session, REQ-AUTH-03) and be restored to the **current, correctly-redacted** state. Beyond within-session reconnect, an in-progress duel is **durable across days** (REQ-TIMER-07, REQ-DATA-06): resume MUST restore both the correct redacted state **and** the correct server-computed remaining deadline.
   - *Edge (seat integrity):* only the rightful player may reclaim a seat; a reconnect MUST NOT let anyone else attach to that seat and thereby view its hidden information.
-  - *Edge (both disconnect):* if both players drop, the duel state MUST survive for later reconnection (or be resolved by a defined policy).
-- **REQ-NET-06 (SHOULD):** The system SHOULD define a **prolonged-disconnect** policy (how long a duel is held before it is abandoned/forfeit). *Default and exact policy is an OPEN QUESTION (§16); V1 MUST NOT silently auto-forfeit without a defined, communicated rule.*
+  - *Edge (both disconnect):* if both players drop, the duel state MUST survive for later reconnection (REQ-TIMER-07); the player on the clock **remains on the clock while both are away** and auto-forfeits on expiry (REQ-TIMER-06) — an abandoned duel MUST NOT linger indefinitely as "in progress."
+- **REQ-NET-06 (SHOULD — now satisfied by REQ-TIMER):** The prolonged-disconnect / abandonment policy is now **defined by the per-move timer** (REQ-TIMER-04/06/07), which **supersedes** the earlier "hold, no silent auto-forfeit" default. A disconnected or logged-off player who is the **awaited seat remains on the wall-clock** and **auto-forfeits on deadline expiry** (opponent wins; recorded reason = `timeout`). There is no separate "hold indefinitely" behavior. The forfeit is not silent: the timer value is disclosed pre-accept and shown throughout (REQ-TIMER-10/11). *(This retires the former open questions on pending-response and prolonged-disconnect policy — §17.)*
 
 ---
 
@@ -274,9 +277,9 @@ These are locked so downstream code, import/export, and QA all agree.
 
 - **REQ-LOG-01 (MUST):** During a duel, the app MUST maintain a **chronological action log** of significant engine-reported events: phase/turn changes, draws (the viewer's own), summons, card activations, chain builds and per-link resolutions, LP changes, attacks/battle results, and card movements between zones.
 - **REQ-LOG-02 (MUST):** The log a player sees MUST respect hidden information: it MUST only include information that player was **entitled to see at the moment it occurred** (REQ-NET-01). It MUST NOT retroactively leak the opponent's hidden cards.
-  - *Edge (post-duel full reveal):* whether the summary reveals both full decklists **after** the game ends is an OPEN QUESTION (§16). V1 default = show only what was revealed during play.
+  - *Edge (post-duel full reveal):* whether the summary reveals both full decklists **after** the game ends is an OPEN QUESTION (§17). V1 default = show only what was revealed during play.
 - **REQ-LOG-03 (MUST):** A player MUST be able to **scroll back** through the log during and after the duel to review what happened, in order.
-- **REQ-LOG-04 (MUST):** On game end, the app MUST show a **post-duel summary** stating the **winner/loser or draw** and the **end reason** (LP to 0 / deck-out / effect win / surrender), plus turn count. LP timeline/key events are a SHOULD.
+- **REQ-LOG-04 (MUST):** On game end, the app MUST show a **post-duel summary** stating the **winner/loser or draw** and the **end reason** (LP to 0 / deck-out / effect win / surrender / **timeout** — REQ-TIMER-06), plus turn count. LP timeline/key events are a SHOULD.
 - **REQ-LOG-05 (SHOULD):** The completed log/summary SHOULD be **reviewable later** from a duel-history list (it is the teaching artifact; note V1 records *what* happened, not *why* — §0 boundary).
   - *Edge (long duels):* the log MUST remain performant and complete for long games (no truncation that loses events).
 - **REQ-LOG-06 (COULD):** The log/replay COULD be exportable (e.g., a shareable replay/log file) for later study.
@@ -305,10 +308,56 @@ These are locked so downstream code, import/export, and QA all agree.
 - **REQ-DATA-03 (MUST):** Banlist legality MUST be driven by an **Edison `lflist.conf`** (March 2010 TCG) consistent with the deck-builder caps in §2.1 (EL §5).
 - **REQ-DATA-04 (MUST):** The pool MUST contain **no** Xyz/Pendulum/Link cards and no post-cutoff cards (EF §4; enforced by REQ-DATA-01).
 - **REQ-DATA-05 (SHOULD):** The deck-builder display dataset and the engine's `cards.cdb` MUST agree on card identity (passcode) and legality; where they draw from different sources (e.g., display metadata vs engine truth — EL §4b), the build pipeline SHOULD reconcile them so a card cannot be builder-legal but engine-illegal (or vice versa).
+- **REQ-DATA-06 (MUST):** In-progress duel state MUST be **durably persisted** (not only in volatile server memory) sufficient to satisfy asynchronous **resume-across-days** and survival of **both players being offline** and of a normal **server restart/redeploy** (REQ-TIMER-07), and MUST retain enough to recompute the correct **server-authoritative remaining deadline** on resume (REQ-TIMER-05/07). Completed-duel outcomes — winner/loser/draw and **end reason including `timeout`** — MUST persist to each player's history (REQ-LOG-04/05).
+  - *Edge (redaction on resume):* persisting full authoritative state server-side is acceptable, but resume MUST re-apply **per-seat redaction** so hidden information is never leaked (REQ-NET-01/05).
+  - *Edge (mechanism is CTO's):* this states observable durability only; the storage mechanism (checkpointing engine state, DB choice) is a CTO decision and **tensions the in-memory live-state lean** (see §16, R11).
 
 ---
 
-## 15. Flow breaks & risks (things I expect to bite)
+## 15. Per-move timer, auto-forfeit & asynchronous play — REQ-TIMER (CEO-confirmed 2026-07-13)
+
+**Framing:** Every duel carries **one per-move deadline chosen by the inviter at creation**. It is simultaneously (a) the app's **auto-forfeit rule** — it *replaces* the earlier "no auto-forfeit on disconnect" default (REQ-NET-06) — and (b) the enabler of **asynchronous, multi-day** play: with a long deadline a duel can run over days with both players offline between moves. All time is **server-authoritative**. Notifications stay **light in V1**: there are **no push/email notifications** (that is V2); the in-app obligation is the "Your move" queue (REQ-TIMER-08). The §0 scope boundary still holds — V1 enforces and surfaces, it does not *explain*.
+
+- **REQ-TIMER-01 (MUST):** Every duel MUST have exactly **one per-move timer value**, chosen by the **inviter** at duel-creation (challenge) time (REQ-LOBBY-03) and carried into the pre-duel room (REQ-ROOM-09). Once the duel starts the value is **fixed** and MUST NOT be changeable mid-duel by either player.
+  - *Edge:* the inviter makes no explicit choice → the system MUST apply a **documented default preset** (which preset is the default is an OPEN QUESTION, §17); it MUST NOT create a duel with no timer.
+  - *Edge:* a duel MUST NOT exist in an "unlimited / no-deadline" state — there is no such option (REQ-TIMER-02).
+- **REQ-TIMER-02 (MUST):** The selectable values MUST be the presets **5 min, 15 min, 1 hr, 12 hr, 24 hr, 48 hr**. A **custom** value MAY be offered but MUST be bounded to the inclusive range **[1 min, 48 hr]**. **48 hr is a hard ceiling; there is NO "unlimited"/"no-limit" option.** A value outside [1 min, 48 hr] MUST be **rejected at creation, server-side, with clear feedback** — never silently clamped or accepted — and the duel MUST NOT be created.
+  - *Edge (bounds inclusive):* exactly **1 min** and exactly **48 hr** are accepted; **59 sec** and **48 hr + 1 min** are rejected.
+  - *Edge (garbage input):* zero, negative, empty, non-numeric, or absurd (e.g., 999 hr) custom input MUST be rejected with specific feedback, not coerced.
+  - *Edge (client bypass):* a client that submits an out-of-range value by bypassing the UI MUST still be rejected server-side (client validation is not trusted alone — cf. REQ-DECK-09).
+- **REQ-TIMER-03 (MUST):** **Per-move deadline semantics.** The clock MUST run against **whoever the engine is currently awaiting a decision from** — this covers normal turn actions **and** quick-effect / priority / chain response windows (REQ-CHAIN-01/03). Exactly one player is on the clock at any moment. The remaining time MUST **reset to the full configured value whenever the awaited player (seat) changes.**
+  - *Edge (hand-offs reset):* a chain with back-and-forth responses hands the awaited seat back and forth; each hand-off resets the clock — the previously-awaited player's elapsed time is discarded.
+  - *Edge (same-player consecutive decisions):* when the engine awaits the **same** player for several consecutive decisions (e.g., multi-step summon sub-selections, then attacks, within one uninterrupted segment), the clock does **NOT** reset between those sub-prompts — that whole contiguous awaited segment shares one deadline. *(Implication: under a short preset a complex own-turn segment must complete within one deadline. Whether short presets should instead reset per-prompt is flagged as an OPEN QUESTION, §17.)*
+  - *Edge (nobody awaited):* during pure engine auto-resolution where no player decision is pending, no clock runs; it (re)starts when the engine next awaits a player.
+- **REQ-TIMER-04 (MUST):** The deadline MUST count **wall-clock time regardless of either player's connection state.** An awaited player who is **disconnected, logged off, or has closed the app is still on the clock.** "Disconnected" and "slow/away" are treated identically. *(This supersedes the earlier "hold indefinitely / no auto-forfeit on disconnect" default — REQ-NET-04/06.)*
+  - *Edge:* the awaited player disconnects and never returns → the clock keeps running and expires → auto-forfeit (REQ-TIMER-06).
+  - *Edge:* the **non-awaited** player disconnects → they are not on the clock; when the awaited seat later passes to them, their (full, reset) deadline begins and runs whether or not they have reconnected.
+- **REQ-TIMER-05 (MUST):** The deadline and remaining time MUST be computed from a **server-authoritative clock**. Client-rendered countdowns are advisory only; the **server's time is the sole source of truth** for expiry. Client/server clock skew MUST NOT let a player gain or lose time; on any disagreement the server value governs.
+  - *Edge (skew):* a client whose local clock is fast/slow or in the wrong timezone still expires per server time; the displayed countdown reconciles to the server on the next sync.
+  - *Edge (backgrounded tab/app):* a client whose JS timers were throttled/paused MUST **re-sync remaining time from the server on refocus**, not resume a stale local value.
+- **REQ-TIMER-06 (MUST):** On deadline expiry, the **awaited player auto-forfeits and the opponent is recorded as the winner**; the duel ends immediately and is recorded with **end reason = `timeout`** (REQ-DUEL-12, REQ-LOG-04). Both players' history MUST reflect the timeout outcome.
+  - *Edge (mid-response-window / mid-chain):* expiry while the awaited player is inside a response window or a resolving chain still ends the duel as their timeout loss; the **opponent's client MUST be released cleanly** (no stuck "awaiting response" state) — cf. REQ-DUEL-13 surrender-mid-chain.
+  - *Edge (offline at expiry):* if the forfeiting player was offline at expiry, the result MUST be **durably recorded** and surfaced to them on **next login** (there is no push notification in V1); they are routed to the post-duel summary on return.
+  - *Edge (deadline race):* a valid move arriving **around** the deadline is arbitrated by the **server-receipt time vs the server deadline** (REQ-TIMER-05): a move received after the deadline MUST NOT rescue the player; a move received before it MUST NOT be lost to a premature timeout. This boundary MUST be precise and tested (see §16, R12).
+- **REQ-TIMER-07 (MUST):** An in-progress duel MUST be **durable**: its full authoritative state (engine state, whose move it is, the remaining/absolute deadline) MUST persist **across player sessions and calendar days**, MUST survive **both players being offline**, and MUST survive a normal **server restart/redeploy**. Either player MUST be able to close the app and later **resume a days-old in-progress duel** from the correct state. *(This broadens REQ-NET-05 reconnect from within-session to across-days; the storage obligation is REQ-DATA-06.)*
+  - *Edge (correct remaining time on resume):* on resume the field MUST show the **correct server-computed remaining time** for whoever is on the clock — which may be near-zero, or already **past** (then it resolves as a timeout on resume / next server tick, REQ-TIMER-06).
+  - *Edge (both away past the deadline):* if the on-clock player's deadline passes while **both** players are away, the duel MUST resolve as a **timeout loss** for the on-clock player; an abandoned duel MUST NOT linger indefinitely as "in progress."
+  - *Edge (server downtime):* the deadline is nominally **absolute wall-clock**, so time during a server outage nominally counts against the awaited player. Whether server-downtime is **credited back** (fairness) is an OPEN QUESTION (§17); until decided, avoid maintenance windows during the short presets.
+  - *Edge (redaction on resume):* durable state may be stored in full server-side, but any **resume MUST re-apply per-seat redaction** — resuming MUST never leak hidden information (REQ-NET-01/05).
+- **REQ-TIMER-08 (MUST):** On login/landing, the home/lobby MUST make it **unmistakable which in-progress duels are awaiting THIS player's move** — a **"Your move" queue/indicator** listing every duel where this player is the awaited seat, each reachable in **one action**, each showing the opponent and this player's **remaining time**. This is the primary V1 substitute for notifications (which are V2).
+  - *Edge (many concurrent duels):* all awaiting duels MUST be listed; ordering SHOULD surface the **most urgent** (least remaining time) first.
+  - *Edge (expired while away):* a duel that already timed out while the player was away MUST **NOT** appear in "Your move" as actionable; it appears (if anywhere) as a finished/lost duel in history (REQ-LOG-05).
+  - *Edge (nothing pending):* when no duel awaits this player, the queue MUST show a clear empty state, not a stale/misleading count.
+- **REQ-TIMER-09 (SHOULD):** The home/lobby SHOULD also present a **"waiting on opponent"** list — in-progress duels where the **opponent** is the awaited seat — with the opponent's remaining time, so the player can see what they are waiting on.
+- **REQ-TIMER-10 (MUST):** During a duel the field MUST display, to **both players simultaneously**, a **countdown/deadline for whoever is currently on the clock**, derived from server-authoritative time (REQ-TIMER-05), and MUST make clear **which player** the clock is running against (REQ-DUEL-02). The configured timer value MUST also be shown in the pre-duel room (REQ-ROOM-09).
+  - *Edge (consistent across clients):* both clients MUST show a **consistent** remaining time for the same on-clock player (within sync tolerance), since both derive from the server — no per-client divergence in the authoritative value.
+  - *Edge (long async deadlines):* for long deadlines (12–48 hr) the display SHOULD show an **absolute deadline date/time**, not only a ticking seconds counter (a 48-hr second-by-second countdown is useless); short presets show a live countdown.
+  - *Edge (accessibility):* the remaining time MUST be conveyed **numerically/textually**, not by an animated ring alone, and MUST remain informative under the reduced-motion setting (REQ-UX-06/07).
+- **REQ-TIMER-11 (MUST):** The **invitee MUST be shown the timer value before they Accept** the challenge (REQ-LOBBY-03), so acceptance is informed consent to the pace of play. A challenge that does not carry a valid timer value (REQ-TIMER-01/02) MUST NOT be presentable or acceptable.
+
+---
+
+## 16. Flow breaks & risks (things I expect to bite)
 
 1. **R1 — Does the reused engine reproduce Edison-era rules out of the box? (HIGHEST RISK.)** Current `ocgcore`/CardScripts target the *modern* ruleset. The era-defining behaviors the founder cares about — **ignition-effect priority** (REQ-RULE-02), first-turn draw, pre-2014 Damage Step, pre-MR3 Field Spell (REQ-RULE-03/04/05) — were *removed* from the game after Edison. If the chosen build cannot be configured to reproduce them (EDOPro exposes duel-rule/master-rule options and the community runs Edison lobbies, but ignition priority specifically is uncertain), the "accuracy is sacred" promise fails on exactly the rules that make Edison *Edison*. **This must be a first spike (goes with EL's Spike 1), before UI investment.**
 2. **R2 — Boundary confusion around "enforce but don't explain."** The line between "mark actionable cards / show response windows" (IN) and "explain why an action is unavailable" (OUT) is subtle. Risk in both directions: engineers over-build the V2 reason tooltip, or under-build and hide legal options. §0 + REQ-DUEL-06 + REQ-CHAIN-01 pin the boundary; QA must test that legal options are surfaced **and** that no "why" strings appear.
@@ -320,23 +369,28 @@ These are locked so downstream code, import/export, and QA all agree.
 8. **R8 — First-player / first-turn-draw interaction.** Who chooses play/draw (REQ-ROOM-05) and the Edison first-turn-draw (REQ-RULE-03) must both be honored; getting either wrong is an immediately-noticeable correctness bug.
 9. **R9 — Lobby race conditions.** Simultaneous mutual challenges, challenging while busy, and multi-challenge acceptance (REQ-LOBBY-05) can produce two rooms or a zombie challenge if not resolved atomically.
 10. **R10 — Field-Spell model divergence.** If the engine models modern per-player Field Spell zones, it will diverge from pre-MR3 single-shared-destroy behavior (REQ-RULE-05); this is the research's lowest-confidence rule and needs live verification.
+11. **R11 — Durable async duel state vs. the in-memory live-duel lean. (NEW — HIGH.)** Async first-class play (REQ-TIMER-07, REQ-DATA-06) requires in-progress duel state to survive **both players offline for days** and a **server restart/redeploy** — broader than within-session reconnect (REQ-NET-05). This **directly tensions the current CTO lean** (live duel/room state kept **in-memory**, with "server restart killing a live duel acceptable"). The CTO must reconcile: **checkpoint/serialize authoritative engine state to durable storage** and rehydrate on resume/restart, or async breaks on restart. A related fairness edge — whether wall-clock time counts against a player during server downtime (REQ-TIMER-07 edge) — is an open question (§17). This is a load-bearing architecture consequence of making async first-class; **escalate to CTO.**
+12. **R12 — Timeout race at the server deadline. (NEW.)** The tightest correctness edge: a valid move arriving right around the server deadline, possibly with the awaited player offline. The **server timestamp must be the sole arbiter** (REQ-TIMER-05/06): a move received after the deadline must not rescue the player; a move received just before must not be lost to a premature timeout. Ambiguity produces "I moved in time but lost" disputes among friends. Needs a precise, tested server-side ordering rule; compounded by client clock skew and by the mid-response-window / offline-at-expiry cases.
 
 ---
 
-## 16. Open questions (product-direction — for the CEO/founder; I did not invent answers)
+## 17. Open questions (product-direction — for the CEO/founder; I did not invent answers)
 
 1. **Side deck: 0–15 vs exactly-15-if-used.** Research could not verify a 2010 "exactly 15" tournament rule (EF §3, §8). V1 defaults to 0–15 (§2.1). Does the group want a strict "0 or 15" toggle?
 2. **Who goes first: winner-of-toss chooses, or app auto-assigns?** REQ-ROOM-05 prefers the tournament-accurate "winner chooses play/draw"; confirm this is wanted vs a simple random first-player.
 3. **Match play (Bo3) with side-decking.** V1 defaults to single games (REQ-ROOM-08). Do the friends want best-of-3 matches (which is the whole point of a Side Deck) in V1, or is that deferred?
-4. **Pending-response behavior on disconnect.** Hold the window open pending reconnect, or auto-pass? (REQ-NET-04.)
-5. **Prolonged-disconnect / abandonment policy.** How long is a duel held before it's forfeit/abandoned, and what's the recorded outcome? (REQ-NET-06.)
-6. **Post-duel full decklist reveal.** After a game ends, does the summary reveal both full decklists (friendly review) or only what was revealed in play? (REQ-LOG-02.) Default = only-what-was-revealed.
-7. **Exact HA/other carve-out list & the precise legal pool count.** The enumerated exclusions must be pulled from edisonformat.net/Format Library and founder-signed-off before lock (EF §8; EL §5, §Spike 2). This is a data-build prerequisite, not something to guess.
-8. **Engine-config feasibility of Edison-era rules (R1).** Not a product-direction question but a CTO spike whose answer changes scope — surfaced here because it gates the accuracy promise.
+4. **Post-duel full decklist reveal.** After a game ends, does the summary reveal both full decklists (friendly review) or only what was revealed in play? (REQ-LOG-02.) Default = only-what-was-revealed.
+5. **Exact HA/other carve-out list & the precise legal pool count.** The enumerated exclusions must be pulled from edisonformat.net/Format Library and founder-signed-off before lock (EF §8; EL §5, §Spike 2). This is a data-build prerequisite, not something to guess.
+6. **Engine-config feasibility of Edison-era rules (R1).** Not a product-direction question but a CTO spike whose answer changes scope — surfaced here because it gates the accuracy promise.
+7. **Default per-move timer preset (REQ-TIMER-01).** When the inviter makes no explicit choice at duel creation, which preset is the default (e.g., a 15-min synchronous default vs a longer async-friendly one)? Not yet decided.
+8. **Clock-reset granularity — confirm (REQ-TIMER-03).** The CEO-confirmed semantics reset the clock only when the **awaited seat changes**, so a long uninterrupted own-turn segment shares one deadline. Confirm this is acceptable for the **short presets** (5/15 min), or whether short presets should instead reset **per prompt** to avoid punishing long-but-legitimate turns.
+9. **Server-downtime crediting (REQ-TIMER-07).** The per-move deadline is absolute wall-clock; should planned/unplanned **server downtime be credited back** to the awaited player, or does it count against them?
+
+*(Retired 2026-07-13: the former open questions on **pending-response-on-disconnect** and **prolonged-disconnect / abandonment policy** are now resolved — a disconnected awaited player stays on the wall-clock and auto-forfeits on expiry; see REQ-TIMER-04/06/07 and REQ-NET-06.)*
 
 ---
 
-## 17. Acceptance criteria for V1 (testable, end-to-end)
+## 18. Acceptance criteria for V1 (testable, end-to-end)
 
 V1 is accepted when **all** of the following pass. Each maps to requirements above.
 
@@ -358,6 +412,10 @@ V1 is accepted when **all** of the following pass. Each maps to requirements abo
 - **AC-16 (Log & summary):** During and after a duel the action log is reviewable, respects hidden info, and the post-duel summary states winner/loser/draw + reason + turn count. *(REQ-LOG-01..04)*
 - **AC-17 (Responsive/tap):** On a 375px-wide phone in portrait, a player can complete an entire duel by tap alone (no required drag, no zoom-to-act), read any card's full text on demand, and every interactive target meets the 44px/16px minimums. *(REQ-UX-01..05, REQ-UX-09)*
 - **AC-18 (Accessibility):** Banlist status, ownership, and actionable/legal states are each conveyed by icon/shape/label in addition to colour; a reduced-motion setting keeps feedback informative without animation. *(REQ-UX-06/07)*
+- **AC-19 (Timer set & visible):** A duel created with a chosen value (a preset or an in-range custom) carries that per-move timer; the invitee sees the value **before** Accept; it is shown in the pre-duel room and, during play, as a countdown for the on-clock player to **both** players; a custom value outside **[1 min, 48 hr]** (and any "unlimited" request) is **rejected server-side at creation**, and the duel is not created. *(REQ-TIMER-01/02/10/11, REQ-ROOM-09, REQ-LOBBY-03)*
+- **AC-20 (Timeout auto-forfeit):** With a **5-min** per-move deadline, if the awaited player takes no valid action before the **server** deadline — including while disconnected/offline and including mid-response-window/mid-chain — the duel ends with the opponent as winner and **reason = timeout**, recorded in both players' history, and the opponent's client is released cleanly; a client with a skewed local clock does not change the outcome. *(REQ-TIMER-03/04/05/06, REQ-CHAIN-03, REQ-DUEL-12, REQ-LOG-04)*
+- **AC-21 (Async resume across days):** A duel with a **48-hr** deadline persists while **both** players are offline for a day and across a server restart; on return either player resumes from the correct **redacted** state with the correct **server-computed remaining time**; if the on-clock player's deadline elapsed while away, resume resolves it as a **timeout loss**. *(REQ-TIMER-07, REQ-NET-05, REQ-DATA-06)*
+- **AC-22 ("Your move" queue):** On login, a player with several concurrent in-progress duels sees an unmistakable **"Your move"** queue listing exactly the duels awaiting THIS player, each reachable in one action with its remaining time; a duel that timed out while they were away is not listed as actionable (it appears as a loss in history); duels where the opponent is on the clock are not in the actionable queue (SHOULD: shown in a "waiting on opponent" list). *(REQ-TIMER-08/09, REQ-LOBBY-02, REQ-LOG-05)*
 
 ---
 
@@ -367,7 +425,7 @@ V1 is accepted when **all** of the following pass. Each maps to requirements abo
 |---|---|---|---|---|
 | AUTH | 4 | 2 | 1 | 7 |
 | LOBBY | 3 | 3 | 0 | 6 |
-| ROOM | 5 | 2 | 1 | 8 |
+| ROOM | 6 | 2 | 1 | 9 |
 | DECK | 15 | 2 | 0 | 17 |
 | DUEL | 12 | 2 | 0 | 14 |
 | CHAIN | 8 | 0 | 0 | 8 |
@@ -376,7 +434,8 @@ V1 is accepted when **all** of the following pass. Each maps to requirements abo
 | REF | 4 | 1 | 0 | 5 |
 | LOG | 4 | 1 | 1 | 6 |
 | UX | 7 | 3 | 0 | 10 |
-| DATA | 4 | 1 | 0 | 5 |
-| **Total** | **79** | **18** | **3** | **100** |
+| DATA | 5 | 1 | 0 | 6 |
+| TIMER | 10 | 1 | 0 | 11 |
+| **Total** | **91** | **19** | **3** | **113** |
 
 *(Counts are of individually-numbered `REQ-*` items; edge cases and acceptance criteria are additional and not counted here.)*
