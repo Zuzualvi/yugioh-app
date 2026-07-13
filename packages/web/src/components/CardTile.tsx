@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { CardDTO } from "../types/contracts";
+import { cardImageUrl } from "../utils/cardImageUrl";
 import { LegalityBadge } from "./LegalityBadge";
 import { maxCopies } from "./LegalityBadge";
 
@@ -10,10 +11,6 @@ interface Props {
   onAdd: () => void;
   style?: CSSProperties;
   showAddButton?: boolean;
-}
-
-function imageUrl(imageId: number): string {
-  return `https://images.ygoprodeck.com/images/cards_small/${imageId}.jpg`;
 }
 
 /** A card tile used in the search results grid of the Deck Builder. */
@@ -57,7 +54,7 @@ export function CardTile({
         title={`${card.name} — tap to inspect`}
       >
         <img
-          src={imageUrl(card.imageId)}
+          src={cardImageUrl(card.imageId)}
           alt={card.name}
           style={{
             width: "100%",

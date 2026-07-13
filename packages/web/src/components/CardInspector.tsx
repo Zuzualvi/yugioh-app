@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { CardDTO } from "../types/contracts";
+import { cardImageUrl } from "../utils/cardImageUrl";
 import { LegalityBadge } from "./LegalityBadge";
 
 interface Props {
@@ -11,11 +12,6 @@ interface Props {
   maxCopy?: number;
   onNext?: () => void;
   onPrev?: () => void;
-}
-
-function imageUrl(imageId: number): string {
-  // In production, images come from the server. In dev/mock, use YGOPRODeck CDN.
-  return `https://images.ygoprodeck.com/images/cards_small/${imageId}.jpg`;
 }
 
 function frameLabel(frame: CardDTO["frame"]): string {
@@ -110,7 +106,7 @@ export function CardInspector({
           {/* Art */}
           <div style={{ flexShrink: 0 }}>
             <img
-              src={imageUrl(card.imageId)}
+              src={cardImageUrl(card.imageId)}
               alt={card.name}
               width={120}
               height={174}
