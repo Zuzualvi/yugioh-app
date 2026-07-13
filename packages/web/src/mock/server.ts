@@ -13,6 +13,7 @@ import {
   getSession,
   getUserDecks,
   MOCK_CARDS,
+  mockCreateInvite,
   mockLogin,
   mockRedeemInvite,
   parseYdk,
@@ -273,6 +274,20 @@ export async function handleRequest(
       [...existing.side],
     );
     json(res, 201, copy);
+    return;
+  }
+
+  // ─── Admin endpoints ───────────────────────────────────────────────────────
+  if (path === "/admin/invites" && method === "POST") {
+    if (!currentUser) {
+      err(res, 401, "unauthenticated", "Not authenticated");
+      return;
+    }
+    if (currentUser.role !== "admin") {
+      err(res, 403, "forbidden", "Admin access required");
+      return;
+    }
+    json(res, 201, mockCreateInvite());
     return;
   }
 

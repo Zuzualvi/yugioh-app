@@ -10,6 +10,12 @@ export const MOCK_USER: User = {
   role: "member",
 };
 
+export const MOCK_ADMIN_USER: User = {
+  id: "admin-1",
+  displayName: "admin",
+  role: "admin",
+};
+
 export const MOCK_CARDS: CardDTO[] = [
   {
     passcode: 89631139,
@@ -198,10 +204,15 @@ const decks: Map<string, Deck & { ownerId: string }> = new Map();
 let deckCounter = 1;
 
 export function mockLogin(displayName: string, _password: string): User | null {
-  if (displayName === "TestUser" || displayName === "admin") {
-    return MOCK_USER;
-  }
+  if (displayName === "admin") return MOCK_ADMIN_USER;
+  if (displayName === "TestUser") return MOCK_USER;
   return null;
+}
+
+export function mockCreateInvite(): { inviteCode: string; expiresAt: string } {
+  const code = "INV-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  return { inviteCode: code, expiresAt };
 }
 
 export function mockRedeemInvite(

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { createInvite } from "../api/admin";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
@@ -6,11 +8,38 @@ export function HomeScreen() {
   const { user, logout } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteExpiry, setInviteExpiry] = useState<string | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   async function handleLogout() {
     await logout();
     addToast("Signed out", "info");
     navigate("/login", { replace: true });
+  }
+
+  async function handleCreateInvite() {
+    setInviteLoading(true);
+    try {
+      const { inviteCode, expiresAt } = await createInvite();
+      const link = `${window.location.origin}/login?invite=${inviteCode}`;
+      setInviteLink(link);
+      setInviteExpiry(new Date(expiresAt).toLocaleDateString(undefined, { dateStyle: "long" }));
+    } catch {
+      addToast("Failed to generate invite link", "error");
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      addToast("Link copied!", "success");
+    } catch {
+      addToast("Copy failed — select and copy the link manually", "error");
+    }
   }
 
   return (
@@ -117,6 +146,75 @@ export function HomeScreen() {
             href="#"
           />
         </div>
+
+        {/* Admin: Invite a friend */}
+        {user?.role === "admin" && (
+          <div style={{ marginTop: 8 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>Admin</h2>
+            {!inviteLink ? (
+              <button
+                className="btn"
+                onClick={handleCreateInvite}
+                disabled={inviteLoading}
+                style={{ minHeight: 44, padding: "10px 20px" }}
+              >
+                {inviteLoading ? "Generating…" : "Invite a friend"}
+              </button>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  padding: 20,
+                  background: "var(--bg-1)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  maxWidth: 560,
+                }}
+              >
+                <div style={{ fontWeight: 600, fontSize: "0.9375rem" }}>Invite link</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    readOnly
+                    value={inviteLink}
+                    aria-label="Invite link"
+                    style={{
+                      flex: 1,
+                      background: "var(--bg-0, #0d0d0d)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      color: "var(--text-0)",
+                      fontSize: "0.875rem",
+                      minHeight: 44,
+                    }}
+                  />
+                  <button
+                    className="btn"
+                    onClick={handleCopyLink}
+                    style={{ minHeight: 44, padding: "10px 16px", whiteSpace: "nowrap" }}
+                  >
+                    Copy link
+                  </button>
+                </div>
+                {inviteExpiry && (
+                  <p style={{ color: "var(--text-1)", fontSize: "0.875rem", margin: 0 }}>
+                    Expires {inviteExpiry}
+                  </p>
+                )}
+                <button
+                  className="btn btn-ghost"
+                  onClick={handleCreateInvite}
+                  disabled={inviteLoading}
+                  style={{ minHeight: 44, padding: "8px 16px", alignSelf: "flex-start" }}
+                >
+                  {inviteLoading ? "Generating…" : "Generate new link"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Seam: "Waiting on opponent" list placeholder for Slice 3 */}
         {/* <WaitingOnOpponent /> */}
