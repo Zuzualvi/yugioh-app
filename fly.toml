@@ -6,7 +6,7 @@
 # NEVER put secrets here. Use:
 #   fly secrets set BOOTSTRAP_ADMIN_USERNAME=... BOOTSTRAP_ADMIN_PASSWORD=...
 
-app = "yugioh-edison"       # Reconciled to the provision_hosting-created app post-provision
+app = "yugioh-app"          # matches the provision_hosting-created Fly app
 primary_region = "iad"      # Ashburn, VA (US East) — group is US East
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ primary_region = "iad"      # Ashburn, VA (US East) — group is US East
 # the created volume name post-provision if it differs.
 # ---------------------------------------------------------------------------
 [[mounts]]
-  source      = "yugioh_data"
+  source      = "data"
   destination = "/data"
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,83 @@
+name: Deploy
+
+# merge=deploy: every push to master runs the full verify gate, then (only if green)
+# deploys the Fly backend (api.zuhayr.io) and the Vercel frontend (app.zuhayr.io).
+# Secrets FLY_API_TOKEN / VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID were set by
+# provision_hosting. BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD were set by the CEO.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify (typecheck · lint · arch · test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run verify
+
+  deploy-backend:
+    name: deploy backend (Fly · api.zuhayr.io)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Stage admin-bootstrap secrets (applied on next deploy)
+        run: |
+          flyctl secrets set --stage --app yugioh-app \
+            BOOTSTRAP_ADMIN_USERNAME="${{ secrets.BOOTSTRAP_ADMIN_USERNAME }}" \
+            BOOTSTRAP_ADMIN_PASSWORD="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}"
+      - name: Deploy image to Fly (remote build from Dockerfile)
+        run: flyctl deploy --remote-only --app yugioh-app
+      - name: Ensure TLS cert for the custom domain (idempotent)
+        run: flyctl certs add api.zuhayr.io --app yugioh-app || true
+
+  deploy-frontend:
+    name: deploy frontend (Vercel · app.zuhayr.io)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Public (non-secret) build-time URLs baked into the client bundle.
+      VITE_API_BASE_URL: https://api.zuhayr.io
+      VITE_IMAGE_BASE_URL: https://api.zuhayr.io/images
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Pin frontend build env to our known-correct URLs
+        run: |
+          printf 'VITE_API_BASE_URL="%s"\nVITE_IMAGE_BASE_URL="%s"\n' \
+            "$VITE_API_BASE_URL" "$VITE_IMAGE_BASE_URL" > .vercel/.env.production.local
+      - name: Build frontend
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy prebuilt output to Vercel
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
