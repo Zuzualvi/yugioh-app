@@ -6,6 +6,7 @@ import { createAuthRouter, createMeRouter, createAdminRouter } from "./routes/au
 import { createCardsRouter } from "./routes/cards.js";
 import { createDecksRouter } from "./routes/decks.js";
 import { requireSession, requireAdmin } from "./middleware/requireSession.js";
+import { corsMiddleware, allowedOriginsFromEnv } from "./middleware/cors.js";
 
 // ---------------------------------------------------------------------------
 // Express app factory — wires all routes and middleware.
@@ -18,6 +19,7 @@ export function createApp(
 ): express.Application {
   const app = express();
 
+  app.use(corsMiddleware(allowedOriginsFromEnv()));
   app.use(express.json());
   // Accept raw text body for .ydk import
   app.use(express.text({ type: "text/plain", limit: "1mb" }));

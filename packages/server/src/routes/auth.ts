@@ -27,7 +27,7 @@ function setCookie(res: import("express").Response, sid: string): void {
   const isProd = process.env["NODE_ENV"] === "production";
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     secure: isProd,
     expires: new Date(sessionExpiresAt()),
     path: "/",
