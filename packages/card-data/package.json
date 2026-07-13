@@ -1,0 +1,17 @@
+{
+  "name": "@yugioh-app/card-data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build-catalog": "node scripts/build-catalog.mjs",
+    "download-images-sample": "node scripts/download-images.mjs --sample",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@yugioh-app/contracts": "*"
+  },
+  "devDependencies": {}
+}
