@@ -1,0 +1,15 @@
+{
+  "name": "spike-a2-ruleset-validation",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "a21": "node src/a21-gy-ignition.js",
+    "a22": "node src/a22-goat-flags.js",
+    "a23": "node src/a23-final-verdict.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2"
+  }
+}
