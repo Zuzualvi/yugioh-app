@@ -18,7 +18,7 @@ function makeTestCatalog(): LoadedCatalog {
   for (const card of FIXTURE_CARDS) {
     if (card.aliasOf !== null) aliasIndex.set(card.passcode, card.aliasOf);
   }
-  const legalPasscodes = new Set(byPasscode.keys());
+  const legalPasscodes = new Set([...byPasscode.keys(), ...aliasIndex.keys()]);
   return { catalog: FIXTURE_CATALOG, byPasscode, aliasIndex, legalPasscodes };
 }
 

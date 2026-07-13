@@ -1,5 +1,6 @@
 import type { Violation } from "@yugioh-app/contracts";
 import type { LoadedCatalog } from "../catalog/loadCatalog.js";
+import { resolveCard } from "../catalog/loadCatalog.js";
 
 // ---------------------------------------------------------------------------
 // Pure .ydk codec — Spec 10 §Architecture, §2.3 of requirements
@@ -122,11 +123,12 @@ export function parseYdk(text: string, catalog: LoadedCatalog | null): YdkParseR
 
     // Check against catalog if provided
     if (catalog !== null && !catalog.legalPasscodes.has(passcode)) {
-      const inDb = catalog.byPasscode.has(passcode);
+      // resolveCard handles alias passcodes too (511002993 → Brionac base)
+      const resolvedCard = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
       violations.push({
-        code: inDb ? "out_of_pool" : "unknown_passcode",
-        message: inDb
-          ? `Line ${lineNum}: Passcode ${passcode} ("${catalog.byPasscode.get(passcode)?.name}") is not in the Edison legal pool.`
+        code: resolvedCard ? "out_of_pool" : "unknown_passcode",
+        message: resolvedCard
+          ? `Line ${lineNum}: Passcode ${passcode} ("${resolvedCard.name}") is not in the Edison legal pool.`
           : `Line ${lineNum}: Passcode ${passcode} is unknown (not in the card database).`,
         passcode,
         line: lineNum,
@@ -134,9 +136,9 @@ export function parseYdk(text: string, catalog: LoadedCatalog | null): YdkParseR
       // Still route to the appropriate zone for structural completeness
     }
 
-    // Route to zone — but also check for cross-zone placement issues
+    // Route to zone — check for cross-zone placement issues (alias-aware)
     if (section === "extra" && catalog !== null) {
-      const card = catalog.byPasscode.get(passcode);
+      const card = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
       if (card && !card.isExtraDeck) {
         violations.push({
           code: "wrong_zone",
@@ -150,7 +152,7 @@ export function parseYdk(text: string, catalog: LoadedCatalog | null): YdkParseR
         continue;
       }
     } else if ((section === "main" || section === "side") && catalog !== null) {
-      const card = catalog.byPasscode.get(passcode);
+      const card = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
       if (card?.isExtraDeck) {
         violations.push({
           code: "wrong_zone",

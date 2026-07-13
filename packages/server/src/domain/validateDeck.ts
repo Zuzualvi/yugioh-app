@@ -1,6 +1,6 @@
 import type { Violation, DeckValidation } from "@yugioh-app/contracts";
 import type { LoadedCatalog } from "../catalog/loadCatalog.js";
-import { resolveBase } from "../catalog/loadCatalog.js";
+import { resolveBase, resolveCard } from "../catalog/loadCatalog.js";
 
 // ---------------------------------------------------------------------------
 // Pure deck legality validator — Spec 10 §Architecture, Spec 13 §3
@@ -11,8 +11,9 @@ import { resolveBase } from "../catalog/loadCatalog.js";
 //   - Ritual → Main (never Extra)
 //   - Copy cap ≤ 3 per resolved base name across all three zones combined
 //   - Banlist: Forbidden = 0, Limited = 1, Semi = 2 (combined across all zones)
-//   - alias counts as same card (via aliasIndex)
-//   - out-of-pool rejected
+//   - alias counts as same card (via aliasIndex — covers both catalog aliasOf
+//     AND external pre-errata passcodes from alias-index.json)
+//   - out-of-pool rejected; unknown passcode reported
 // ---------------------------------------------------------------------------
 
 const MAIN_MIN = 40;
@@ -82,7 +83,8 @@ function checkZone(
   violations: Violation[],
 ): void {
   for (const passcode of passcodes) {
-    const card = catalog.byPasscode.get(passcode);
+    // Resolve alias passcodes (e.g. 511002993 → 50321796 for Brionac pre-errata)
+    const card = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
 
     if (!card) {
       violations.push({
@@ -94,7 +96,7 @@ function checkZone(
       continue;
     }
 
-    // Pool membership (card must be in the Edison legal pool)
+    // Pool membership check (passcode must be recognized — real or alias)
     if (!catalog.legalPasscodes.has(passcode)) {
       violations.push({
         code: "out_of_pool",
@@ -107,7 +109,6 @@ function checkZone(
 
     // Zone enforcement
     if (zone === "extra") {
-      // Extra Deck: Fusion and Synchro only
       if (!card.isExtraDeck) {
         violations.push({
           code: "wrong_zone",
@@ -117,7 +118,6 @@ function checkZone(
         });
       }
     } else {
-      // Main or Side: Extra Deck monsters are forbidden here
       if (card.isExtraDeck) {
         violations.push({
           code: "wrong_zone",
@@ -138,7 +138,6 @@ function checkCopyLimits(
   violations: Violation[],
 ): void {
   // Count copies by resolved base passcode across all zones.
-  // Track which zones each base appears in for violation reporting.
   const totalByBase = new Map<number, number>();
 
   const allEntries: Array<{ passcode: number; zone: "main" | "extra" | "side" }> = [
@@ -148,27 +147,27 @@ function checkCopyLimits(
   ];
 
   for (const { passcode } of allEntries) {
-    const card = catalog.byPasscode.get(passcode);
-    if (!card) continue; // unknown passcode — already reported above
+    const card = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
+    if (!card) continue; // unknown — already reported above
 
     const base = resolveBase(passcode, catalog.aliasIndex);
     totalByBase.set(base, (totalByBase.get(base) ?? 0) + 1);
   }
 
-  // Violations keyed by base passcode to avoid duplicate violation messages
+  // Violations keyed by base passcode to avoid duplicate messages
   const reported = new Set<number>();
 
   for (const { passcode, zone } of allEntries) {
-    const card = catalog.byPasscode.get(passcode);
+    const card = resolveCard(passcode, catalog.byPasscode, catalog.aliasIndex);
     if (!card) continue;
 
     const base = resolveBase(passcode, catalog.aliasIndex);
     if (reported.has(base)) continue;
 
     const total = totalByBase.get(base) ?? 0;
+    // Use the base card for banlist lookup
     const baseCard = catalog.byPasscode.get(base) ?? card;
 
-    // Banlist: Forbidden = 0 copies allowed anywhere
     if (baseCard.banlist === "forbidden") {
       if (total > 0) {
         reported.add(base);
@@ -182,7 +181,6 @@ function checkCopyLimits(
       continue;
     }
 
-    // Banlist: Limited = max 1 copy total
     if (baseCard.banlist === "limited") {
       if (total > 1) {
         reported.add(base);
@@ -192,19 +190,10 @@ function checkCopyLimits(
           passcode: base,
           zone,
         });
-      } else if (total > COPY_MAX) {
-        reported.add(base);
-        violations.push({
-          code: "copy_limit",
-          message: `"${baseCard.name}" exceeds the 3-copy cap (found ${total}).`,
-          passcode: base,
-          zone,
-        });
       }
       continue;
     }
 
-    // Banlist: Semi-Limited = max 2 copies total
     if (baseCard.banlist === "semi") {
       if (total > 2) {
         reported.add(base);

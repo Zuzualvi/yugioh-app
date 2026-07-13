@@ -1,6 +1,7 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { validateDeck } from "./validateDeck.js";
 import type { LoadedCatalog } from "../catalog/loadCatalog.js";
+import { loadCatalog, resetCatalogCache } from "../catalog/loadCatalog.js";
 import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../catalog/fixture.js";
 
 // ---------------------------------------------------------------------------
@@ -13,7 +14,8 @@ function makeLoadedCatalog(): LoadedCatalog {
   for (const card of FIXTURE_CARDS) {
     if (card.aliasOf !== null) aliasIndex.set(card.passcode, card.aliasOf);
   }
-  const legalPasscodes = new Set(byPasscode.keys());
+  // legalPasscodes includes both real passcodes AND alias passcodes
+  const legalPasscodes = new Set([...byPasscode.keys(), ...aliasIndex.keys()]);
   return { catalog: FIXTURE_CATALOG, byPasscode, aliasIndex, legalPasscodes };
 }
 
@@ -460,5 +462,58 @@ describe("validateDeck — DeckValidation shape", () => {
     const r = validateDeck({ main: [], extra: [], side: [] }, catalog);
     expect(r.counts).toEqual({ main: 0, extra: 0, side: 0 });
     expect(r.violations.some((v) => v.code === "main_size")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Alias resolution — real catalog tests (511002993 → Brionac 50321796)
+// These tests use the real loadCatalog() to verify alias-index.json is merged.
+// ---------------------------------------------------------------------------
+
+describe("alias resolution — real catalog pre-errata passcodes", () => {
+  let realCatalog: LoadedCatalog;
+
+  beforeEach(() => {
+    resetCatalogCache();
+    realCatalog = loadCatalog();
+  });
+
+  afterEach(() => {
+    resetCatalogCache();
+  });
+
+  it("pre-errata Brionac (511002993) is in legalPasscodes via alias", () => {
+    expect(realCatalog.legalPasscodes.has(511002993)).toBe(true);
+  });
+
+  it("pre-errata Brionac (511002993) resolves to base 50321796", () => {
+    expect(realCatalog.aliasIndex.get(511002993)).toBe(50321796);
+  });
+
+  it("deck using pre-errata Brionac alias (511002993) in Extra does NOT report unknown_passcode", () => {
+    // Build a legal-ish 40-card main using real catalog cards
+    const main = Array(40).fill(realCatalog.catalog.cards[0]!.passcode);
+    const r = validateDeck({ main, extra: [511002993], side: [] }, realCatalog);
+    expect(
+      r.violations.some((v) => v.code === "unknown_passcode" && v.passcode === 511002993),
+    ).toBe(false);
+  });
+
+  it("pre-errata Brionac (511002993) is recognized as a Synchro (isExtraDeck=true)", () => {
+    const brionacBase = realCatalog.byPasscode.get(50321796);
+    expect(brionacBase?.isExtraDeck).toBe(true);
+    expect(brionacBase?.frame).toBe("synchro");
+  });
+
+  it("2× pre-errata Brionac (511002993) in Extra → banlist_limit (Brionac is Limited)", () => {
+    // Brionac base (50321796) is Limited → max 1 total
+    const brionacBase = realCatalog.byPasscode.get(50321796);
+    expect(brionacBase?.banlist).toBe("limited");
+
+    const main = Array(40).fill(realCatalog.catalog.cards[0]!.passcode);
+    const r = validateDeck({ main, extra: [511002993, 511002993], side: [] }, realCatalog);
+    expect(r.violations.some((v) => v.code === "banlist_limit" && v.passcode === 50321796)).toBe(
+      true,
+    );
   });
 });

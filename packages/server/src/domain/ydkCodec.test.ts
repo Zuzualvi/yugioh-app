@@ -240,3 +240,27 @@ describe("emitYdk", () => {
     expect(lines[1]).toBe(String(BTH));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Alias resolution — real catalog tests for .ydk codec
+// ---------------------------------------------------------------------------
+
+describe("alias resolution — pre-errata passcodes in .ydk", () => {
+  it("pre-errata passcode (511002993) in #extra section is recognized via alias", async () => {
+    const { loadCatalog, resetCatalogCache } = await import("../catalog/loadCatalog.js");
+    resetCatalogCache();
+    const realCatalog = loadCatalog();
+
+    const ydk = "#main\n#extra\n511002993\n!side\n";
+    const parsed = parseYdk(ydk, realCatalog);
+
+    // Should NOT report unknown_passcode for Brionac pre-errata alias
+    expect(
+      parsed.violations.some((v) => v.code === "unknown_passcode" && v.passcode === 511002993),
+    ).toBe(false);
+    // Card is recognized as Extra Deck card (Synchro) → routes to extra
+    expect(parsed.extra).toContain(511002993);
+
+    resetCatalogCache();
+  });
+});
