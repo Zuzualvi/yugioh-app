@@ -1,0 +1,14 @@
+{
+  "name": "spike-d-persistence",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/spike-d.js",
+    "test": "node src/spike-d.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2"
+  }
+}

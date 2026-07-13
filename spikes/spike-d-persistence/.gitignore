@@ -1,0 +1,5 @@
+node_modules/
+vendor/cdb/
+vendor/scripts/
+spike-d-test.db
+*.db
