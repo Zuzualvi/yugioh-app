@@ -1,22 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatMessage } from "./index";
+import { formatTimestamp } from "./index";
 
-describe("formatMessage", () => {
-  it("includes the message kind in the output", () => {
-    const result = formatMessage({
-      kind: "duel.start",
-      payload: {},
-      timestamp: 1_700_000_000,
-    });
-    expect(result).toContain("duel.start");
+describe("formatTimestamp", () => {
+  it("formats a UNIX timestamp as an ISO string", () => {
+    const result = formatTimestamp(1_700_000_000);
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("includes an ISO timestamp in the output", () => {
-    const result = formatMessage({
-      kind: "duel.end",
-      payload: null,
-      timestamp: 1_700_000_000,
-    });
-    expect(result).toMatch(/\d{4}-\d{2}-\d{2}T/);
+  it("includes the date portion", () => {
+    const result = formatTimestamp(0);
+    expect(result).toContain("1970-01-01");
   });
 });

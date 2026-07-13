@@ -1,0 +1,45 @@
+/* ─── Deck Builder responsive overrides ──────────────────────── */
+
+/* Default: show sidebars as flex columns */
+.filters-sidebar {
+  display: flex;
+}
+
+.deck-sidebar {
+  display: flex;
+}
+
+/* Mobile bottom-sheet toggle — hidden on desktop */
+.mobile-deck-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* Hide the left filters sidebar on mobile */
+  .filters-sidebar {
+    display: none !important;
+  }
+
+  /* Hide the right deck sidebar on mobile */
+  .deck-sidebar {
+    display: none !important;
+  }
+
+  /* Show the mobile bottom-sheet toggle */
+  .mobile-deck-toggle {
+    display: block;
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 480px) {
+  /* Tighter card grid on small phones */
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+}
