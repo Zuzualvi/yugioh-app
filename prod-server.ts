@@ -23,10 +23,7 @@ import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
 
 // CORS middleware (Stream A — packages/server/src/middleware/cors.ts)
-import {
-  corsMiddleware,
-  allowedOriginsFromEnv,
-} from "./packages/server/src/middleware/cors.js";
+import { corsMiddleware, allowedOriginsFromEnv } from "./packages/server/src/middleware/cors.js";
 
 // Server internals (imported directly — not modifying packages/**)
 import { openDb } from "./packages/server/src/db/openDb.js";
@@ -38,10 +35,7 @@ import {
 } from "./packages/server/src/routes/auth.js";
 import { createCardsRouter } from "./packages/server/src/routes/cards.js";
 import { createDecksRouter } from "./packages/server/src/routes/decks.js";
-import {
-  requireSession,
-  requireAdmin,
-} from "./packages/server/src/middleware/requireSession.js";
+import { requireSession, requireAdmin } from "./packages/server/src/middleware/requireSession.js";
 import type { LoadedCatalog } from "./packages/server/src/catalog/loadCatalog.js";
 import type { CardDTO, CardCatalog } from "@yugioh-app/contracts";
 

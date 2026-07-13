@@ -5,6 +5,7 @@
 Fly.io automatically takes daily snapshots of persistent volumes. No configuration needed.
 
 To list snapshots:
+
 ```bash
 fly volumes list -a <your-app-name>
 # Get the volume ID from the output, then:
@@ -12,6 +13,7 @@ fly volumes snapshots list <volume-id>
 ```
 
 To restore from a snapshot:
+
 ```bash
 # Create a new volume from the snapshot
 fly volumes create yugioh_data \
@@ -47,10 +49,10 @@ fly sftp get /data/yugioh-backup-YYYYMMDD.db ./backups/ -a <your-app-name>
 
 ## What Lives on the Volume
 
-| Path | Contents | Backup method |
-|------|----------|---------------|
-| `/data/yugioh.db` | SQLite database (users, decks, sessions) | Daily snapshot + manual dump |
-| `/data/images/` | Self-hosted card images (~500 MB) | Daily snapshot; re-seedable from YGOPRODeck |
+| Path              | Contents                                 | Backup method                               |
+| ----------------- | ---------------------------------------- | ------------------------------------------- |
+| `/data/yugioh.db` | SQLite database (users, decks, sessions) | Daily snapshot + manual dump                |
+| `/data/images/`   | Self-hosted card images (~500 MB)        | Daily snapshot; re-seedable from YGOPRODeck |
 
 Images are re-seedable at any time by running `deploy/seed-images.mjs` (idempotent). Prioritize backing up the SQLite DB for user data.
 
