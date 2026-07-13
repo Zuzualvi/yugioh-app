@@ -1,0 +1,16 @@
+{
+  "name": "spike-a-ruleset",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node --enable-source-maps src/harness.js",
+    "a2": "node src/a2-first-turn-draw.js",
+    "a3": "node src/a3-ignition-priority.js",
+    "a4": "node src/a4-field-spell.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2"
+  }
+}

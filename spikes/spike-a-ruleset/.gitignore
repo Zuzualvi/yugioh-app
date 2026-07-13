@@ -1,0 +1,5 @@
+vendor/
+node_modules/
+*.cdb
+debug-*.mjs
+test-init.mjs
