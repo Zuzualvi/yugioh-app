@@ -6,8 +6,8 @@
 # NEVER put secrets here. Use:
 #   fly secrets set BOOTSTRAP_ADMIN_USERNAME=... BOOTSTRAP_ADMIN_PASSWORD=...
 
-app = "yugioh-edison"       # Change to your chosen app name before fly launch
-primary_region = "ord"      # Chicago — change to closest region if desired
+app = "yugioh-edison"       # Reconciled to the provision_hosting-created app post-provision
+primary_region = "iad"      # Ashburn, VA (US East) — group is US East
 
 # ---------------------------------------------------------------------------
 # Build
@@ -25,13 +25,12 @@ primary_region = "ord"      # Chicago — change to closest region if desired
   IMAGES_PATH = "/data/images"
   # ALLOW_FIXTURE_CATALOG is intentionally NOT set here.
   # The real 3,681-card catalog is baked into the image.
-  # TODO(CTO): replace PLACEHOLDER_DOMAIN with the real domain once chosen by the CEO.
-  CORS_ALLOWED_ORIGINS = "https://app.PLACEHOLDER_DOMAIN"
+  CORS_ALLOWED_ORIGINS = "https://app.zuhayr.io"
 
 # ---------------------------------------------------------------------------
-# Persistent volume — holds SQLite DB + card images
-# Create before first deploy:
-#   fly volumes create yugioh_data --size 3 --region ord -a yugioh-edison
+# Persistent volume — holds SQLite DB + card images.
+# provision_hosting creates the volume server-side; reconcile `source` below to
+# the created volume name post-provision if it differs.
 # ---------------------------------------------------------------------------
 [[mounts]]
   source      = "yugioh_data"
