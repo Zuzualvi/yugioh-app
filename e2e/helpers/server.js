@@ -22,11 +22,11 @@
  *   an admin row directly into SQLite (as documented in the test report).
  */
 
-import { execSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync, unlinkSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -113,7 +113,7 @@ async function bootstrapAdmin(db) {
   const now = new Date().toISOString();
 
   db.prepare(
-    "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)"
+    "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)",
   ).run(adminId, "E2EAdmin", passwordHash, now);
 
   adminSid = randomBytes(32).toString("hex");
@@ -121,7 +121,7 @@ async function bootstrapAdmin(db) {
   db.prepare("INSERT INTO sessions (sid, user_id, expires_at) VALUES (?, ?, ?)").run(
     adminSid,
     adminId,
-    expiresAt
+    expiresAt,
   );
 
   return { adminId, adminSid, displayName: "E2EAdmin", password: "e2eAdminPass!1" };
@@ -181,7 +181,9 @@ export async function stopServer() {
   }
   // Clean up temp files
   if (dbPath && existsSync(dbPath)) {
-    try { rmSync(dbPath); } catch (_) {}
+    try {
+      rmSync(dbPath);
+    } catch (_) {}
   }
   // Remove the symlink we created
   try {
@@ -191,7 +193,9 @@ export async function stopServer() {
   } catch (_) {}
   // Clean up temp catalog dir
   if (filteredCatalogDir && existsSync(filteredCatalogDir)) {
-    try { rmSync(filteredCatalogDir, { recursive: true, force: true }); } catch (_) {}
+    try {
+      rmSync(filteredCatalogDir, { recursive: true, force: true });
+    } catch (_) {}
   }
 }
 

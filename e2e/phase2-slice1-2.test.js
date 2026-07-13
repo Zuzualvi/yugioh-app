@@ -17,22 +17,29 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
-import { startServer, stopServer, authedFetch, jsonPost, jsonPut, extractSid } from "./helpers/server.js";
+import {
+  startServer,
+  stopServer,
+  authedFetch,
+  jsonPost,
+  jsonPut,
+  extractSid,
+} from "./helpers/server.js";
 
 // -----------------------------------------------------------------------
 // Shared state set up in beforeAll
 // -----------------------------------------------------------------------
 let baseUrl;
 let adminSid;
-let adminId;
+let _adminId;
 let catalogCount;
 
 // A legal 40-card main deck from real catalog unlimited cards (1 copy each)
 const LEGAL_MAIN_40 = [
-  27551, 32864, 50755, 62121, 102380, 114932, 126218, 131182, 191749, 213326,
-  218704, 242146, 295517, 296499, 303660, 313513, 403847, 423705, 425934, 473469,
-  487395, 549481, 564541, 596051, 612115, 652362, 674561, 691925, 732302, 759393,
-  967928, 980973, 984114, 1036974, 1073952, 1082946, 1102515, 1149109, 1184620, 1200843,
+  27551, 32864, 50755, 62121, 102380, 114932, 126218, 131182, 191749, 213326, 218704, 242146,
+  295517, 296499, 303660, 313513, 403847, 423705, 425934, 473469, 487395, 549481, 564541, 596051,
+  612115, 652362, 674561, 691925, 732302, 759393, 967928, 980973, 984114, 1036974, 1073952, 1082946,
+  1102515, 1149109, 1184620, 1200843,
 ];
 // Legal extra deck cards (Fusion + Synchro from real catalog)
 const LEGAL_EXTRA = [1412158, 1546123]; // Super Roboyarou, Cyber End Dragon (Fusions)
@@ -40,20 +47,20 @@ const LEGAL_EXTRA = [1412158, 1546123]; // Super Roboyarou, Cyber End Dragon (Fu
 const LEGAL_SIDE = [];
 
 // Real card passcodes for violation tests
-const POT_OF_GREED = 55144522;       // Forbidden
-const SUMMONER_MONK = 423585;         // Limited
-const DESTINY_HERO_MALICIOUS = 9411399;  // Semi-Limited
-const TREEBORN_FROG = 12538374;          // Semi-Limited
-const CYBER_DRAGON = 70095154;           // Semi-Limited
-const FUSION_CARD = 1412158;             // Super Roboyarou (Fusion, Extra Deck)
-const SYNCHRO_CARD = 2203790;            // XX-Saber Hyunlei (Synchro, Extra Deck)
-const MODERN_PASSCODE = 84013237;        // Number 39: Utopia — NOT in Edison catalog
+const POT_OF_GREED = 55144522; // Forbidden
+const SUMMONER_MONK = 423585; // Limited
+const DESTINY_HERO_MALICIOUS = 9411399; // Semi-Limited
+const TREEBORN_FROG = 12538374; // Semi-Limited
+const _CYBER_DRAGON = 70095154; // Semi-Limited
+const FUSION_CARD = 1412158; // Super Roboyarou (Fusion, Extra Deck)
+const _SYNCHRO_CARD = 2203790; // XX-Saber Hyunlei (Synchro, Extra Deck)
+const MODERN_PASSCODE = 84013237; // Number 39: Utopia — NOT in Edison catalog
 
 beforeAll(async () => {
   const result = await startServer();
   baseUrl = result.baseUrl;
   adminSid = result.admin.adminSid;
-  adminId = result.admin.adminId;
+  _adminId = result.admin.adminId;
   catalogCount = result.catalogCount;
   console.log(`Server started at ${baseUrl}, catalog: ${catalogCount} cards`);
 });
@@ -145,7 +152,7 @@ describe("AC-01: Access control", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        inviteCode,                   // same code as before (already consumed)
+        inviteCode, // same code as before (already consumed)
         displayName: "AnotherMember",
         password: "anotherPass!1",
       }),
@@ -208,7 +215,11 @@ describe("AC-03: Session persistence", () => {
   });
 
   test("Wrong session token → 401", async () => {
-    const res = await authedFetch(baseUrl, "deadbeef0000000000000000000000000000000000000000000000000000dead", "/api/me");
+    const res = await authedFetch(
+      baseUrl,
+      "deadbeef0000000000000000000000000000000000000000000000000000dead",
+      "/api/me",
+    );
     expect(res.status).toBe(401);
   });
 
@@ -266,10 +277,12 @@ describe("AC-04: Legal deck validated as legal", () => {
     // 2x Semi-Limited (Treeborn Frog 12538374)
     // Fill rest with unlimited singles (35 cards needed)
     const main = [
-      SUMMONER_MONK,                          // 1x Limited
-      DESTINY_HERO_MALICIOUS, DESTINY_HERO_MALICIOUS,  // 2x Semi
-      TREEBORN_FROG, TREEBORN_FROG,           // 2x Semi
-      ...LEGAL_MAIN_40.slice(0, 35),          // 35x unlimited
+      SUMMONER_MONK, // 1x Limited
+      DESTINY_HERO_MALICIOUS,
+      DESTINY_HERO_MALICIOUS, // 2x Semi
+      TREEBORN_FROG,
+      TREEBORN_FROG, // 2x Semi
+      ...LEGAL_MAIN_40.slice(0, 35), // 35x unlimited
     ];
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
       name: "Banlist Legal Deck",
@@ -289,9 +302,8 @@ describe("AC-04: Legal deck validated as legal", () => {
     // Fill to 60 with unlimited cards (3 copies of 20 distinct cards)
     const unlimitedForty = LEGAL_MAIN_40;
     const extraTwenty = [
-      1224927, 1248895, 1287123, 1347977, 1353770, 1361822, 1381640, 1389854,
-      1393307, 1405286, 1454652, 1460353, 1474446, 1474517, 1474557, 1483975,
-      1489697, 1523505, 1537 , 1538100,
+      1224927, 1248895, 1287123, 1347977, 1353770, 1361822, 1381640, 1389854, 1393307, 1405286,
+      1454652, 1460353, 1474446, 1474517, 1474557, 1483975, 1489697, 1523505, 1537, 1538100,
     ];
     // 40 + 20 = 60 cards
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
@@ -306,7 +318,9 @@ describe("AC-04: Legal deck validated as legal", () => {
     // But test that 60-card limit isn't itself violated
     const sizevio = deck.validation.violations.find((v) => v.code === "main_size");
     expect(sizevio).toBeUndefined();
-    console.log(`  60-card deck: legal=${deck.validation.legal}, violations=${deck.validation.violations.length}`);
+    console.log(
+      `  60-card deck: legal=${deck.validation.legal}, violations=${deck.validation.violations.length}`,
+    );
   });
 });
 
@@ -317,13 +331,16 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
   test("39-card main deck → main_size violation", async () => {
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
       name: "39-Card Deck",
-      main: LEGAL_MAIN_40.slice(0, 39),  // only 39 cards
+      main: LEGAL_MAIN_40.slice(0, 39), // only 39 cards
       extra: [],
       side: [],
     });
-    expect(res.status).toBe(201);  // invalid decks are saved but marked invalid
+    expect(res.status).toBe(201); // invalid decks are saved but marked invalid
     const deck = await res.json();
-    console.log("  39-main violations:", deck.validation.violations.map((v) => v.code));
+    console.log(
+      "  39-main violations:",
+      deck.validation.violations.map((v) => v.code),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find((v) => v.code === "main_size");
     expect(vio).toBeDefined();
@@ -339,7 +356,10 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  61-main violations:", deck.validation.violations.map((v) => v.code));
+    console.log(
+      "  61-main violations:",
+      deck.validation.violations.map((v) => v.code),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find((v) => v.code === "main_size");
     expect(vio).toBeDefined();
@@ -349,8 +369,8 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
   test("16-card extra deck → extra_size violation", async () => {
     // Get 16 extra deck cards (fusions + synchros)
     const extra16 = [
-      1412158, 1546123, 1641882, 2203790, 2322421, 2403771, 3160395, 3280582,
-      4039234, 4423675, 4942659, 5043010, 5126478, 5834749, 6007213, 6187014,
+      1412158, 1546123, 1641882, 2203790, 2322421, 2403771, 3160395, 3280582, 4039234, 4423675,
+      4942659, 5043010, 5126478, 5834749, 6007213, 6187014,
     ];
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
       name: "16-Extra Deck",
@@ -359,7 +379,10 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  16-extra violations:", deck.validation.violations.map((v) => v.code));
+    console.log(
+      "  16-extra violations:",
+      deck.validation.violations.map((v) => v.code),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find((v) => v.code === "extra_size");
     // If all 16 are valid extra-deck cards → extra_size violation
@@ -367,7 +390,7 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
     expect(deck.validation.legal).toBe(false);
     // Check the violations include extra_size or unknown_passcode
     const hasSomeVio = deck.validation.violations.some(
-      (v) => v.code === "extra_size" || v.code === "unknown_passcode"
+      (v) => v.code === "extra_size" || v.code === "unknown_passcode",
     );
     expect(hasSomeVio).toBe(true);
     if (vio) {
@@ -384,7 +407,10 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: side16,
     });
     const deck = await res.json();
-    console.log("  16-side violations:", deck.validation.violations.map((v) => v.code));
+    console.log(
+      "  16-side violations:",
+      deck.validation.violations.map((v) => v.code),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find((v) => v.code === "side_size");
     expect(vio).toBeDefined();
@@ -394,10 +420,11 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
   test("Semi-Limited card used 3× across zones → banlist_limit violation", async () => {
     // Destiny HERO - Malicious is Semi (max 2). Use 2 in main + 1 in side = 3 total.
     const main = [
-      DESTINY_HERO_MALICIOUS, DESTINY_HERO_MALICIOUS,  // 2 in main
-      ...LEGAL_MAIN_40.slice(0, 38),                    // 38 more to reach 40
+      DESTINY_HERO_MALICIOUS,
+      DESTINY_HERO_MALICIOUS, // 2 in main
+      ...LEGAL_MAIN_40.slice(0, 38), // 38 more to reach 40
     ];
-    const side = [DESTINY_HERO_MALICIOUS];  // 1 in side = 3 total
+    const side = [DESTINY_HERO_MALICIOUS]; // 1 in side = 3 total
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
       name: "Semi-Exceeded Deck",
       main,
@@ -405,10 +432,13 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side,
     });
     const deck = await res.json();
-    console.log("  Semi-3rd copy violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Semi-3rd copy violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "banlist_limit" && v.passcode === DESTINY_HERO_MALICIOUS
+      (v) => v.code === "banlist_limit" && v.passcode === DESTINY_HERO_MALICIOUS,
     );
     expect(vio).toBeDefined();
   });
@@ -422,10 +452,13 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  Forbidden violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Forbidden violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "banlist_forbidden" && v.passcode === POT_OF_GREED
+      (v) => v.code === "banlist_forbidden" && v.passcode === POT_OF_GREED,
     );
     expect(vio).toBeDefined();
     expect(vio.message).toContain("Forbidden");
@@ -441,11 +474,16 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  Modern card violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Modern card violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     // With real catalog: card not in byPasscode → unknown_passcode
     const vio = deck.validation.violations.find(
-      (v) => (v.code === "unknown_passcode" || v.code === "out_of_pool") && v.passcode === MODERN_PASSCODE
+      (v) =>
+        (v.code === "unknown_passcode" || v.code === "out_of_pool") &&
+        v.passcode === MODERN_PASSCODE,
     );
     expect(vio).toBeDefined();
   });
@@ -460,10 +498,13 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  Fusion-in-main violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Fusion-in-main violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "wrong_zone" && v.passcode === FUSION_CARD
+      (v) => v.code === "wrong_zone" && v.passcode === FUSION_CARD,
     );
     expect(vio).toBeDefined();
   });
@@ -473,14 +514,17 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
       name: "Trap In Extra",
       main: LEGAL_MAIN_40,
-      extra: [27551],  // Limit Reverse — not an extra deck monster
+      extra: [27551], // Limit Reverse — not an extra deck monster
       side: [],
     });
     const deck = await res.json();
-    console.log("  Trap-in-extra violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Trap-in-extra violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "wrong_zone" && v.passcode === 27551
+      (v) => v.code === "wrong_zone" && v.passcode === 27551,
     );
     expect(vio).toBeDefined();
   });
@@ -495,7 +539,10 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
     //
     // What we CAN test: using 4 copies of an unlimited card → copy_limit violation.
     const main = [
-      27551, 27551, 27551, 27551,  // 4 copies of Limit Reverse (unlimited) → copy_limit
+      27551,
+      27551,
+      27551,
+      27551, // 4 copies of Limit Reverse (unlimited) → copy_limit
       ...LEGAL_MAIN_40.slice(1, 37), // 36 more
     ];
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
@@ -505,10 +552,13 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  4x unlimited violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  4x unlimited violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "copy_limit" && v.passcode === 27551
+      (v) => v.code === "copy_limit" && v.passcode === 27551,
     );
     expect(vio).toBeDefined();
   });
@@ -516,7 +566,8 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
   test("Limited card used 2× → banlist_limit violation", async () => {
     // Summoner Monk (423585) is Limited — max 1.
     const main = [
-      SUMMONER_MONK, SUMMONER_MONK,  // 2 copies — exceeds Limited cap
+      SUMMONER_MONK,
+      SUMMONER_MONK, // 2 copies — exceeds Limited cap
       ...LEGAL_MAIN_40.slice(0, 38),
     ];
     const res = await jsonPost(baseUrl, adminSid, "/api/decks", {
@@ -526,10 +577,13 @@ describe("AC-05: Illegal deck rejection with correct Violation codes", () => {
       side: [],
     });
     const deck = await res.json();
-    console.log("  Limited-2x violations:", deck.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Limited-2x violations:",
+      deck.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(deck.validation.legal).toBe(false);
     const vio = deck.validation.violations.find(
-      (v) => v.code === "banlist_limit" && v.passcode === SUMMONER_MONK
+      (v) => v.code === "banlist_limit" && v.passcode === SUMMONER_MONK,
     );
     expect(vio).toBeDefined();
   });
@@ -547,7 +601,7 @@ describe("AC-06: .ydk round-trip", () => {
       name: "Round-Trip Deck",
       main: LEGAL_MAIN_40,
       extra: LEGAL_EXTRA,
-      side: [27551, 32864],  // 2 side cards
+      side: [27551, 32864], // 2 side cards
     });
     expect(saveRes.status).toBe(201);
     const deck = await saveRes.json();
@@ -573,7 +627,7 @@ describe("AC-06: .ydk round-trip", () => {
     expect(ydk).toContain("#main");
     expect(ydk).toContain("#extra");
     expect(ydk).toContain("!side");
-    expect(ydk).not.toContain("#side");  // must use !side not #side
+    expect(ydk).not.toContain("#side"); // must use !side not #side
   });
 
   test("Import the exported .ydk → identical multiset", async () => {
@@ -599,10 +653,19 @@ describe("AC-06: .ydk round-trip", () => {
     expect(importRes.status).toBe(200);
     const result = await importRes.json();
     console.log("  Import validation:", JSON.stringify(result.validation));
-    console.log("  Import main count:", result.main.length, "extra:", result.extra.length, "side:", result.side.length);
+    console.log(
+      "  Import main count:",
+      result.main.length,
+      "extra:",
+      result.extra.length,
+      "side:",
+      result.side.length,
+    );
 
     // Multiset comparison (sort both arrays and compare)
-    expect([...result.main].sort((a, b) => a - b)).toEqual([...LEGAL_MAIN_40].sort((a, b) => a - b));
+    expect([...result.main].sort((a, b) => a - b)).toEqual(
+      [...LEGAL_MAIN_40].sort((a, b) => a - b),
+    );
     expect([...result.extra].sort((a, b) => a - b)).toEqual([...LEGAL_EXTRA].sort((a, b) => a - b));
     expect([...result.side].sort((a, b) => a - b)).toEqual([27551, 32864].sort((a, b) => a - b));
     expect(result.validation.violations).toHaveLength(0);
@@ -638,23 +701,28 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
       headers: { "Content-Type": "text/plain" },
       body: ydkText,
     });
-    expect(res.status).toBe(200);  // never crash (always 200 with violations)
+    expect(res.status).toBe(200); // never crash (always 200 with violations)
     return res.json();
   }
 
   test("Modern/foreign deck (Xyz passcode 84013237) → unknown_passcode violation, no crash", async () => {
     const ydk = [
       "#main",
-      "84013237",  // Number 39: Utopia — Xyz, not in Edison
+      "84013237", // Number 39: Utopia — Xyz, not in Edison
       ...LEGAL_MAIN_40.slice(0, 39).map(String),
       "#extra",
       "!side",
     ].join("\n");
     const result = await importYdk(ydk);
-    console.log("  Modern deck violations:", result.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Modern deck violations:",
+      result.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     expect(result.validation.violations.length).toBeGreaterThan(0);
     const vio = result.validation.violations.find(
-      (v) => (v.code === "unknown_passcode" || v.code === "out_of_pool") && v.passcode === MODERN_PASSCODE
+      (v) =>
+        (v.code === "unknown_passcode" || v.code === "out_of_pool") &&
+        v.passcode === MODERN_PASSCODE,
     );
     expect(vio).toBeDefined();
   });
@@ -663,7 +731,10 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
     const main61 = [...LEGAL_MAIN_40, ...LEGAL_MAIN_40.slice(0, 21)];
     const ydk = ["#main", ...main61.map(String), "#extra", "!side"].join("\n");
     const result = await importYdk(ydk);
-    console.log("  61-main import violations:", result.validation.violations.map((v) => v.code));
+    console.log(
+      "  61-main import violations:",
+      result.validation.violations.map((v) => v.code),
+    );
     expect(result.validation.violations.some((v) => v.code === "main_size")).toBe(true);
   });
 
@@ -672,7 +743,7 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
       "#main",
       ...LEGAL_MAIN_40.map(String),
       "#extra",
-      "#side",    // BUG: should be !side
+      "#side", // BUG: should be !side
       "27551",
     ].join("\n");
     const result = await importYdk(ydk);
@@ -687,7 +758,7 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
     const ydk = [
       "#main",
       ...LEGAL_MAIN_40.slice(0, 5).map(String),
-      "NOTANUMBER",           // bad line
+      "NOTANUMBER", // bad line
       ...LEGAL_MAIN_40.slice(5, 39).map(String),
       "#extra",
       "!side",
@@ -702,7 +773,7 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
   });
 
   test("Unknown passcode (not in DB) → unknown_passcode violation with line number", async () => {
-    const UNKNOWN = 99999999;  // Not in any known catalog
+    const UNKNOWN = 99999999; // Not in any known catalog
     const ydk = [
       "#main",
       String(UNKNOWN),
@@ -711,9 +782,12 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
       "!side",
     ].join("\n");
     const result = await importYdk(ydk);
-    console.log("  Unknown passcode violations:", result.validation.violations.map((v) => `${v.code}:${v.passcode}:line${v.line}`));
+    console.log(
+      "  Unknown passcode violations:",
+      result.validation.violations.map((v) => `${v.code}:${v.passcode}:line${v.line}`),
+    );
     const vio = result.validation.violations.find(
-      (v) => v.code === "unknown_passcode" && v.passcode === UNKNOWN
+      (v) => v.code === "unknown_passcode" && v.passcode === UNKNOWN,
     );
     expect(vio).toBeDefined();
     expect(vio.line).toBeDefined();
@@ -723,15 +797,18 @@ describe("AC-07: .ydk import handles malformed/foreign/over-limit inputs", () =>
     // Fusion card listed under #main in .ydk file — should flag wrong_zone
     const ydk = [
       "#main",
-      String(FUSION_CARD),           // Fusion under #main
+      String(FUSION_CARD), // Fusion under #main
       ...LEGAL_MAIN_40.slice(0, 39).map(String),
       "#extra",
       "!side",
     ].join("\n");
     const result = await importYdk(ydk);
-    console.log("  Fusion-in-main ydk violations:", result.validation.violations.map((v) => `${v.code}(${v.passcode})`));
+    console.log(
+      "  Fusion-in-main ydk violations:",
+      result.validation.violations.map((v) => `${v.code}(${v.passcode})`),
+    );
     const vio = result.validation.violations.find(
-      (v) => v.code === "wrong_zone" && v.passcode === FUSION_CARD
+      (v) => v.code === "wrong_zone" && v.passcode === FUSION_CARD,
     );
     expect(vio).toBeDefined();
     // Card should be re-routed to extra (per ydkCodec rerouting logic)

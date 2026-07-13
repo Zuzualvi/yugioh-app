@@ -23,7 +23,6 @@ const catalog = JSON.parse(fs.readFileSync(path.join(OUT, "edison-card-catalog.j
 const aliasIndex = JSON.parse(fs.readFileSync(path.join(OUT, "alias-index.json"), "utf8"));
 const allowlist = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"));
 const dt01Excluded = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"));
-const aliasMap = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-alias-map.json"), "utf8"));
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -17,8 +17,12 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".ts"],
-    "testMatch": ["**/*.test.js"],
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "testMatch": [
+      "**/*.test.js"
+    ],
     "testTimeout": 60000
   }
 }
