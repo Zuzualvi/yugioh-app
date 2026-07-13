@@ -7,18 +7,21 @@ afterEach(() => {
 
 describe("cardImageUrl — REQ-DATA-02 self-hosted images", () => {
   describe("production mode (PROD=true)", () => {
-    it("returns same-origin /images/<imageId>.jpg", () => {
+    it("returns VITE_IMAGE_BASE_URL/<imageId>.jpg", () => {
       vi.stubEnv("PROD", true);
-      expect(cardImageUrl(89631139)).toBe("/images/89631139.jpg");
+      vi.stubEnv("VITE_IMAGE_BASE_URL", "https://api.example.com/images");
+      expect(cardImageUrl(89631139)).toBe("https://api.example.com/images/89631139.jpg");
     });
 
     it("uses imageId field, not passcode", () => {
       vi.stubEnv("PROD", true);
-      expect(cardImageUrl(12345678)).toBe("/images/12345678.jpg");
+      vi.stubEnv("VITE_IMAGE_BASE_URL", "https://api.example.com/images");
+      expect(cardImageUrl(12345678)).toBe("https://api.example.com/images/12345678.jpg");
     });
 
     it("does not contain ygoprodeck in the URL", () => {
       vi.stubEnv("PROD", true);
+      vi.stubEnv("VITE_IMAGE_BASE_URL", "https://api.example.com/images");
       expect(cardImageUrl(46986414)).not.toContain("ygoprodeck");
     });
   });
