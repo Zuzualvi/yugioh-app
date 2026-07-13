@@ -1,0 +1,61 @@
+# fly.toml — Yu-Gi-Oh Edison deck builder
+#
+# Run `fly launch` on first deploy to register the app and create the
+# volume. See docs/working/2026-07-13-DEPLOY.md for the full checklist.
+#
+# NEVER put secrets here. Use:
+#   fly secrets set BOOTSTRAP_ADMIN_USERNAME=... BOOTSTRAP_ADMIN_PASSWORD=...
+
+app = "yugioh-edison"       # Change to your chosen app name before fly launch
+primary_region = "ord"      # Chicago — change to closest region if desired
+
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+[build]
+  dockerfile = "Dockerfile"
+
+# ---------------------------------------------------------------------------
+# Runtime environment (NON-secret values only)
+# ---------------------------------------------------------------------------
+[env]
+  NODE_ENV    = "production"
+  PORT        = "8080"
+  DB_PATH     = "/data/yugioh.db"
+  IMAGES_PATH = "/data/images"
+  # ALLOW_FIXTURE_CATALOG is intentionally NOT set here.
+  # The real 3,681-card catalog is baked into the image.
+
+# ---------------------------------------------------------------------------
+# Persistent volume — holds SQLite DB + card images
+# Create before first deploy:
+#   fly volumes create yugioh_data --size 3 --region ord -a yugioh-edison
+# ---------------------------------------------------------------------------
+[[mounts]]
+  source      = "yugioh_data"
+  destination = "/data"
+
+# ---------------------------------------------------------------------------
+# HTTP service
+# ---------------------------------------------------------------------------
+[http_service]
+  internal_port        = 8080
+  force_https          = true
+  auto_stop_machines   = false   # NEVER sleep — wall-clock timers require always-on
+  auto_start_machines  = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period  = "10s"
+    interval      = "30s"
+    method        = "GET"
+    path          = "/healthz"
+    timeout       = "5s"
+
+# ---------------------------------------------------------------------------
+# Machine sizing — ~1 GB RAM (shared CPU)
+# ---------------------------------------------------------------------------
+[vm]
+  cpu_kind = "shared"
+  cpus     = 1
+  memory   = "1gb"

@@ -13,7 +13,10 @@
     "lint": "eslint . && prettier --check .",
     "arch:check": "depcruise packages --config .dependency-cruiser.cjs",
     "test": "vitest run",
-    "verify": "npm run typecheck && npm run lint && npm run arch:check && npm test"
+    "verify": "npm run typecheck && npm run lint && npm run arch:check && npm test",
+    "build:web": "npm run build --workspace @yugioh-app/web",
+    "build:server": "node_modules/.bin/esbuild prod-server.ts --bundle --platform=node --target=node22 --format=esm '--banner:js=import { createRequire } from module; const require = createRequire(import.meta.url);' --external:better-sqlite3 '--external:@node-rs/argon2' --outfile=dist/server.mjs",
+    "build:all": "npm run build:web && npm run build:server"
   },
   "devDependencies": {
     "dependency-cruiser": "^16.6.0",

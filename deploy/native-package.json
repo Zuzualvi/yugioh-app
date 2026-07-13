@@ -1,0 +1,10 @@
+{
+  "name": "yugioh-runtime",
+  "private": true,
+  "type": "module",
+  "description": "Minimal package.json for the Fly.io runtime stage — installs only native binary deps. Everything else is bundled by esbuild.",
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "@node-rs/argon2": "2.0.2"
+  }
+}

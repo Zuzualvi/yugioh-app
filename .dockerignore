@@ -1,0 +1,49 @@
+# ---- .dockerignore ----------------------------------------
+# Exclude everything not needed for the Docker build.
+# The Dockerfile COPYs only what it needs explicitly.
+
+# Version control
+.git
+.gitignore
+
+# Local env files
+.env
+.env.*
+*.local
+
+# Dev tooling configs (not needed in image)
+.editorconfig
+.prettierrc
+.prettierignore
+eslint.config.mjs
+.dependency-cruiser.cjs
+
+# Test / e2e
+e2e/
+**/*.test.ts
+**/*.spec.ts
+
+# Spikes / docs (not needed in image)
+spikes/
+docs/
+specs/
+
+# CI
+ci/
+
+# Card images — large blobs go on the Fly volume, not in the image
+packages/card-data/images/
+
+# node_modules — rebuilt via npm ci inside the builder stage
+node_modules/
+packages/*/node_modules/
+
+# Build artifacts that will be rebuilt
+packages/*/dist/
+dist/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
