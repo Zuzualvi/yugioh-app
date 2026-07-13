@@ -1,27 +1,41 @@
-import { z } from "zod";
-
 // ---------------------------------------------------------------------------
-// Placeholder domain types
-// ---------------------------------------------------------------------------
-
-/** A player in a duel (placeholder — full type defined in a later spec). */
-export interface Player {
-  id: string;
-  name: string;
-}
-
-/** Supported WebSocket message kinds (stub — details TBD in spec). */
-export type MessageKind = "duel.start" | "duel.action" | "duel.end";
-
-// ---------------------------------------------------------------------------
-// Zod schemas (WebSocket message contract — pinned in spec, not invented)
+// @yugioh-app/contracts — public surface
+// Spec 13 §1-3: types + Zod schemas for the entire V1 API surface.
+// Field names are LOCKED — do not vary without a spec update.
 // ---------------------------------------------------------------------------
 
-/** Schema for the outer WebSocket envelope every message must conform to. */
-export const WsMessageSchema = z.object({
-  kind: z.enum(["duel.start", "duel.action", "duel.end"]),
-  payload: z.unknown(),
-  timestamp: z.number().int().positive(),
-});
+// Legacy WebSocket contract (used by engine package)
+export { WsMessageSchema } from "./ws.js";
+export type { WsMessage } from "./ws.js";
 
-export type WsMessage = z.infer<typeof WsMessageSchema>;
+export type { Banlist, CardDTO, CardCatalog, CardSearch, CardListResponse } from "./card.js";
+export {
+  BanlistSchema,
+  CardDTOSchema,
+  CardCatalogSchema,
+  CardSearchSchema,
+  CardListResponseSchema,
+} from "./card.js";
+
+export type { User, RedeemInviteBody, LoginBody } from "./user.js";
+export { UserSchema, RedeemInviteBodySchema, LoginBodySchema } from "./user.js";
+
+export type {
+  Violation,
+  ViolationCode,
+  DeckValidation,
+  DeckSummary,
+  Deck,
+  DeckBody,
+  DeckExportBody,
+  DeckImportResult,
+} from "./deck.js";
+export {
+  ViolationSchema,
+  DeckValidationSchema,
+  DeckSummarySchema,
+  DeckSchema,
+  DeckBodySchema,
+  DeckExportBodySchema,
+  DeckImportResultSchema,
+} from "./deck.js";

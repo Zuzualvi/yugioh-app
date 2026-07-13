@@ -8,25 +8,34 @@ module.exports = {
         "contracts must not import from any other internal package (it is the innermost ring)",
       from: { path: "^packages/contracts/" },
       to: {
-        path: "(packages/(engine|server|web)/|node_modules/@yugioh-app/(engine|server|web))",
+        path: "(packages/(engine|server|web|card-data)/|node_modules/@yugioh-app/(engine|server|web|card-data))",
+      },
+    },
+    {
+      name: "card-data-contracts-only",
+      severity: "error",
+      comment: "card-data may only depend on contracts — not server, web, or engine",
+      from: { path: "^packages/card-data/" },
+      to: {
+        path: "(packages/(server|web|engine)/|node_modules/@yugioh-app/(server|web|engine))",
       },
     },
     {
       name: "engine-no-server-or-web",
       severity: "error",
-      comment: "engine may only depend on contracts — not server or web",
+      comment: "engine may only depend on contracts — not server, web, or card-data",
       from: { path: "^packages/engine/" },
       to: {
-        path: "(packages/(server|web)/|node_modules/@yugioh-app/(server|web))",
+        path: "(packages/(server|web|card-data)/|node_modules/@yugioh-app/(server|web|card-data))",
       },
     },
     {
       name: "web-no-server-or-engine",
       severity: "error",
-      comment: "web (frontend) must not import from server or engine — only contracts",
+      comment: "web (frontend) must not import from server, engine, or card-data — only contracts",
       from: { path: "^packages/web/" },
       to: {
-        path: "(packages/(server|engine)/|node_modules/@yugioh-app/(server|engine))",
+        path: "(packages/(server|engine|card-data)/|node_modules/@yugioh-app/(server|engine|card-data))",
       },
     },
     {

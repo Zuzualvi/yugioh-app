@@ -1,21 +1,19 @@
-import type { WsMessage } from "@yugioh-app/contracts";
-import type { OcgCoreAdapter } from "@yugioh-app/engine";
+import { openDb } from "./db/openDb.js";
+import { loadCatalog } from "./catalog/loadCatalog.js";
+import { createApp } from "./app.js";
 
 // ---------------------------------------------------------------------------
-// Server entry-point stub
-// The real HTTP / WebSocket server wiring lives in a later spec.
+// Server entry point — starts the HTTP server.
+// The DB path and port can be configured via environment variables.
 // ---------------------------------------------------------------------------
 
-/** Minimal server configuration (placeholder). */
-export interface ServerConfig {
-  port: number;
-  adapter: OcgCoreAdapter;
-}
+const PORT = parseInt(process.env["PORT"] ?? "3001", 10);
+const DB_PATH = process.env["DB_PATH"] ?? "./yugioh.db";
 
-/**
- * Placeholder function that wires a WebSocket message into the engine.
- * Full implementation comes in a later spec.
- */
-export function handleMessage(config: ServerConfig, message: WsMessage): Promise<void> {
-  return config.adapter.processMessage(message).then(() => undefined);
-}
+const db = openDb(DB_PATH);
+const catalog = loadCatalog();
+const app = createApp(db, catalog);
+
+app.listen(PORT, () => {
+  console.log(`Yu-Gi-Oh server listening on port ${PORT}`);
+});

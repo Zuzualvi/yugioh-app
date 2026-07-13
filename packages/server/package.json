@@ -8,7 +8,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
     "@yugioh-app/contracts": "*",
-    "@yugioh-app/engine": "*"
+    "@yugioh-app/engine": "*",
+    "better-sqlite3": "^12.11.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "@types/supertest": "^7.2.0",
+    "@types/uuid": "^10.0.0",
+    "supertest": "^7.2.2"
   }
 }
