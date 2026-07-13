@@ -1,0 +1,16 @@
+{
+  "name": "spike-c-relay",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup-vendor.js",
+    "server": "node src/server.js",
+    "test": "node src/test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2",
+    "ws": "^8.18.0"
+  }
+}
