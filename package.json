@@ -1,0 +1,27 @@
+{
+  "name": "yugioh-app",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . && prettier --check .",
+    "arch:check": "depcruise packages --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm run lint && npm run arch:check && npm test"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^16.6.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
+  }
+}
