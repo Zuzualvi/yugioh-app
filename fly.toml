@@ -7,7 +7,7 @@
 #   fly secrets set BOOTSTRAP_ADMIN_USERNAME=... BOOTSTRAP_ADMIN_PASSWORD=...
 
 app = "yugioh-app"          # matches the provision_hosting-created Fly app
-primary_region = "iad"      # Ashburn, VA (US East) — group is US East
+primary_region = "ord"      # Chicago — where the provisioned volume/machine live
 
 # ---------------------------------------------------------------------------
 # Build

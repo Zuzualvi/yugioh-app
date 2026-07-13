@@ -92,7 +92,8 @@ async function main() {
       console.warn(`  ERROR ${imageId}: ${result.detail}`);
     }
 
-    if (i < allImageIds.length - 1) {
+    // Rate-limit only after an actual download; idempotent re-runs (all skips) stay fast.
+    if (result.status === "downloaded" && i < allImageIds.length - 1) {
       await sleep(RATE_LIMIT_DELAY_MS);
     }
   }

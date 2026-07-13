@@ -62,6 +62,10 @@ COPY --from=builder /app/packages/card-data/out/edison-card-catalog.json \
 COPY --from=builder /app/packages/card-data/out/alias-index.json \
      ./packages/card-data/out/alias-index.json
 
+# Image seeder (run post-deploy via `fly ssh console -C "node /app/deploy/seed-images.mjs"`).
+# Standalone: Node builtins + fetch only; reads the baked-in catalog, writes to the volume.
+COPY deploy/seed-images.mjs ./deploy/seed-images.mjs
+
 # Install ONLY native binary dependencies (everything else is bundled).
 # better-sqlite3 and @node-rs/argon2 are C/Rust native addons — cannot be bundled.
 COPY deploy/native-package.json ./package.json

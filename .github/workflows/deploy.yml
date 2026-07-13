@@ -1,9 +1,12 @@
 name: Deploy
 
-# merge=deploy: every push to master runs the full verify gate, then (only if green)
-# deploys the Fly backend (api.zuhayr.io) and the Vercel frontend (app.zuhayr.io).
-# Secrets FLY_API_TOKEN / VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID were set by
-# provision_hosting. BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD were set by the CEO.
+# merge=deploy for the BACKEND only. The Vercel frontend (app.zuhayr.io) is deployed
+# by Vercel's own Git integration on push (it uses the project's VITE_* env vars), so
+# there is deliberately no frontend job here — a second CLI deployer fought with it.
+#
+# Every push to master runs the verify gate, then (only if green) deploys the Fly
+# backend (api.zuhayr.io) and seeds card images onto the volume.
+# Secrets FLY_API_TOKEN + BOOTSTRAP_ADMIN_* are set in the repo (provision + CEO).
 
 on:
   push:
@@ -32,7 +35,7 @@ jobs:
     name: deploy backend (Fly · api.zuhayr.io)
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     concurrency:
       group: deploy-backend
       cancel-in-progress: false
@@ -54,34 +57,5 @@ jobs:
           flyctl ips allocate-v6 --app yugioh-app || true
       - name: Ensure TLS cert for the custom domain (idempotent)
         run: flyctl certs add api.zuhayr.io --app yugioh-app || true
-
-  deploy-frontend:
-    name: deploy frontend (Vercel · app.zuhayr.io)
-    needs: verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      # Public (non-secret) build-time URLs baked into the client bundle.
-      VITE_API_BASE_URL: https://api.zuhayr.io
-      VITE_IMAGE_BASE_URL: https://api.zuhayr.io/images
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - name: Install Vercel CLI
-        run: npm i -g vercel@latest
-      - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Pin frontend build env to our known-correct URLs
-        run: |
-          printf 'VITE_API_BASE_URL="%s"\nVITE_IMAGE_BASE_URL="%s"\n' \
-            "$VITE_API_BASE_URL" "$VITE_IMAGE_BASE_URL" > .vercel/.env.production.local
-      - name: Build frontend
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-      - name: Deploy prebuilt output to Vercel
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - name: Seed card images onto the volume (idempotent — fast no-op once seeded)
+        run: flyctl ssh console --app yugioh-app -C "node /app/deploy/seed-images.mjs"
