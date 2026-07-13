@@ -171,7 +171,12 @@ export function parseYdk(text: string, catalog: LoadedCatalog | null): YdkParseR
   }
 
   // Warn if no #main marker found (likely a malformed file)
-  if (!sawMain && !sawExtra && !sawSide && (main.length > 0 || extra.length > 0 || side.length > 0)) {
+  if (
+    !sawMain &&
+    !sawExtra &&
+    !sawSide &&
+    (main.length > 0 || extra.length > 0 || side.length > 0)
+  ) {
     // This shouldn't happen with above logic, but defensive:
     violations.push({
       code: "parse_error",

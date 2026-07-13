@@ -33,7 +33,8 @@ const BTH = 29401950;
 const FUSION = 35809262;
 const SYNCHRO = 67959180;
 const CYBER = 46986414;
-const _HARPIE_LADY = 76812113; void _HARPIE_LADY;
+const _HARPIE_LADY = 76812113;
+void _HARPIE_LADY;
 
 /** Build a valid 40-card main with no violations */
 /**
@@ -193,10 +194,18 @@ describe("GET /api/decks/:id", () => {
       "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'member', ?)",
     ).run(userId2, "User2", pw, new Date().toISOString());
     const code2 = randomBytes(8).toString("hex");
-    db.prepare("INSERT INTO invites (code, created_by, expires_at, consumed_by, consumed_at) VALUES (?, ?, ?, ?, ?)").run(
-      code2, "admin-001", new Date(Date.now() + 86400_000).toISOString(), userId2, new Date().toISOString()
+    db.prepare(
+      "INSERT INTO invites (code, created_by, expires_at, consumed_by, consumed_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(
+      code2,
+      "admin-001",
+      new Date(Date.now() + 86400_000).toISOString(),
+      userId2,
+      new Date().toISOString(),
     );
-    const loginRes = await request(app).post("/api/auth/login").send({ displayName: "User2", password: "password2222" });
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ displayName: "User2", password: "password2222" });
     const cookieHeader2 = loginRes.headers["set-cookie"] as unknown as string[];
     const sid2 = cookieHeader2.find((c) => c.startsWith("sid=")) ?? "";
 
@@ -263,9 +272,7 @@ describe("POST /api/decks/:id/duplicate", () => {
       .send({ name: "Original", main: legalMain40(), extra: [FUSION], side: [] });
     const deckId = createRes.body.id;
 
-    const dupRes = await request(app)
-      .post(`/api/decks/${deckId}/duplicate`)
-      .set("Cookie", sid);
+    const dupRes = await request(app).post(`/api/decks/${deckId}/duplicate`).set("Cookie", sid);
     expect(dupRes.status).toBe(201);
     expect(dupRes.body.id).not.toBe(deckId);
     expect(dupRes.body.name).toContain("copy");
@@ -281,15 +288,16 @@ describe("POST /api/decks/:id/duplicate", () => {
 describe("POST /api/decks/import", () => {
   it("imports a valid .ydk and returns parsed sections", async () => {
     const sid = await createSession();
-    const ydk = [
-      "#created by TestUser",
-      "#main",
-      ...Array(40).fill(String(BEAST_KING)),
-      "#extra",
-      String(FUSION),
-      "!side",
-      String(BTH),
-    ].join("\n") + "\n";
+    const ydk =
+      [
+        "#created by TestUser",
+        "#main",
+        ...Array(40).fill(String(BEAST_KING)),
+        "#extra",
+        String(FUSION),
+        "!side",
+        String(BTH),
+      ].join("\n") + "\n";
 
     const res = await request(app)
       .post("/api/decks/import")
@@ -315,7 +323,9 @@ describe("POST /api/decks/import", () => {
       .send(ydk);
 
     expect(res.status).toBe(200);
-    expect(res.body.validation.violations.some((v: { code: string }) => v.code === "parse_error")).toBe(true);
+    expect(
+      res.body.validation.violations.some((v: { code: string }) => v.code === "parse_error"),
+    ).toBe(true);
   });
 
   it("reports violation for Fusion monster under #main", async () => {
@@ -328,7 +338,9 @@ describe("POST /api/decks/import", () => {
       .send(ydk);
 
     expect(res.status).toBe(200);
-    expect(res.body.validation.violations.some((v: { code: string }) => v.code === "wrong_zone")).toBe(true);
+    expect(
+      res.body.validation.violations.some((v: { code: string }) => v.code === "wrong_zone"),
+    ).toBe(true);
   });
 
   it("returns 400 for non-text body", async () => {
@@ -352,10 +364,7 @@ describe("POST /api/decks/export", () => {
       extra: [FUSION],
       side: [BTH],
     };
-    const res = await request(app)
-      .post("/api/decks/export")
-      .set("Cookie", sid)
-      .send(body);
+    const res = await request(app).post("/api/decks/export").set("Cookie", sid).send(body);
 
     expect(res.status).toBe(200);
     expect(res.type).toContain("text");
@@ -417,7 +426,9 @@ describe("GET /api/cards", () => {
     const sid = await createSession();
     const res = await request(app).get("/api/cards?q=Dragon").set("Cookie", sid);
     expect(res.status).toBe(200);
-    expect(res.body.cards.every((c: { name: string }) => c.name.toLowerCase().includes("dragon"))).toBe(true);
+    expect(
+      res.body.cards.every((c: { name: string }) => c.name.toLowerCase().includes("dragon")),
+    ).toBe(true);
   });
 
   it("filters by banlist status", async () => {

@@ -87,7 +87,9 @@ export function createCardsRouter(catalog: LoadedCatalog): Router {
   router.get("/:passcode", (req, res): void => {
     const p = parseInt(req.params["passcode"] ?? "", 10);
     if (isNaN(p)) {
-      res.status(400).json({ error: { code: "invalid_passcode", message: "Passcode must be an integer." } });
+      res
+        .status(400)
+        .json({ error: { code: "invalid_passcode", message: "Passcode must be an integer." } });
       return;
     }
 

@@ -62,15 +62,21 @@ export function createAuthRouter(db: InstanceType<typeof Database>): Router {
     const { inviteCode, displayName, password } = parsed.data;
 
     const invite = db
-      .prepare("SELECT code, created_by, expires_at, consumed_by, consumed_at FROM invites WHERE code = ?")
+      .prepare(
+        "SELECT code, created_by, expires_at, consumed_by, consumed_at FROM invites WHERE code = ?",
+      )
       .get(inviteCode) as InviteRow | undefined;
 
     if (!invite) {
-      res.status(400).json({ error: { code: "invite_invalid", message: "Invite code not found." } });
+      res
+        .status(400)
+        .json({ error: { code: "invite_invalid", message: "Invite code not found." } });
       return;
     }
     if (invite.consumed_by !== null) {
-      res.status(400).json({ error: { code: "invite_invalid", message: "Invite code already used." } });
+      res
+        .status(400)
+        .json({ error: { code: "invite_invalid", message: "Invite code already used." } });
       return;
     }
     if (new Date(invite.expires_at) < new Date()) {
@@ -192,9 +198,11 @@ export function createAdminRouter(db: InstanceType<typeof Database>): Router {
     const code = randomBytes(16).toString("hex");
     const createdBy = req.user!.id;
 
-    db.prepare(
-      "INSERT INTO invites (code, created_by, expires_at) VALUES (?, ?, ?)",
-    ).run(code, createdBy, expiresAt.toISOString());
+    db.prepare("INSERT INTO invites (code, created_by, expires_at) VALUES (?, ?, ?)").run(
+      code,
+      createdBy,
+      expiresAt.toISOString(),
+    );
 
     res.status(201).json({ inviteCode: code, expiresAt: expiresAt.toISOString() });
   });

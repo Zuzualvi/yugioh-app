@@ -19,18 +19,10 @@ const OUT = path.join(ROOT, "out");
 // ---------------------------------------------------------------------------
 // Load artifacts
 // ---------------------------------------------------------------------------
-const catalog = JSON.parse(
-  fs.readFileSync(path.join(OUT, "edison-card-catalog.json"), "utf8"),
-);
-const aliasIndex = JSON.parse(
-  fs.readFileSync(path.join(OUT, "alias-index.json"), "utf8"),
-);
-const allowlist = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"),
-);
-const dt01Excluded = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"),
-);
+const catalog = JSON.parse(fs.readFileSync(path.join(OUT, "edison-card-catalog.json"), "utf8"));
+const aliasIndex = JSON.parse(fs.readFileSync(path.join(OUT, "alias-index.json"), "utf8"));
+const allowlist = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"));
+const dt01Excluded = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,15 +48,8 @@ const byPasscode = new Map(catalog.cards.map((c) => [c.passcode, c]));
 // §1  Catalog structure
 // ---------------------------------------------------------------------------
 console.log("\n§1  Catalog structure");
-check(
-  "format field is 'edison-2010-03'",
-  catalog.format === "edison-2010-03",
-);
-check(
-  "count == cards.length",
-  catalog.count === catalog.cards.length,
-  `count=${catalog.count}`,
-);
+check("format field is 'edison-2010-03'", catalog.format === "edison-2010-03");
+check("count == cards.length", catalog.count === catalog.cards.length, `count=${catalog.count}`);
 check(
   "count within tolerance of 3681 (≤5 delta)",
   Math.abs(catalog.count - 3681) <= 5,
@@ -72,9 +57,7 @@ check(
 );
 check(
   "cards sorted ascending by passcode",
-  catalog.cards.every(
-    (c, i) => i === 0 || c.passcode >= catalog.cards[i - 1].passcode,
-  ),
+  catalog.cards.every((c, i) => i === 0 || c.passcode >= catalog.cards[i - 1].passcode),
 );
 
 // ---------------------------------------------------------------------------
@@ -86,7 +69,10 @@ check(
   "every catalog passcode ∈ allow-list",
   notInAllowlist.length === 0,
   notInAllowlist.length > 0
-    ? `offenders: ${notInAllowlist.map((c) => c.passcode).slice(0, 5).join(",")}`
+    ? `offenders: ${notInAllowlist
+        .map((c) => c.passcode)
+        .slice(0, 5)
+        .join(",")}`
     : "all clear",
 );
 
@@ -95,7 +81,10 @@ check(
   "no catalog passcode ∈ dt01-excluded",
   inDt01.length === 0,
   inDt01.length > 0
-    ? `offenders: ${inDt01.map((c) => c.passcode).slice(0, 5).join(",")}`
+    ? `offenders: ${inDt01
+        .map((c) => c.passcode)
+        .slice(0, 5)
+        .join(",")}`
     : "all clear",
 );
 
@@ -200,21 +189,25 @@ check(
   "all Fusion+Synchro cards have isExtraDeck=true",
   wrongFusion.length === 0,
   wrongFusion.length > 0
-    ? `${wrongFusion.length} offenders: ${wrongFusion.map((c) => c.name).slice(0, 3).join(", ")}`
+    ? `${wrongFusion.length} offenders: ${wrongFusion
+        .map((c) => c.name)
+        .slice(0, 3)
+        .join(", ")}`
     : "all clear",
 );
 
 // All Ritual/Normal/Effect/Spell/Trap must have isExtraDeck=false
 const wrongMain = catalog.cards.filter(
-  (c) =>
-    ["ritual", "normal", "effect", "spell", "trap"].includes(c.frame) &&
-    c.isExtraDeck,
+  (c) => ["ritual", "normal", "effect", "spell", "trap"].includes(c.frame) && c.isExtraDeck,
 );
 check(
   "all Ritual/Normal/Effect/Spell/Trap cards have isExtraDeck=false",
   wrongMain.length === 0,
   wrongMain.length > 0
-    ? `${wrongMain.length} offenders: ${wrongMain.map((c) => c.name).slice(0, 3).join(", ")}`
+    ? `${wrongMain.length} offenders: ${wrongMain
+        .map((c) => c.name)
+        .slice(0, 3)
+        .join(", ")}`
     : "all clear",
 );
 
@@ -278,9 +271,7 @@ const hasAlias = catalog.cards.filter((c) => c.aliasOf !== null);
 check(
   "all catalog cards have aliasOf=null (catalog contains only bases)",
   hasAlias.length === 0,
-  hasAlias.length > 0
-    ? `${hasAlias.length} with non-null aliasOf`
-    : "all clear",
+  hasAlias.length > 0 ? `${hasAlias.length} with non-null aliasOf` : "all clear",
 );
 
 // imageId == passcode for all catalog cards except the 2 with known passcode
@@ -292,9 +283,7 @@ const wrongImageId = catalog.cards.filter(
 check(
   "imageId == passcode for all cards except known passcode-correction cards",
   wrongImageId.length === 0,
-  wrongImageId.length > 0
-    ? `${wrongImageId.length} unexpected mismatches`
-    : "all clear",
+  wrongImageId.length > 0 ? `${wrongImageId.length} unexpected mismatches` : "all clear",
 );
 // Spot-check the overrides
 {

@@ -25,25 +25,16 @@ const OUT = path.join(ROOT, "out");
 // Passcode corrections: allowlist passcode → YGOPRODeck id to look up
 const PASSCODE_CORRECTIONS = {
   80604091: 80604092, // Ultimate Offering: off-by-one in YGOPRODeck full dump
-  0: 7634581,         // Orichalcos Shunoros: anime card, virtual passcode in community list
+  0: 7634581, // Orichalcos Shunoros: anime card, virtual passcode in community list
 };
 
 // ---------------------------------------------------------------------------
 // Load Spike-B artifacts (ground truth — do NOT re-derive)
 // ---------------------------------------------------------------------------
-const allowlist = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"),
-);
-const aliasMap = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "edison-alias-map.json"), "utf8"),
-);
-const dt01Excluded = JSON.parse(
-  fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"),
-);
-const lflConf = fs.readFileSync(
-  path.join(SPIKE_B, "edison.lflist.conf"),
-  "utf8",
-);
+const allowlist = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"));
+const aliasMap = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-alias-map.json"), "utf8"));
+const dt01Excluded = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"));
+const lflConf = fs.readFileSync(path.join(SPIKE_B, "edison.lflist.conf"), "utf8");
 
 // ---------------------------------------------------------------------------
 // Parse lflist.conf → { passcode: 0|1|2 }
@@ -52,12 +43,7 @@ function parseLflist(conf) {
   const result = {};
   for (const line of conf.split("\n")) {
     const trimmed = line.trim();
-    if (
-      !trimmed ||
-      trimmed.startsWith("!") ||
-      trimmed.startsWith("$") ||
-      trimmed.startsWith("#")
-    ) {
+    if (!trimmed || trimmed.startsWith("!") || trimmed.startsWith("$") || trimmed.startsWith("#")) {
       continue;
     }
     // Format: "<passcode> <count> --<name>"
@@ -199,9 +185,7 @@ async function main() {
     }
 
     if (!raw) {
-      console.warn(
-        `  SKIP: passcode=${passcode} "${name}" not found in YGOPRODeck`,
-      );
+      console.warn(`  SKIP: passcode=${passcode} "${name}" not found in YGOPRODeck`);
       continue;
     }
 
@@ -211,7 +195,7 @@ async function main() {
     const imageId = PASSCODE_CORRECTIONS[passcode] ?? passcode;
 
     const dto = {
-      passcode,                // allow-list passcode (canonical game ID)
+      passcode, // allow-list passcode (canonical game ID)
       name: raw.name,
       frame: deriveFrame(raw),
       isExtraDeck: deriveIsExtraDeck(raw),
@@ -222,8 +206,8 @@ async function main() {
       def: raw.def ?? null,
       desc: raw.desc ?? "",
       banlist: resolveBanlist(passcode),
-      aliasOf: null,           // catalog cards are bases; aliases in alias-index
-      imageId,                 // YGOPRODeck-compatible ID for image/<imageId>.jpg
+      aliasOf: null, // catalog cards are bases; aliases in alias-index
+      imageId, // YGOPRODeck-compatible ID for image/<imageId>.jpg
     };
     catalogCards.push(dto);
   }
@@ -247,18 +231,10 @@ async function main() {
     JSON.stringify(catalog, null, 2),
     "utf8",
   );
-  console.log(
-    `\n✓ Written out/edison-card-catalog.json  (count=${catalog.count})`,
-  );
+  console.log(`\n✓ Written out/edison-card-catalog.json  (count=${catalog.count})`);
 
-  fs.writeFileSync(
-    path.join(OUT, "alias-index.json"),
-    JSON.stringify(aliasIndex, null, 2),
-    "utf8",
-  );
-  console.log(
-    `✓ Written out/alias-index.json  (${Object.keys(aliasIndex).length} alias entries)`,
-  );
+  fs.writeFileSync(path.join(OUT, "alias-index.json"), JSON.stringify(aliasIndex, null, 2), "utf8");
+  console.log(`✓ Written out/alias-index.json  (${Object.keys(aliasIndex).length} alias entries)`);
 
   // Tolerance report
   console.log(`\n=== Tolerance Report ===`);

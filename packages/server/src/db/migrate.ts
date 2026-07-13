@@ -65,9 +65,7 @@ export function runMigrations(db: InstanceType<typeof Database>): void {
 
   for (let i = 0; i < MIGRATIONS.length; i++) {
     const version = i + 1;
-    const already = db
-      .prepare("SELECT 1 FROM schema_migrations WHERE version = ?")
-      .get(version);
+    const already = db.prepare("SELECT 1 FROM schema_migrations WHERE version = ?").get(version);
 
     if (!already) {
       db.exec(MIGRATIONS[i] ?? "");

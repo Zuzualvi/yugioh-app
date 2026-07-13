@@ -139,7 +139,9 @@ describe("AC-07 — illegal .ydk: Fusion/Synchro under #main", () => {
   it("Fusion monster under #main → wrong_zone violation and moved to Extra", () => {
     const ydk = `#main\n${FUSION_MONSTER}\n#extra\n!side\n`;
     const parsed = parseYdk(ydk, catalog);
-    expect(parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER)).toBe(true);
+    expect(
+      parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER),
+    ).toBe(true);
     // Codec moves it to Extra
     expect(parsed.extra).toContain(FUSION_MONSTER);
     expect(parsed.main).not.toContain(FUSION_MONSTER);
@@ -148,7 +150,9 @@ describe("AC-07 — illegal .ydk: Fusion/Synchro under #main", () => {
   it("Synchro monster under #main → wrong_zone violation", () => {
     const ydk = `#main\n${SYNCHRO_MONSTER}\n#extra\n!side\n`;
     const parsed = parseYdk(ydk, catalog);
-    expect(parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === SYNCHRO_MONSTER)).toBe(true);
+    expect(
+      parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === SYNCHRO_MONSTER),
+    ).toBe(true);
   });
 });
 
@@ -208,7 +212,9 @@ describe("AC-07 — normal monster under #extra", () => {
   it("reports wrong_zone and moves card to main", () => {
     const ydk = `#main\n#extra\n${BEAST_KING}\n!side\n`;
     const parsed = parseYdk(ydk, catalog);
-    expect(parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === BEAST_KING)).toBe(true);
+    expect(
+      parsed.violations.some((v) => v.code === "wrong_zone" && v.passcode === BEAST_KING),
+    ).toBe(true);
     // Codec moves it to Main
     expect(parsed.main).toContain(BEAST_KING);
     expect(parsed.extra).not.toContain(BEAST_KING);

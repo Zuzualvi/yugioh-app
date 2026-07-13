@@ -53,9 +53,19 @@ const NEOS = 89943723;
 function legalMain40(): number[] {
   // 13 unique unlimited non-extra cards × 3 = 39 + 1 = 40
   const cards = [
-    BEAST_KING, DARK_ARMED, BTH, CYBER_DRAGON, RITUAL_MONSTER,
-    BREAKER, SNIPE_HUNTER, MYSTIC_TOMATO, SPIRIT_REAPER, THUNDER_KING,
-    DD_CROW, GRAND_MOLE, DD_WARRIOR_LADY,
+    BEAST_KING,
+    DARK_ARMED,
+    BTH,
+    CYBER_DRAGON,
+    RITUAL_MONSTER,
+    BREAKER,
+    SNIPE_HUNTER,
+    MYSTIC_TOMATO,
+    SPIRIT_REAPER,
+    THUNDER_KING,
+    DD_CROW,
+    GRAND_MOLE,
+    DD_WARRIOR_LADY,
   ];
   // 13 × 3 = 39, add one more NEOS
   return [...cards.flatMap((c) => [c, c, c]), NEOS];
@@ -150,11 +160,46 @@ describe("AC-05 — negative: 61-card Main Deck", () => {
       // So we can't add any HARPIE_LADY_1 without exceeding 3. Skip.
       // We don't have 61 unique cards in fixture. Just make 61 by allowing copy > 3 on one card.
       // For the purpose of this test: just verify 61 fires main_size regardless.
-      BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING,
-      BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING,
-      BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING,
-      BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING,
-      BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
     ]; // 21 + 40 = 61
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
@@ -197,7 +242,12 @@ describe("AC-05 — negative: 3rd Semi-Limited copy across zones", () => {
   });
 
   it("3 in Main alone violates banlist_limit", () => {
-    const main: number[] = [...legalMain40().slice(0, 37), TREEBORN_FROG, TREEBORN_FROG, TREEBORN_FROG];
+    const main: number[] = [
+      ...legalMain40().slice(0, 37),
+      TREEBORN_FROG,
+      TREEBORN_FROG,
+      TREEBORN_FROG,
+    ];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
     expect(r.violations.some((v) => v.code === "banlist_limit")).toBe(true);
@@ -209,13 +259,15 @@ describe("AC-05 — negative: Forbidden card", () => {
     const main: number[] = [...legalMain40().slice(0, 39), CHAOS_EMPEROR];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "banlist_forbidden" && v.passcode === CHAOS_EMPEROR)).toBe(true);
+    expect(
+      r.violations.some((v) => v.code === "banlist_forbidden" && v.passcode === CHAOS_EMPEROR),
+    ).toBe(true);
   });
 
   it("Forbidden card in Extra reports banlist_forbidden", () => {
     // POT_OF_GREED is forbidden but a Spell — it's also wrong_zone in Extra
     // Use CHAOS_EMPEROR (forbidden monster, not extra deck) in main
-    // Actually for Extra let's use a Fusion monster that's forbidden... 
+    // Actually for Extra let's use a Fusion monster that's forbidden...
     // In fixture, POT_OF_GREED (55144522) is forbidden spell. It's wrong zone in extra anyway.
     // Let's just test: Chaos Emperor (forbidden effect monster) placed in side
     const main = legalMain40();
@@ -229,7 +281,9 @@ describe("AC-05 — negative: Forbidden card", () => {
     const main: number[] = [...legalMain40().slice(0, 39), POT_OF_GREED];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "banlist_forbidden" && v.passcode === POT_OF_GREED)).toBe(true);
+    expect(
+      r.violations.some((v) => v.code === "banlist_forbidden" && v.passcode === POT_OF_GREED),
+    ).toBe(true);
   });
 });
 
@@ -239,7 +293,9 @@ describe("AC-05 — negative: out-of-pool card", () => {
     const main: number[] = [...legalMain40().slice(0, 39), UNKNOWN];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "unknown_passcode" && v.passcode === UNKNOWN)).toBe(true);
+    expect(r.violations.some((v) => v.code === "unknown_passcode" && v.passcode === UNKNOWN)).toBe(
+      true,
+    );
   });
 });
 
@@ -248,14 +304,18 @@ describe("AC-05 — negative: Fusion/Synchro placed in Main Deck", () => {
     const main: number[] = [...legalMain40().slice(0, 39), FUSION_MONSTER];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER)).toBe(true);
+    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER)).toBe(
+      true,
+    );
   });
 
   it("Synchro in Main reports wrong_zone", () => {
     const main: number[] = [...legalMain40().slice(0, 39), SYNCHRO_MONSTER];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === SYNCHRO_MONSTER)).toBe(true);
+    expect(
+      r.violations.some((v) => v.code === "wrong_zone" && v.passcode === SYNCHRO_MONSTER),
+    ).toBe(true);
   });
 
   it("Fusion in Side reports wrong_zone", () => {
@@ -263,7 +323,9 @@ describe("AC-05 — negative: Fusion/Synchro placed in Main Deck", () => {
     const side = [FUSION_MONSTER];
     const r = validateDeck({ main, extra: [], side }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER)).toBe(true);
+    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === FUSION_MONSTER)).toBe(
+      true,
+    );
   });
 });
 
@@ -273,7 +335,9 @@ describe("AC-05 — negative: non-Extra card placed in Extra Deck", () => {
     const extra = [BEAST_KING]; // not isExtraDeck
     const r = validateDeck({ main, extra, side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === BEAST_KING)).toBe(true);
+    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === BEAST_KING)).toBe(
+      true,
+    );
   });
 
   it("Ritual monster in Extra reports wrong_zone", () => {
@@ -281,7 +345,9 @@ describe("AC-05 — negative: non-Extra card placed in Extra Deck", () => {
     const extra = [RITUAL_MONSTER];
     const r = validateDeck({ main, extra, side: [] }, catalog);
     expect(r.legal).toBe(false);
-    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === RITUAL_MONSTER)).toBe(true);
+    expect(r.violations.some((v) => v.code === "wrong_zone" && v.passcode === RITUAL_MONSTER)).toBe(
+      true,
+    );
   });
 });
 
@@ -290,7 +356,9 @@ describe("AC-05 — negative: alt-art alias evasion", () => {
     // HARPIE_LADY_1 aliasOf HARPIE_LADY — combined 4 copies → copy_limit
     const main: number[] = [
       ...legalMain40().slice(0, 36),
-      HARPIE_LADY, HARPIE_LADY, HARPIE_LADY, // 3 base
+      HARPIE_LADY,
+      HARPIE_LADY,
+      HARPIE_LADY, // 3 base
       HARPIE_LADY_1, // 1 alias → 4 total of base card
     ];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
@@ -299,7 +367,12 @@ describe("AC-05 — negative: alt-art alias evasion", () => {
   });
 
   it("3× Harpie Lady 1 (alias) alone = 3 copies of base — legal", () => {
-    const main: number[] = [...legalMain40().slice(0, 37), HARPIE_LADY_1, HARPIE_LADY_1, HARPIE_LADY_1];
+    const main: number[] = [
+      ...legalMain40().slice(0, 37),
+      HARPIE_LADY_1,
+      HARPIE_LADY_1,
+      HARPIE_LADY_1,
+    ];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(true);
   });
@@ -307,8 +380,10 @@ describe("AC-05 — negative: alt-art alias evasion", () => {
   it("2× Harpie Lady (base) + 2× Harpie Lady 1 (alias) = 4 total — copy_limit", () => {
     const main: number[] = [
       ...legalMain40().slice(0, 36),
-      HARPIE_LADY, HARPIE_LADY,
-      HARPIE_LADY_1, HARPIE_LADY_1,
+      HARPIE_LADY,
+      HARPIE_LADY,
+      HARPIE_LADY_1,
+      HARPIE_LADY_1,
     ];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
@@ -359,7 +434,13 @@ describe("AC-05 — negative: Limited card over-count", () => {
 
 describe("AC-05 — negative: unlimited card over 3 copies", () => {
   it("4× Beast King reports copy_limit", () => {
-    const main: number[] = [...legalMain40().slice(0, 36), BEAST_KING, BEAST_KING, BEAST_KING, BEAST_KING];
+    const main: number[] = [
+      ...legalMain40().slice(0, 36),
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+      BEAST_KING,
+    ];
     const r = validateDeck({ main, extra: [], side: [] }, catalog);
     expect(r.legal).toBe(false);
     expect(r.violations.some((v) => v.code === "copy_limit")).toBe(true);

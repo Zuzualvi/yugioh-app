@@ -72,7 +72,10 @@ function validateAndBuild(
   return { validation, isValid: validation.legal };
 }
 
-export function createDecksRouter(db: InstanceType<typeof Database>, catalog: LoadedCatalog): Router {
+export function createDecksRouter(
+  db: InstanceType<typeof Database>,
+  catalog: LoadedCatalog,
+): Router {
   const router = Router();
 
   // GET /api/decks — caller's own decks
@@ -90,7 +93,10 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
     const body = req.body as unknown;
     if (typeof body !== "string") {
       res.status(400).json({
-        error: { code: "invalid_input", message: "Body must be raw .ydk text (Content-Type: text/plain)." },
+        error: {
+          code: "invalid_input",
+          message: "Body must be raw .ydk text (Content-Type: text/plain).",
+        },
       });
       return;
     }
@@ -142,7 +148,17 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
     const now = new Date().toISOString();
     db.prepare(
       "INSERT INTO decks (id, owner_id, name, main_json, extra_json, side_json, is_valid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    ).run(id, userId, name, JSON.stringify(main), JSON.stringify(extra), JSON.stringify(side), isValid ? 1 : 0, now, now);
+    ).run(
+      id,
+      userId,
+      name,
+      JSON.stringify(main),
+      JSON.stringify(extra),
+      JSON.stringify(side),
+      isValid ? 1 : 0,
+      now,
+      now,
+    );
 
     const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(id) as DeckRow;
     res.status(201).json(rowToDeck(row, validation));
@@ -151,7 +167,8 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
   // GET /api/decks/:id
   router.get("/:id", (req, res): void => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as DeckRow | undefined;
+    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as
+      DeckRow | undefined;
     if (!row) {
       res.status(404).json({ error: { code: "not_found", message: "Deck not found." } });
       return;
@@ -172,7 +189,8 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
   // PUT /api/decks/:id
   router.put("/:id", (req, res): void => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as DeckRow | undefined;
+    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as
+      DeckRow | undefined;
     if (!row) {
       res.status(404).json({ error: { code: "not_found", message: "Deck not found." } });
       return;
@@ -193,7 +211,15 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
 
     db.prepare(
       "UPDATE decks SET name = ?, main_json = ?, extra_json = ?, side_json = ?, is_valid = ?, updated_at = ? WHERE id = ?",
-    ).run(name, JSON.stringify(main), JSON.stringify(extra), JSON.stringify(side), isValid ? 1 : 0, now, row.id);
+    ).run(
+      name,
+      JSON.stringify(main),
+      JSON.stringify(extra),
+      JSON.stringify(side),
+      isValid ? 1 : 0,
+      now,
+      row.id,
+    );
 
     const updated = db.prepare("SELECT * FROM decks WHERE id = ?").get(row.id) as DeckRow;
     res.status(200).json(rowToDeck(updated, validation));
@@ -202,7 +228,8 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
   // DELETE /api/decks/:id
   router.delete("/:id", (req, res): void => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as DeckRow | undefined;
+    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as
+      DeckRow | undefined;
     if (!row) {
       res.status(404).json({ error: { code: "not_found", message: "Deck not found." } });
       return;
@@ -218,7 +245,8 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
   // POST /api/decks/:id/duplicate
   router.post("/:id/duplicate", (req, res): void => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as DeckRow | undefined;
+    const row = db.prepare("SELECT * FROM decks WHERE id = ?").get(req.params["id"]) as
+      DeckRow | undefined;
     if (!row) {
       res.status(404).json({ error: { code: "not_found", message: "Deck not found." } });
       return;
@@ -238,7 +266,17 @@ export function createDecksRouter(db: InstanceType<typeof Database>, catalog: Lo
     const newName = `${row.name} (copy)`;
     db.prepare(
       "INSERT INTO decks (id, owner_id, name, main_json, extra_json, side_json, is_valid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    ).run(newId, userId, newName, row.main_json, row.extra_json, row.side_json, isValid ? 1 : 0, now, now);
+    ).run(
+      newId,
+      userId,
+      newName,
+      row.main_json,
+      row.extra_json,
+      row.side_json,
+      isValid ? 1 : 0,
+      now,
+      now,
+    );
 
     const newRow = db.prepare("SELECT * FROM decks WHERE id = ?").get(newId) as DeckRow;
     res.status(201).json(rowToDeck(newRow, validation));

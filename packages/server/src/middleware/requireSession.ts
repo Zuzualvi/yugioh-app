@@ -42,7 +42,9 @@ export function requireSession(db: InstanceType<typeof Database>) {
       return;
     }
 
-    const session = db.prepare("SELECT user_id, expires_at FROM sessions WHERE sid = ?").get(sid) as SessionRow | undefined;
+    const session = db
+      .prepare("SELECT user_id, expires_at FROM sessions WHERE sid = ?")
+      .get(sid) as SessionRow | undefined;
     if (!session) {
       res.status(401).json({ error: { code: "unauthenticated", message: "Invalid session." } });
       return;
@@ -62,7 +64,11 @@ export function requireSession(db: InstanceType<typeof Database>) {
       return;
     }
 
-    req.user = { id: user.id, displayName: user.display_name, role: user.role as "admin" | "member" };
+    req.user = {
+      id: user.id,
+      displayName: user.display_name,
+      role: user.role as "admin" | "member",
+    };
     next();
   };
 }

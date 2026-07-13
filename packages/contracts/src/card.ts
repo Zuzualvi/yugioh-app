@@ -68,9 +68,7 @@ export const CardCatalogSchema = z.object({
 
 export const CardSearchSchema = z.object({
   q: z.string().optional(),
-  frame: z
-    .enum(["normal", "effect", "ritual", "fusion", "synchro", "spell", "trap"])
-    .optional(),
+  frame: z.enum(["normal", "effect", "ritual", "fusion", "synchro", "spell", "trap"]).optional(),
   race: z.string().optional(),
   attribute: z.string().optional(),
   level: z.coerce.number().int().optional(),

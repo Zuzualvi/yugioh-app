@@ -25,8 +25,7 @@ const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "out");
 const IMAGES_DIR = path.join(ROOT, "images");
 
-const YGOP_IMAGE_BASE =
-  "https://images.ygoprodeck.com/images/cards/";
+const YGOP_IMAGE_BASE = "https://images.ygoprodeck.com/images/cards/";
 const RATE_LIMIT_DELAY_MS = 60; // ~16 req/s (under the 20 req/s cap)
 const SAMPLE_SIZE = 30;
 
@@ -35,22 +34,16 @@ const isSample = process.argv.includes("--sample");
 // ---------------------------------------------------------------------------
 // Load catalog
 // ---------------------------------------------------------------------------
-const catalog = JSON.parse(
-  fs.readFileSync(path.join(OUT, "edison-card-catalog.json"), "utf8"),
-);
+const catalog = JSON.parse(fs.readFileSync(path.join(OUT, "edison-card-catalog.json"), "utf8"));
 
 // ---------------------------------------------------------------------------
 // Decide which cards to fetch
 // ---------------------------------------------------------------------------
 // imageId == passcode for all catalog cards; collect unique imageIds
 const allImageIds = [...new Set(catalog.cards.map((c) => c.imageId))];
-const imageIds = isSample
-  ? allImageIds.slice(0, SAMPLE_SIZE)
-  : allImageIds;
+const imageIds = isSample ? allImageIds.slice(0, SAMPLE_SIZE) : allImageIds;
 
-console.log(
-  `Downloading ${imageIds.length} images${isSample ? " (sample)" : ""} → ${IMAGES_DIR}`,
-);
+console.log(`Downloading ${imageIds.length} images${isSample ? " (sample)" : ""} → ${IMAGES_DIR}`);
 console.log(`Rate limit: one request every ${RATE_LIMIT_DELAY_MS} ms`);
 
 // ---------------------------------------------------------------------------
@@ -119,9 +112,7 @@ async function main() {
     }
   }
 
-  console.log(
-    `\nDone: ${downloaded} downloaded, ${skipped} skipped, ${errors} errors`,
-  );
+  console.log(`\nDone: ${downloaded} downloaded, ${skipped} skipped, ${errors} errors`);
   console.log(`Images directory: ${IMAGES_DIR}`);
   console.log("Image naming: <imageId>.jpg");
 }

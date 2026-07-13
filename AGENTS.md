@@ -88,6 +88,7 @@ first and have it reviewed, then update contracts. Do not invent wire formats.
 6. Report the pushed SHA as proof of delivery in your task report.
 
 ### Verify gate while working in parallel
+
 A repo-wide `npm run verify` fails on siblings' half-finished code sitting in the
 shared working tree. While other workstreams are mid-flight, **gate on YOUR OWN
 package(s)** (scoped `tsc --noEmit`, `eslint`, and `vitest` for your package). The

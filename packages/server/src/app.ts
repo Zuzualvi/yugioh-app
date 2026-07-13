@@ -12,7 +12,10 @@ import { requireSession, requireAdmin } from "./middleware/requireSession.js";
 // Accepts db and catalog as dependencies so tests can inject in-memory versions.
 // ---------------------------------------------------------------------------
 
-export function createApp(db: InstanceType<typeof Database>, catalog: LoadedCatalog): express.Application {
+export function createApp(
+  db: InstanceType<typeof Database>,
+  catalog: LoadedCatalog,
+): express.Application {
   const app = express();
 
   app.use(express.json());

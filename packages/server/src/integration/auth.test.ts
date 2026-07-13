@@ -64,7 +64,11 @@ async function adminLogin(): Promise<{ sid: string; adminId: string }> {
     .post("/api/auth/login")
     .send({ displayName: "Admin", password: "adminpass1" });
   const cookie = res.headers["set-cookie"] as unknown as string[] | undefined;
-  const sid = cookie?.find((c) => c.startsWith("sid="))?.split(";")[0]?.slice(4) ?? "";
+  const sid =
+    cookie
+      ?.find((c) => c.startsWith("sid="))
+      ?.split(";")[0]
+      ?.slice(4) ?? "";
   return { sid, adminId };
 }
 
@@ -236,9 +240,7 @@ describe("GET /api/me", () => {
 describe("POST /api/admin/invites", () => {
   it("admin can create an invite code", async () => {
     const { sid } = await adminLogin();
-    const res = await request(app)
-      .post("/api/admin/invites")
-      .set("Cookie", `sid=${sid}`);
+    const res = await request(app).post("/api/admin/invites").set("Cookie", `sid=${sid}`);
     expect(res.status).toBe(201);
     expect(typeof res.body.inviteCode).toBe("string");
     expect(res.body.inviteCode.length).toBeGreaterThan(0);
@@ -256,9 +258,7 @@ describe("POST /api/admin/invites", () => {
     const sidCookie = cookieHeader.find((c) => c.startsWith("sid=")) ?? "";
     const sid = sidCookie.split(";")[0]?.slice(4) ?? "";
 
-    const res = await request(app)
-      .post("/api/admin/invites")
-      .set("Cookie", `sid=${sid}`);
+    const res = await request(app).post("/api/admin/invites").set("Cookie", `sid=${sid}`);
     expect(res.status).toBe(403);
   });
 

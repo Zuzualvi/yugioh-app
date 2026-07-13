@@ -4,15 +4,15 @@ Build-time data tooling that produces the frozen Edison card catalog consumed by
 
 ## What's in here
 
-| Path | Description |
-|---|---|
-| `out/edison-card-catalog.json` | Frozen catalog of 3,681 Edison-legal cards (CardCatalog shape, Spec 13 §2) |
-| `out/alias-index.json` | `{ aliasPasscode: basePasscode }` — 7 pre-errata alias entries |
-| `src/index.ts` | Typed loader: `loadCatalog`, `buildCardMap`, `loadAliasIndex`, `resolveAlias` |
-| `scripts/build-catalog.mjs` | Pipeline: fetches YGOPRODeck, filters to allow-list, writes catalog |
-| `scripts/download-images.mjs` | Image fetcher (sample or full pull) |
-| `scripts/verify.mjs` | 31-assertion acceptance suite; exits non-zero on any failure |
-| `images/` | **gitignored** — self-hosted card images; never committed |
+| Path                           | Description                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| `out/edison-card-catalog.json` | Frozen catalog of 3,681 Edison-legal cards (CardCatalog shape, Spec 13 §2)    |
+| `out/alias-index.json`         | `{ aliasPasscode: basePasscode }` — 7 pre-errata alias entries                |
+| `src/index.ts`                 | Typed loader: `loadCatalog`, `buildCardMap`, `loadAliasIndex`, `resolveAlias` |
+| `scripts/build-catalog.mjs`    | Pipeline: fetches YGOPRODeck, filters to allow-list, writes catalog           |
+| `scripts/download-images.mjs`  | Image fetcher (sample or full pull)                                           |
+| `scripts/verify.mjs`           | 31-assertion acceptance suite; exits non-zero on any failure                  |
+| `images/`                      | **gitignored** — self-hosted card images; never committed                     |
 
 ## Catalog overview
 
@@ -26,10 +26,10 @@ Build-time data tooling that produces the frozen Edison card catalog consumed by
 
 Two cards in the allow-list use passcodes that differ from YGOPRODeck's canonical ID:
 
-| Allowlist passcode | Card | YGOPRODeck ID | Reason |
-|---|---|---|---|
-| `0` | Orichalcos Shunoros | `7634581` | Anime card; virtual passcode in community allow-list |
-| `80604091` | Ultimate Offering | `80604092` | Off-by-one in YGOPRODeck full-dump vs single-card API |
+| Allowlist passcode | Card                | YGOPRODeck ID | Reason                                                |
+| ------------------ | ------------------- | ------------- | ----------------------------------------------------- |
+| `0`                | Orichalcos Shunoros | `7634581`     | Anime card; virtual passcode in community allow-list  |
+| `80604091`         | Ultimate Offering   | `80604092`    | Off-by-one in YGOPRODeck full-dump vs single-card API |
 
 These cards use `imageId` pointing to the YGOPRODeck ID so image fetches succeed.
 
@@ -37,15 +37,15 @@ These cards use `imageId` pointing to the YGOPRODeck ID so image fetches succeed
 
 Seven pre-errata card scripts in the Edison banlist use substitute passcodes (`511002xxx`). These are NOT separate catalog entries — the catalog contains only the base passcodes. The `alias-index.json` carries the mapping; base cards inherit their banlist status via a reverse-alias lookup.
 
-| Alias passcode | Base passcode | Card | Banlist |
-|---|---|---|---|
-| 511002993 | 50321796 | Brionac, Dragon of the Ice Barrier | limited |
-| 511002631 | 26202165 | Sangan | limited |
-| 511002992 | 14878871 | Rescue Cat | limited |
-| 511002994 | 7391448 | Goyo Guardian | limited |
-| 511002995 | 87910978 | Brain Control | forbidden |
-| 511002996 | 61740673 | Imperial Order | forbidden |
-| 511002997 | 77565204 | Future Fusion | forbidden |
+| Alias passcode | Base passcode | Card                               | Banlist   |
+| -------------- | ------------- | ---------------------------------- | --------- |
+| 511002993      | 50321796      | Brionac, Dragon of the Ice Barrier | limited   |
+| 511002631      | 26202165      | Sangan                             | limited   |
+| 511002992      | 14878871      | Rescue Cat                         | limited   |
+| 511002994      | 7391448       | Goyo Guardian                      | limited   |
+| 511002995      | 87910978      | Brain Control                      | forbidden |
+| 511002996      | 61740673      | Imperial Order                     | forbidden |
+| 511002997      | 77565204      | Future Fusion                      | forbidden |
 
 ## Regenerating the catalog
 
@@ -85,9 +85,9 @@ Images land in `packages/card-data/images/` which is gitignored.
 ```ts
 import { loadCatalog, buildCardMap, loadAliasIndex, resolveAlias } from "@yugioh-app/card-data";
 
-const catalog = loadCatalog();            // CardCatalog
-const cardMap = buildCardMap(catalog);    // Map<number, CardDTO>
-const aliasIndex = loadAliasIndex();      // AliasIndex
+const catalog = loadCatalog(); // CardCatalog
+const cardMap = buildCardMap(catalog); // Map<number, CardDTO>
+const aliasIndex = loadAliasIndex(); // AliasIndex
 
 // Look up by passcode
 const brionac = cardMap.get(50321796);
