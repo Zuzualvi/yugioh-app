@@ -23,6 +23,7 @@ const catalog = JSON.parse(fs.readFileSync(path.join(OUT, "edison-card-catalog.j
 const aliasIndex = JSON.parse(fs.readFileSync(path.join(OUT, "alias-index.json"), "utf8"));
 const allowlist = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"));
 const dt01Excluded = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "dt01-excluded.json"), "utf8"));
+const aliasMap = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-alias-map.json"), "utf8"));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,7 +41,19 @@ function check(label, result, detail = "") {
   }
 }
 
+// Known passcode remaps: allow-list pc → catalog pc
+// Orichalcos Shunoros had allow-list pc=0 (anime virtual passcode); remapped to
+// real YGOPRODeck id=7634581 so the catalog never contains pc=0.
+const KNOWN_PC_REMAPS = { 0: 7634581 };
+
+// Build a set of valid catalog passcodes: allow-list passcodes + known remaps
 const allowedSet = new Set(allowlist.cards.map((c) => c.passcode));
+// After remaps: 0 → 7634581
+for (const [from, to] of Object.entries(KNOWN_PC_REMAPS)) {
+  allowedSet.delete(Number(from));
+  allowedSet.add(to);
+}
+
 const dt01Set = new Set(dt01Excluded.passcodes);
 const byPasscode = new Map(catalog.cards.map((c) => [c.passcode, c]));
 
@@ -61,12 +74,35 @@ check(
 );
 
 // ---------------------------------------------------------------------------
-// §2  Pool membership
+// §2  Pool membership + passcode integrity
 // ---------------------------------------------------------------------------
-console.log("\n§2  Pool membership");
+console.log("\n§2  Pool membership + passcode integrity");
+
+// Every passcode must be > 0
+const zeroOrNeg = catalog.cards.filter((c) => c.passcode <= 0);
+check(
+  "every catalog passcode > 0",
+  zeroOrNeg.length === 0,
+  zeroOrNeg.length > 0 ? `offenders: ${zeroOrNeg.map((c) => c.passcode).join(",")}` : "all clear",
+);
+
+// All passcodes must be unique
+const seen = new Set();
+const duplicates = [];
+for (const c of catalog.cards) {
+  if (seen.has(c.passcode)) duplicates.push(c.passcode);
+  seen.add(c.passcode);
+}
+check(
+  "all passcodes are unique",
+  duplicates.length === 0,
+  duplicates.length > 0 ? `duplicates: ${duplicates.join(",")}` : "all clear",
+);
+
+// Every catalog passcode ∈ allow-list (after known remaps)
 const notInAllowlist = catalog.cards.filter((c) => !allowedSet.has(c.passcode));
 check(
-  "every catalog passcode ∈ allow-list",
+  "every catalog passcode ∈ allow-list (accounting for known remaps)",
   notInAllowlist.length === 0,
   notInAllowlist.length > 0
     ? `offenders: ${notInAllowlist
@@ -76,6 +112,7 @@ check(
     : "all clear",
 );
 
+// No catalog passcode ∈ dt01-excluded
 const inDt01 = catalog.cards.filter((c) => dt01Set.has(c.passcode));
 check(
   "no catalog passcode ∈ dt01-excluded",
@@ -93,10 +130,10 @@ check(
 // ---------------------------------------------------------------------------
 console.log("\n§3  Banlist spot-checks");
 
-// Forbidden: Dark Hole 53129443, Pot of Greed 55144522
 for (const [pc, name] of [
   [53129443, "Dark Hole"],
   [55144522, "Pot of Greed"],
+  [83764719, "Monster Reborn"],
 ]) {
   const card = byPasscode.get(pc);
   check(
@@ -106,17 +143,6 @@ for (const [pc, name] of [
   );
 }
 
-// Forbidden: Monster Reborn 83764719
-{
-  const card = byPasscode.get(83764719);
-  check(
-    "Monster Reborn (83764719) → forbidden",
-    card?.banlist === "forbidden",
-    card ? `got "${card.banlist}"` : "missing from catalog",
-  );
-}
-
-// Limited: Reinforcement of the Army 32807846, Summoner Monk 423585
 for (const [pc, name] of [
   [32807846, "Reinforcement of the Army"],
   [423585, "Summoner Monk"],
@@ -129,7 +155,6 @@ for (const [pc, name] of [
   );
 }
 
-// Semi-limited: Cyber Dragon 70095154
 for (const [pc, name] of [
   [70095154, "Cyber Dragon"],
   [15341821, "Dandylion"],
@@ -142,22 +167,16 @@ for (const [pc, name] of [
   );
 }
 
-// Unlimited: Blue-Eyes White Dragon 89631139
-for (const [pc, name] of [
-  [89631139, "Blue-Eyes White Dragon"],
-  [46986414, "Dark Hole (not in pool — should be absent, banned)"],
-]) {
-  const card = byPasscode.get(pc);
-  if (pc === 89631139) {
-    check(
-      `${name} (${pc}) → unlimited`,
-      card?.banlist === "unlimited",
-      card ? `got "${card.banlist}"` : "missing from catalog",
-    );
-  }
+{
+  const card = byPasscode.get(89631139);
+  check(
+    "Blue-Eyes White Dragon (89631139) → unlimited",
+    card?.banlist === "unlimited",
+    card ? `got "${card.banlist}"` : "missing from catalog",
+  );
 }
 
-// Pre-errata alias banlist: Brionac base (50321796) inherits "limited" from alias 511002993
+// Pre-errata alias banlist inheritance
 {
   const brionac = byPasscode.get(50321796);
   check(
@@ -166,7 +185,6 @@ for (const [pc, name] of [
     brionac ? `got "${brionac.banlist}"` : "missing from catalog",
   );
 }
-// Imperial Order base (61740673) inherits "forbidden" via alias 511002996
 {
   const io = byPasscode.get(61740673);
   check(
@@ -181,7 +199,6 @@ for (const [pc, name] of [
 // ---------------------------------------------------------------------------
 console.log("\n§4  isExtraDeck");
 
-// All Fusion/Synchro cards must have isExtraDeck=true
 const wrongFusion = catalog.cards.filter(
   (c) => (c.frame === "fusion" || c.frame === "synchro") && !c.isExtraDeck,
 );
@@ -196,7 +213,6 @@ check(
     : "all clear",
 );
 
-// All Ritual/Normal/Effect/Spell/Trap must have isExtraDeck=false
 const wrongMain = catalog.cards.filter(
   (c) => ["ritual", "normal", "effect", "spell", "trap"].includes(c.frame) && c.isExtraDeck,
 );
@@ -211,7 +227,6 @@ check(
     : "all clear",
 );
 
-// Spot-checks
 const spotChecks = [
   { pc: 50321796, name: "Brionac (Synchro)", expect: true },
   { pc: 44508094, name: "Stardust Dragon (Synchro)", expect: true },
@@ -237,21 +252,26 @@ for (const { pc, name, expect } of spotChecks) {
 // ---------------------------------------------------------------------------
 console.log("\n§5  Alias resolution");
 
-// alias-index must contain all 7 pre-errata aliases
+// alias-index must have 7 pre-errata entries at minimum; with cdb it should be 177
 check(
-  "alias-index has 7 pre-errata alias entries",
-  Object.keys(aliasIndex).length === 7,
+  "alias-index has ≥7 entries (pre-errata minimum)",
+  Object.keys(aliasIndex).length >= 7,
+  `got ${Object.keys(aliasIndex).length}`,
+);
+check(
+  "alias-index has 177 entries (7 pre-errata + 170 cdb alt-arts)",
+  Object.keys(aliasIndex).length === 177,
   `got ${Object.keys(aliasIndex).length}`,
 );
 
-// Brionac: alias-index["511002993"] == 50321796
+// Brionac pre-errata alias
 check(
   "alias-index['511002993'] → 50321796 (Brionac base)",
   aliasIndex["511002993"] === 50321796,
   `got ${aliasIndex["511002993"]}`,
 );
 
-// Brionac base in catalog: aliasOf=null, imageId=50321796
+// Brionac base: aliasOf=null, imageId=own passcode
 {
   const brionac = byPasscode.get(50321796);
   check(
@@ -260,39 +280,46 @@ check(
     brionac ? `got ${brionac.aliasOf}` : "missing",
   );
   check(
-    "Brionac base (50321796) imageId=50321796 in catalog",
+    "Brionac base (50321796) imageId=50321796",
     brionac?.imageId === 50321796,
     brionac ? `got ${brionac.imageId}` : "missing",
   );
 }
 
-// All catalog cards: aliasOf=null (catalog only contains bases)
+// All catalog cards have aliasOf=null (catalog contains only bases)
 const hasAlias = catalog.cards.filter((c) => c.aliasOf !== null);
 check(
-  "all catalog cards have aliasOf=null (catalog contains only bases)",
+  "all catalog cards have aliasOf=null (bases only)",
   hasAlias.length === 0,
   hasAlias.length > 0 ? `${hasAlias.length} with non-null aliasOf` : "all clear",
 );
 
-// imageId == passcode for all catalog cards except the 2 with known passcode
-// corrections (passcode=0 → imageId=7634581; passcode=80604091 → imageId=80604092).
-const KNOWN_IMAGE_OVERRIDES = new Set([0, 80604091]);
+// imageId checks: most cards imageId==passcode; known exceptions are the 2 corrections
+const KNOWN_IMAGE_OVERRIDES = new Set([80604091]); // Ultimate Offering: imageId=80604092
 const wrongImageId = catalog.cards.filter(
   (c) => c.imageId !== c.passcode && !KNOWN_IMAGE_OVERRIDES.has(c.passcode),
 );
 check(
-  "imageId == passcode for all cards except known passcode-correction cards",
+  "imageId == passcode for all cards except known corrections",
   wrongImageId.length === 0,
   wrongImageId.length > 0 ? `${wrongImageId.length} unexpected mismatches` : "all clear",
 );
-// Spot-check the overrides
+// Spot-check the remapped Orichalcos Shunoros (pc=7634581, imageId=7634581)
 {
-  const orichalcos = byPasscode.get(0);
+  const orichalcos = byPasscode.get(7634581);
   check(
-    "Orichalcos Shunoros (pc=0) imageId=7634581 (YGOPRODeck correction)",
+    "Orichalcos Shunoros (pc=7634581, remapped from 0) imageId=7634581",
     orichalcos?.imageId === 7634581,
     orichalcos ? `got ${orichalcos.imageId}` : "missing",
   );
+  check(
+    "Orichalcos Shunoros (pc=7634581) passcode > 0",
+    (orichalcos?.passcode ?? 0) > 0,
+    orichalcos ? `pc=${orichalcos.passcode}` : "missing",
+  );
+}
+// Ultimate Offering correction
+{
   const uo = byPasscode.get(80604091);
   check(
     "Ultimate Offering (pc=80604091) imageId=80604092 (YGOPRODeck correction)",

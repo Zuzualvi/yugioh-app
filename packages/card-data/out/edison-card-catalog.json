@@ -1,23 +1,8 @@
 {
   "format": "edison-2010-03",
-  "generatedAt": "2026-07-13T11:09:26.250Z",
+  "generatedAt": "2026-07-13T11:51:51.810Z",
   "count": 3681,
   "cards": [
-    {
-      "passcode": 0,
-      "name": "Orichalcos Shunoros",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Machine",
-      "attribute": "DARK",
-      "level": 10,
-      "atk": -1,
-      "def": 0,
-      "desc": "This card cannot be Normal Summoned or Set. If a Normal Monster you control is destroyed by battle, you can Special Summon this card from your hand. This card gains 1000 ATK for each monster your opponent controls. Face-up Level 4 Normal Monsters on the field cannot be destroyed by card effects.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 7634581
-    },
     {
       "passcode": 27551,
       "name": "Limit Reverse",
@@ -4547,6 +4532,21 @@
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 7625614
+    },
+    {
+      "passcode": 7634581,
+      "name": "Orichalcos Shunoros",
+      "frame": "effect",
+      "isExtraDeck": false,
+      "race": "Machine",
+      "attribute": "DARK",
+      "level": 10,
+      "atk": -1,
+      "def": 0,
+      "desc": "This card cannot be Normal Summoned or Set. If a Normal Monster you control is destroyed by battle, you can Special Summon this card from your hand. This card gains 1000 ATK for each monster your opponent controls. Face-up Level 4 Normal Monsters on the field cannot be destroyed by card effects.",
+      "banlist": "unlimited",
+      "aliasOf": null,
+      "imageId": 7634581
     },
     {
       "passcode": 7672244,

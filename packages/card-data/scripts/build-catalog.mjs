@@ -6,26 +6,48 @@
  * out/edison-card-catalog.json + out/alias-index.json.
  *
  * Run: node scripts/build-catalog.mjs
- * Requires network access (YGOPRODeck cardinfo.php).
+ * Requires network access (YGOPRODeck cardinfo.php) and sqlite3 (for cdb alias lookup).
  *
- * Known YGOPRODeck passcode discrepancies (allow-list id → YGOPRODeck id):
- *   80604091 (Ultimate Offering) → 80604092  (off-by-one in YGOP database)
- *   0        (Orichalcos Shunoros) → 7634581  (anime card, virtual passcode in community list)
+ * Passcode handling:
+ *   • Allow-list passcode 0 (Orichalcos Shunoros, anime card) → remapped to its
+ *     real YGOPRODeck id 7634581 as the catalog passcode, ensuring every entry > 0.
+ *   • Allow-list passcode 80604091 (Ultimate Offering) → metadata fetched from
+ *     YGOPRODeck id 80604092 (off-by-one in full dump); catalog passcode stays
+ *     80604091 (positive, canonical in lflist and allow-list).
+ *
+ * Alias-index:
+ *   Built from two sources (union, deduplicated):
+ *   1. Spike-B pre-errata aliases (7 entries, 511002xxx → base).
+ *   2. cards.cdb `alias` field — all rows where alias(base) is in the Edison pool
+ *      (alt-art / "treated as" aliases; 170 entries from BabelCDB).
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const SPIKE_B = path.resolve(ROOT, "../../spikes/spike-b-dataset/out");
+const CDB_PATH = path.resolve(ROOT, "../../spikes/spike-a-ruleset/vendor/cdb/cards.cdb");
 const OUT = path.join(ROOT, "out");
 
-// Passcode corrections: allowlist passcode → YGOPRODeck id to look up
+// ---------------------------------------------------------------------------
+// Passcode corrections
+// allowlistPc → { ygopId: number, catalogPc: number }
+// ygopId:    which YGOPRODeck id to fetch metadata from
+// catalogPc: the passcode to use in the catalog (must be > 0 and unique)
+// ---------------------------------------------------------------------------
 const PASSCODE_CORRECTIONS = {
-  80604091: 80604092, // Ultimate Offering: off-by-one in YGOPRODeck full dump
-  0: 7634581, // Orichalcos Shunoros: anime card, virtual passcode in community list
+  // Orichalcos Shunoros: allow-list uses virtual pc=0 (anime).
+  // Remap to its real YGOPRODeck ID so the catalog never has pc=0.
+  0: { ygopId: 7634581, catalogPc: 7634581 },
+  // Ultimate Offering: YGOPRODeck full dump stores id=80604092 but the lflist
+  // and allow-list use 80604091 (off-by-one). Keep allow-list pc as canonical.
+  80604091: { ygopId: 80604092, catalogPc: 80604091 },
 };
 
 // ---------------------------------------------------------------------------
@@ -46,7 +68,6 @@ function parseLflist(conf) {
     if (!trimmed || trimmed.startsWith("!") || trimmed.startsWith("$") || trimmed.startsWith("#")) {
       continue;
     }
-    // Format: "<passcode> <count> --<name>"
     const m = trimmed.match(/^(\d+)\s+([012])\s/);
     if (m) {
       result[Number(m[1])] = Number(m[2]);
@@ -59,28 +80,68 @@ const lflist = parseLflist(lflConf);
 
 // Build REVERSE alias map: base_passcode → alias_passcode
 // Pre-errata aliases appear in the lflist under the alias passcode, not the
-// base passcode. This reverse map lets base cards inherit their banlist status.
+// base passcode. This lets base cards inherit their banlist status.
 const baseToAlias = {};
 for (const [aliasPc, { base }] of Object.entries(aliasMap)) {
   baseToAlias[base] = Number(aliasPc);
 }
 
 // ---------------------------------------------------------------------------
-// Build alias-index.json { aliasPasscode(string): basePasscode(number) }
+// Build alias-index from two sources
 // ---------------------------------------------------------------------------
-const aliasIndex = {};
-for (const [aliasPc, { base }] of Object.entries(aliasMap)) {
-  aliasIndex[aliasPc] = base;
+function buildAliasIndex(catalogPcSet) {
+  const index = {}; // { aliasPasscode(string): basePasscode(number) }
+
+  // Source 1: Spike-B pre-errata aliases (7 entries)
+  for (const [aliasPc, { base }] of Object.entries(aliasMap)) {
+    index[aliasPc] = base;
+  }
+
+  // Source 2: cards.cdb `alias` field (alt-art / "treated as" mapping)
+  // rows: (id, alias) where alias is the base passcode.
+  // Include when the base (alias column) is in the Edison catalog passcode set.
+  if (!fs.existsSync(CDB_PATH)) {
+    console.warn(`WARNING: cards.cdb not found at ${CDB_PATH} — skipping cdb alias reconciliation`);
+    return index;
+  }
+
+  let Database;
+  try {
+    Database = require("better-sqlite3");
+  } catch {
+    console.warn("WARNING: better-sqlite3 not available — skipping cdb alias reconciliation");
+    return index;
+  }
+
+  const db = new Database(CDB_PATH, { readonly: true });
+  const rows = db.prepare("SELECT id, alias FROM datas WHERE alias != 0").all();
+  db.close();
+
+  let cdbAdded = 0;
+  for (const { id, alias } of rows) {
+    // Only include when the base (alias column) is in the Edison catalog
+    if (!catalogPcSet.has(alias)) continue;
+    const key = String(id);
+    if (!index[key]) {
+      index[key] = alias;
+      cdbAdded++;
+    }
+  }
+  console.log(`  → added ${cdbAdded} alt-art alias entries from cards.cdb`);
+
+  return index;
 }
 
 // ---------------------------------------------------------------------------
-// Banlist resolver: own passcode first, then reverse-alias lookup
+// Banlist resolver
 // ---------------------------------------------------------------------------
-function resolveBanlist(passcode) {
-  if (lflist[passcode] !== undefined) {
-    return countToBanlist(lflist[passcode]);
+function resolveBanlist(allowlistPc) {
+  // Check the allow-list passcode first (used in lflist for most cards)
+  if (lflist[allowlistPc] !== undefined) {
+    return countToBanlist(lflist[allowlistPc]);
   }
-  const aliasPc = baseToAlias[passcode];
+  // Pre-errata bases: their alias passcode is in the lflist
+  const aliasPc = baseToAlias[allowlistPc];
   if (aliasPc !== undefined && lflist[aliasPc] !== undefined) {
     return countToBanlist(lflist[aliasPc]);
   }
@@ -112,7 +173,6 @@ const FRAME_MAP = {
 
 function deriveFrame(card) {
   const ft = (card.frameType ?? "").toLowerCase();
-  // Handle pendulum variants (e.g. "effect_pendulum")
   for (const key of Object.keys(FRAME_MAP)) {
     if (ft.startsWith(key)) return FRAME_MAP[key];
   }
@@ -125,7 +185,7 @@ function deriveIsExtraDeck(card) {
 }
 
 // ---------------------------------------------------------------------------
-// Fetch full YGOPRODeck dump (all cards)
+// Fetch full YGOPRODeck dump
 // ---------------------------------------------------------------------------
 async function fetchFullDump() {
   console.log("Fetching full YGOPRODeck dump (this may take a moment)…");
@@ -149,53 +209,43 @@ async function main() {
   const allowedPasscodes = new Set(allowlist.cards.map((c) => c.passcode));
   const dt01Set = new Set(dt01Excluded.passcodes);
 
-  // Sanity: no DT01 in allow-list
   const overlap = [...allowedPasscodes].filter((p) => dt01Set.has(p));
   if (overlap.length > 0) {
     console.warn("WARNING: DT01 passcodes found in allow-list:", overlap);
   }
 
-  // Fetch all cards from YGOPRODeck
   const allCards = await fetchFullDump();
-
-  // Build id → YGOPRODeck record
   const ygopMap = new Map();
   for (const card of allCards) {
     ygopMap.set(card.id, card);
   }
 
-  // Build catalog cards
   const catalogCards = [];
   const corrections = [];
 
-  for (const { passcode, name } of allowlist.cards) {
-    let raw = ygopMap.get(passcode);
+  for (const { passcode: allowlistPc, name } of allowlist.cards) {
+    let raw = ygopMap.get(allowlistPc);
+    let catalogPc = allowlistPc;
+    let imageId = allowlistPc;
 
-    // Apply known passcode corrections (off-by-one or virtual IDs)
-    if (!raw && PASSCODE_CORRECTIONS[passcode] !== undefined) {
-      const correctedId = PASSCODE_CORRECTIONS[passcode];
-      raw = ygopMap.get(correctedId);
+    const correction = PASSCODE_CORRECTIONS[allowlistPc];
+    if (!raw && correction) {
+      raw = ygopMap.get(correction.ygopId);
       if (raw) {
-        corrections.push({
-          allowlistPc: passcode,
-          name,
-          usedYgopId: correctedId,
-        });
+        catalogPc = correction.catalogPc;
+        imageId = correction.ygopId;
+        corrections.push({ allowlistPc, name, catalogPc, ygopId: correction.ygopId });
       }
     }
 
     if (!raw) {
-      console.warn(`  SKIP: passcode=${passcode} "${name}" not found in YGOPRODeck`);
+      console.warn(`  SKIP: passcode=${allowlistPc} "${name}" not found in YGOPRODeck`);
       continue;
     }
 
-    // imageId: use the YGOPRODeck ID when a passcode correction was applied,
-    // because the image is fetched from YGOPRODeck using its own ID.
-    // For all other cards, imageId == passcode.
-    const imageId = PASSCODE_CORRECTIONS[passcode] ?? passcode;
-
+    // banlist: resolved using the ALLOW-LIST passcode (so lflist lookups remain correct)
     const dto = {
-      passcode, // allow-list passcode (canonical game ID)
+      passcode: catalogPc,
       name: raw.name,
       frame: deriveFrame(raw),
       isExtraDeck: deriveIsExtraDeck(raw),
@@ -205,9 +255,9 @@ async function main() {
       atk: raw.atk ?? null,
       def: raw.def ?? null,
       desc: raw.desc ?? "",
-      banlist: resolveBanlist(passcode),
-      aliasOf: null, // catalog cards are bases; aliases in alias-index
-      imageId, // YGOPRODeck-compatible ID for image/<imageId>.jpg
+      banlist: resolveBanlist(allowlistPc),
+      aliasOf: null,
+      imageId,
     };
     catalogCards.push(dto);
   }
@@ -215,16 +265,20 @@ async function main() {
   // Sort ascending by passcode
   catalogCards.sort((a, b) => a.passcode - b.passcode);
 
-  // Build catalog artifact
+  // Build the alias-index using the final catalog passcode set
+  const catalogPcSet = new Set(catalogCards.map((c) => c.passcode));
+  console.log("\nBuilding alias-index…");
+  const aliasIndex = buildAliasIndex(catalogPcSet);
+
+  // Write outputs
+  fs.mkdirSync(OUT, { recursive: true });
+
   const catalog = {
     format: "edison-2010-03",
     generatedAt: new Date().toISOString(),
     count: catalogCards.length,
     cards: catalogCards,
   };
-
-  // Write outputs
-  fs.mkdirSync(OUT, { recursive: true });
 
   fs.writeFileSync(
     path.join(OUT, "edison-card-catalog.json"),
@@ -236,19 +290,24 @@ async function main() {
   fs.writeFileSync(path.join(OUT, "alias-index.json"), JSON.stringify(aliasIndex, null, 2), "utf8");
   console.log(`✓ Written out/alias-index.json  (${Object.keys(aliasIndex).length} alias entries)`);
 
-  // Tolerance report
-  console.log(`\n=== Tolerance Report ===`);
+  // Report
+  console.log(`\n=== Build Report ===`);
   console.log(`Allow-list count:  ${allowlist.count}`);
   console.log(`Catalog count:     ${catalog.count}`);
-  console.log(`Delta:             ${allowlist.count - catalog.count}`);
+  console.log(
+    `Delta:             ${allowlist.count - catalog.count}  (passcode-0 entry remapped, not excluded)`,
+  );
   if (corrections.length > 0) {
     console.log(`\nPasscode corrections applied (${corrections.length}):`);
     for (const c of corrections) {
       console.log(
-        `  allow-list pc=${c.allowlistPc} "${c.name}" → used YGOPRODeck id=${c.usedYgopId}`,
+        `  allow-list pc=${c.allowlistPc} "${c.name}"` +
+          ` → catalog pc=${c.catalogPc}, ygop id=${c.ygopId}`,
       );
     }
   }
+  console.log(`\nAlias-index: ${Object.keys(aliasIndex).length} entries`);
+  console.log(`  7 pre-errata (Spike-B) + cdb alt-arts`);
 }
 
 main().catch((err) => {

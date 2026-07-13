@@ -6,7 +6,6 @@ describe("loadCatalog", () => {
     const catalog = loadCatalog();
     expect(catalog.format).toBe("edison-2010-03");
     expect(catalog.count).toBe(catalog.cards.length);
-    // Allow-list target is 3681; catalog must be within 5
     expect(Math.abs(catalog.count - 3681)).toBeLessThanOrEqual(5);
   });
 
@@ -14,6 +13,22 @@ describe("loadCatalog", () => {
     const { cards } = loadCatalog();
     for (let i = 1; i < cards.length; i++) {
       expect(cards[i]!.passcode).toBeGreaterThanOrEqual(cards[i - 1]!.passcode);
+    }
+  });
+
+  it("every card has passcode > 0", () => {
+    const { cards } = loadCatalog();
+    for (const card of cards) {
+      expect(card.passcode).toBeGreaterThan(0);
+    }
+  });
+
+  it("all passcodes are unique", () => {
+    const { cards } = loadCatalog();
+    const seen = new Set<number>();
+    for (const card of cards) {
+      expect(seen.has(card.passcode)).toBe(false);
+      seen.add(card.passcode);
     }
   });
 });
@@ -24,7 +39,6 @@ describe("buildCardMap", () => {
     const map = buildCardMap(catalog);
     expect(map.size).toBe(catalog.count);
 
-    // Spot-check: Blue-Eyes White Dragon
     const bewd = map.get(89631139);
     expect(bewd).toBeDefined();
     expect(bewd?.name).toContain("Blue-Eyes White Dragon");
@@ -33,7 +47,7 @@ describe("buildCardMap", () => {
     expect(bewd?.banlist).toBe("unlimited");
   });
 
-  it("Brionac is Synchro, isExtraDeck=true, banlist=limited", () => {
+  it("Brionac is Synchro, isExtraDeck=true, banlist=limited (pre-errata alias)", () => {
     const catalog = loadCatalog();
     const map = buildCardMap(catalog);
     const brionac = map.get(50321796);
@@ -49,12 +63,22 @@ describe("buildCardMap", () => {
     const io = map.get(61740673);
     expect(io?.banlist).toBe("forbidden");
   });
+
+  it("Orichalcos Shunoros remapped from pc=0 to pc=7634581", () => {
+    const catalog = loadCatalog();
+    const map = buildCardMap(catalog);
+    expect(map.has(0)).toBe(false);
+    const orichalcos = map.get(7634581);
+    expect(orichalcos).toBeDefined();
+    expect(orichalcos!.passcode).toBe(7634581);
+    expect(orichalcos!.passcode).toBeGreaterThan(0);
+  });
 });
 
 describe("loadAliasIndex", () => {
-  it("contains all 7 pre-errata aliases", () => {
+  it("contains all 7 pre-errata aliases + cdb alt-arts (177 total)", () => {
     const aliasIndex = loadAliasIndex();
-    expect(Object.keys(aliasIndex)).toHaveLength(7);
+    expect(Object.keys(aliasIndex).length).toBe(177);
   });
 
   it("maps Brionac alias 511002993 to base 50321796", () => {
