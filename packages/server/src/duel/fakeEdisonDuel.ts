@@ -16,6 +16,7 @@ import type { DuelEngine, RawEngineMessage, EngineStepResult } from "./engineInt
 export interface FakeStep {
   status: "waiting" | "continue" | "ended";
   messages: RawEngineMessage[];
+  events?: RawEngineMessage[];
   awaiting?: { seat: Seat };
 }
 
@@ -54,12 +55,12 @@ export class FakeEdisonDuel implements DuelEngine {
 
   step(): EngineStepResult {
     const s = this.steps[this.stepIndex];
-    if (!s) return { status: "ended", messages: [] };
+    if (!s) return { status: "ended", messages: [], events: [] };
     this.stepIndex++;
     if (s.status === "ended") {
       this._ended = true;
     }
-    return s;
+    return { ...s, events: s.events ?? [] };
   }
 
   respond(response: EngineResponse): void {

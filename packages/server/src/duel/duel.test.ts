@@ -453,6 +453,59 @@ describe("WebSocket relay", () => {
     });
   });
 
+  it("events in step result are relayed before messages, with per-seat redaction", async () => {
+    // DRAW event has player:1 (hidden from seat 0), MOVE has no player (public broadcast).
+    // After seat 0 responds, the engine steps → ended with these events.
+    const customDuel = new FakeEdisonDuel([
+      {
+        status: "waiting",
+        messages: [],
+        awaiting: { seat: 0 },
+      },
+      {
+        status: "ended",
+        messages: [],
+        events: [
+          { type: 90, name: "DRAW", player: 1 as 0 | 1 }, // seat-1-only: hidden from seat 0
+          { type: 50, name: "MOVE" }, // public: no player field → both seats see it
+        ],
+      },
+    ]);
+    manager = new DuelManager(async () => {
+      _capturedEngine = customDuel;
+      return customDuel as DuelEngine;
+    }, fakeReplay);
+    app = createApp(db, catalog, manager);
+
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+      await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+      // Seat 0 responds → engine steps to "ended" emitting events
+      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 1 } }));
+
+      await waitForMessage(s0, (m) => m.type === "DUEL_END");
+      await waitForMessage(s1, (m) => m.type === "DUEL_END");
+
+      // Public MOVE event (no player) must reach both seats
+      const s0Move = s0.messages.filter((m) => m.type === "MSG" && m.msg.name === "MOVE");
+      const s1Move = s1.messages.filter((m) => m.type === "MSG" && m.msg.name === "MOVE");
+      expect(s0Move.length).toBe(1);
+      expect(s1Move.length).toBe(1);
+
+      // DRAW event has player:1, so seat 0 must NOT receive it; seat 1 must receive it
+      const s0Draw = s0.messages.filter((m) => m.type === "MSG" && m.msg.name === "DRAW");
+      const s1Draw = s1.messages.filter((m) => m.type === "MSG" && m.msg.name === "DRAW");
+      expect(s0Draw.length).toBe(0);
+      expect(s1Draw.length).toBe(1);
+
+      s0.close();
+      s1.close();
+    });
+  });
+
   it("RESPONSE from wrong seat (not on clock) returns ERROR", async () => {
     const setup = await joinDuel(await createDuelAsAlice());
     await withServer(async (port) => {

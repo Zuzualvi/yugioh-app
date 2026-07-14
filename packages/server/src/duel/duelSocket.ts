@@ -78,7 +78,18 @@ function stepAndBroadcast(
 ): void {
   const result = engine.step();
 
-  // Broadcast per-seat redacted messages
+  // Events happen chronologically before the decision that ends the step, so forward them first.
+  for (const event of result.events) {
+    for (const [seat, ws] of relay.seats) {
+      if (!ws) continue;
+      const redacted = engine.redactMessageForSeat(event as RawEngineMessage, seat);
+      if (redacted) {
+        send(ws, { type: "MSG", msg: redacted });
+      }
+    }
+  }
+
+  // Broadcast per-seat redacted decision/routing messages
   for (const msg of result.messages) {
     for (const [seat, ws] of relay.seats) {
       if (!ws) continue;
