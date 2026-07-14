@@ -72,11 +72,19 @@ jobs:
             echo "WARN: BOOTSTRAP_ADMIN_* secrets not set — skipping secrets staging (set them in repo Settings → Secrets)"
           fi
 
+      # Preflight diagnostics (non-fatal) — surfaces flyctl version + app/machine
+      # state in the run log to diagnose deploy failures we can't otherwise see.
+      - name: Fly preflight diagnostics (non-fatal)
+        run: |
+          flyctl version || true
+          flyctl status --app yugioh-app || true
+
       # ── MUST SUCCEED ──────────────────────────────────────────────────────────
       # This is the real deploy. A failure here means the image didn't land;
-      # do NOT add || true or continue-on-error.
+      # do NOT add || true or continue-on-error. --verbose surfaces the exact
+      # remote-build / release step that fails.
       - name: Deploy image to Fly (remote build from Dockerfile)
-        run: flyctl deploy --remote-only --app yugioh-app
+        run: flyctl deploy --remote-only --app yugioh-app --verbose
 
       # ── BEST-EFFORT (idempotent Fly housekeeping) ──────────────────────────
       # IPs and certs are already allocated after the first deploy; these are
