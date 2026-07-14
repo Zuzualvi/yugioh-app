@@ -1,23 +1,25 @@
-import type { WsMessage } from "@yugioh-app/contracts";
-
 // ---------------------------------------------------------------------------
-// Adapter boundary — the engine talks to an ocgcore process behind this
-// interface. Implementation lives in a later spec.
+// @yugioh-app/engine — public surface
+//
+// Server-side Edison duel core wrapping ocgcore-wasm.
+// Web MUST NOT import this package. Server imports contracts + engine only.
+//
+// Custom WASM required: run packages/engine/scripts/build-wasm.sh first.
 // ---------------------------------------------------------------------------
 
-/** The result returned after the engine processes one game action. */
-export interface EngineResult {
-  success: boolean;
-  newState: unknown;
-}
+// Public API (R4 — LOCKED, server codes against this)
+export { createEdisonDuel } from "./createEdisonDuel.js";
+export { EdisonDuel } from "./EdisonDuel.js";
+export type { DeckLists, EngineStepResult, CreateEdisonDuelOpts } from "./EdisonDuel.js";
 
-/**
- * Adapter interface that every ocgcore binding must implement.
- * Depends only on the contracts package — no server or web imports allowed.
- */
-export interface OcgCoreAdapter {
-  /** Process an incoming duel action and return the updated game state. */
-  processMessage(message: WsMessage): Promise<EngineResult>;
-  /** Gracefully shut down the underlying engine process. */
-  dispose(): Promise<void>;
-}
+// Engine-internal message type (kept in engine, NOT in contracts)
+export type { RawEngineMessage } from "./types.js";
+
+// Flags (useful for testing / debugging)
+export { EDISON_FLAGS } from "./edisonFlags.js";
+
+// Core availability check (useful for health-check routes)
+export { isCustomWasmAvailable } from "./coreFactory.js";
+
+// Redaction utility (server may call this directly on each outgoing message)
+export { redactMessageForSeat } from "./redactMessage.js";

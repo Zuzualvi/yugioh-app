@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
-import type { EngineResult, OcgCoreAdapter } from "./index";
+import { EDISON_FLAGS, isCustomWasmAvailable, redactMessageForSeat } from "./index.js";
 
-describe("OcgCoreAdapter interface (shape test)", () => {
-  it("a stub implementation satisfies the interface", () => {
-    const stub: OcgCoreAdapter = {
-      processMessage: async (_msg) => ({
-        success: true,
-        newState: {},
-      }),
-      dispose: async () => {},
-    };
-
-    expect(typeof stub.processMessage).toBe("function");
-    expect(typeof stub.dispose).toBe("function");
+describe("@yugioh-app/engine public surface", () => {
+  it("exports EDISON_FLAGS as a bigint equal to 0x7f80d072cn", () => {
+    expect(EDISON_FLAGS).toBe(0x7f80d072cn);
   });
 
-  it("EngineResult success flag is boolean", () => {
-    const result: EngineResult = { success: true, newState: null };
-    expect(result.success).toBe(true);
+  it("exports isCustomWasmAvailable as a function", () => {
+    expect(typeof isCustomWasmAvailable).toBe("function");
+    expect(typeof isCustomWasmAvailable()).toBe("boolean");
+  });
+
+  it("exports redactMessageForSeat as a function", () => {
+    expect(typeof redactMessageForSeat).toBe("function");
+  });
+
+  it("createEdisonDuel is exported", async () => {
+    const { createEdisonDuel } = await import("./index.js");
+    expect(typeof createEdisonDuel).toBe("function");
   });
 });

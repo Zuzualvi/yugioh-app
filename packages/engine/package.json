@@ -5,9 +5,15 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:wasm": "bash scripts/build-wasm.sh"
   },
   "dependencies": {
-    "@yugioh-app/contracts": "*"
+    "@yugioh-app/contracts": "*",
+    "better-sqlite3": "^12.11.1",
+    "ocgcore-wasm": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13"
   }
 }

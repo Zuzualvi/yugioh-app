@@ -1,0 +1,6 @@
+# Custom-built WASM artifacts (produced by scripts/build-wasm.sh)
+/vendor/
+
+# Card DB + scripts (populated by card-data pipeline / spike-a assets)
+/assets/cards.cdb
+/assets/scripts/

@@ -1,0 +1,20 @@
+--- a/cpp/ygo/field.cpp
++++ b/cpp/ygo/field.cpp
+@@ -2361,7 +2361,7 @@ bool field::check_lp_cost(uint8_t playerid, uint32_t val, uint8_t ignore_player
+ 	const auto& lp = player[pidx].lp;
+ 	if(val == 0)
+ 		return true;
+-	return val <= lp;
++	return val < lp;
+ }
+--- a/cpp/ygo/operations.cpp
++++ b/cpp/ygo/operations.cpp
+@@ -693,7 +693,7 @@ void field::PayLPCost(uint8_t playerid, uint32_t val) {
+ 	if(val == 0)
+ 		return;
+ 	auto& plp = player[playerid].lp;
+-	if(val <= plp)
++	if(val < plp)
+ 		plp -= val;
+ 	else
+ 		plp = 0;
