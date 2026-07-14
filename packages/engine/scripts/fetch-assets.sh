@@ -113,31 +113,36 @@ if [ -f "$C0_PATH" ]; then
   echo "      c0.lua already present — skipping synthesis."
 else
   echo "      Synthesizing c0.lua from system scripts..."
-  cat \
-    "$CLONE_DIR/constant.lua" \
-    "$CLONE_DIR/utility.lua" \
-    "$CLONE_DIR/chain.lua" \
-    "$CLONE_DIR/proc_normal.lua" \
-    "$CLONE_DIR/proc_ritual.lua" \
-    "$CLONE_DIR/proc_fusion.lua" \
-    "$CLONE_DIR/proc_fusion_spell.lua" \
-    "$CLONE_DIR/proc_synchro.lua" \
-    "$CLONE_DIR/proc_xyz.lua" \
-    "$CLONE_DIR/proc_link.lua" \
-    "$CLONE_DIR/proc_pendulum.lua" \
-    "$CLONE_DIR/proc_maximum.lua" \
-    "$CLONE_DIR/proc_gemini.lua" \
-    "$CLONE_DIR/proc_spirit.lua" \
-    "$CLONE_DIR/proc_union.lua" \
-    "$CLONE_DIR/proc_equip.lua" \
-    "$CLONE_DIR/proc_persistent.lua" \
-    "$CLONE_DIR/proc_rush.lua" \
-    "$CLONE_DIR/proc_skill.lua" \
-    "$CLONE_DIR/proc_workaround.lua" \
-    "$CLONE_DIR/cards_specific_functions.lua" \
-    "$CLONE_DIR/card_counter_constants.lua" \
-    "$CLONE_DIR/archetype_setcode_constants.lua" \
-    > "$C0_PATH"
+  C0_SOURCES=(
+    "$CLONE_DIR/constant.lua"
+    "$CLONE_DIR/utility.lua"
+    "$CLONE_DIR/chain.lua"
+    "$CLONE_DIR/proc_normal.lua"
+    "$CLONE_DIR/proc_ritual.lua"
+    "$CLONE_DIR/proc_fusion.lua"
+    "$CLONE_DIR/proc_fusion_spell.lua"
+    "$CLONE_DIR/proc_synchro.lua"
+    "$CLONE_DIR/proc_xyz.lua"
+    "$CLONE_DIR/proc_link.lua"
+    "$CLONE_DIR/proc_pendulum.lua"
+    "$CLONE_DIR/proc_maximum.lua"
+    "$CLONE_DIR/proc_gemini.lua"
+    "$CLONE_DIR/proc_spirit.lua"
+    "$CLONE_DIR/proc_union.lua"
+    "$CLONE_DIR/proc_equip.lua"
+    "$CLONE_DIR/proc_persistent.lua"
+    "$CLONE_DIR/proc_rush.lua"
+    "$CLONE_DIR/proc_skill.lua"
+    "$CLONE_DIR/proc_workaround.lua"
+    "$CLONE_DIR/cards_specific_functions.lua"
+    "$CLONE_DIR/card_counter_constants.lua"
+    "$CLONE_DIR/archetype_setcode_constants.lua"
+  )
+  : > "$C0_PATH"
+  for f in "${C0_SOURCES[@]}"; do
+    cat "$f" >> "$C0_PATH"
+    printf '\n' >> "$C0_PATH"
+  done
   echo "      c0.lua: $(wc -c < "$C0_PATH") bytes"
 fi
 
