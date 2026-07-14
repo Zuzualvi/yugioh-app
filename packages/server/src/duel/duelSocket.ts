@@ -75,6 +75,7 @@ function stepAndBroadcast(
   engine: DuelEngine,
   db: InstanceType<typeof Database>,
   duelId: string,
+  manager: DuelManager,
 ): void {
   const result = engine.step();
 
@@ -106,6 +107,7 @@ function stepAndBroadcast(
     endDuel(db, duelId, winner, "normal");
     broadcast(relay, { type: "DUEL_END", winner, reason: "normal" });
     clearRelayTimer(relay);
+    manager.remove(duelId);
     relays.delete(duelId);
     return;
   }
@@ -117,7 +119,7 @@ function stepAndBroadcast(
       if (!row) return;
       const deadlineAt = computeDeadline(row.timer_per_move_seconds);
       setDeadline(db, duelId, deadlineAt, awaitingSeat);
-      armTimer(relay, engine, db, duelId, awaitingSeat, deadlineAt);
+      armTimer(relay, engine, db, duelId, awaitingSeat, deadlineAt, manager);
 
       // Broadcast STATE to each connected seat, then CLOCK
       for (const [seat, ws] of relay.seats) {
@@ -144,6 +146,7 @@ function armTimer(
   duelId: string,
   onClockSeat: Seat,
   deadlineAt: number,
+  manager: DuelManager,
 ): void {
   clearRelayTimer(relay);
   relay.timer = scheduleTimeout(deadlineAt, () => {
@@ -151,6 +154,7 @@ function armTimer(
     const winner = otherSeat(onClockSeat);
     endDuel(db, duelId, winner, "timeout");
     broadcast(relay, { type: "DUEL_END", winner, reason: "timeout" });
+    manager.remove(duelId);
     relays.delete(duelId);
   });
 }
@@ -164,6 +168,7 @@ function handleClientMessage(
   db: InstanceType<typeof Database>,
   duelId: string,
   raw: string,
+  manager: DuelManager,
 ): void {
   let parsed: DuelClientMessage;
   try {
@@ -183,6 +188,7 @@ function handleClientMessage(
     endDuel(db, duelId, winner, "resign");
     clearRelayTimer(relay);
     broadcast(relay, { type: "DUEL_END", winner, reason: "resign" });
+    manager.remove(duelId);
     relays.delete(duelId);
     return;
   }
@@ -202,6 +208,7 @@ function handleClientMessage(
       endDuel(db, duelId, winner, "timeout");
       clearRelayTimer(relay);
       broadcast(relay, { type: "DUEL_END", winner, reason: "timeout" });
+      manager.remove(duelId);
       relays.delete(duelId);
       return;
     }
@@ -209,7 +216,7 @@ function handleClientMessage(
     const seq = getNextSeq(db, duelId);
     appendResponseLog(db, duelId, seq, conn.seat, parsed.response);
     engine.respond(parsed.response);
-    stepAndBroadcast(relay, engine, db, duelId);
+    stepAndBroadcast(relay, engine, db, duelId, manager);
   }
 }
 
@@ -299,12 +306,13 @@ async function onConnection(
 
     // Re-arm timer on reconnect if deadline not yet expired
     if (!isExpired(deadlineAt)) {
-      armTimer(relay, engine, db, duelId, onClockSeat, deadlineAt);
+      armTimer(relay, engine, db, duelId, onClockSeat, deadlineAt, manager);
     } else {
       // Lazily apply timeout
       const winner = otherSeat(onClockSeat);
       endDuel(db, duelId, winner, "timeout");
       broadcast(relay, { type: "DUEL_END", winner, reason: "timeout" });
+      manager.remove(duelId);
       relays.delete(duelId);
       return;
     }
@@ -316,7 +324,7 @@ async function onConnection(
 
   ws.on("message", (data: Buffer | string) => {
     if (engine.isEnded()) return;
-    handleClientMessage({ ws, seat }, relay, engine, db, duelId, data.toString());
+    handleClientMessage({ ws, seat }, relay, engine, db, duelId, data.toString(), manager);
   });
 }
 

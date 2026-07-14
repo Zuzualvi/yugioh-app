@@ -22,6 +22,7 @@ export interface DuelEngine {
   getResult(): { winner: Seat | null; reason: string } | null;
   getResponseLog(): EngineResponse[];
   applyLog(log: EngineResponse[]): Promise<void>;
+  destroy(): void;
 }
 
 export interface DeckLists {

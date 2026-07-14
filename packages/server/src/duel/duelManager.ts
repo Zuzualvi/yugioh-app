@@ -72,7 +72,11 @@ export class DuelManager {
   }
 
   remove(duelId: string): void {
-    this.live.delete(duelId);
+    const live = this.live.get(duelId);
+    if (live) {
+      live.engine.destroy();
+      this.live.delete(duelId);
+    }
   }
 
   getLive(duelId: string): LiveDuel | undefined {

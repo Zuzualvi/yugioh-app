@@ -48,6 +48,7 @@ export class FakeEdisonDuel implements DuelEngine {
   private responses: EngineResponse[] = [];
   private _ended = false;
   private _winner: Seat | null = null;
+  private _destroyed = false;
 
   constructor(steps: FakeStep[]) {
     this.steps = steps;
@@ -98,6 +99,14 @@ export class FakeEdisonDuel implements DuelEngine {
       this.respond(response);
     }
     if (!this._ended) this.step();
+  }
+
+  destroy(): void {
+    this._destroyed = true;
+  }
+
+  get destroyed(): boolean {
+    return this._destroyed;
   }
 
   /** Force-end the duel (used to simulate timeout/resign in tests). */

@@ -546,6 +546,84 @@ describe("WebSocket relay", () => {
       s1.close();
     });
   });
+
+  it("destroy() is called on engine when duel ends via resign", async () => {
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+      await waitForMessage(s0, (m) => m.type === "SEAT_ASSIGNED");
+      await waitForMessage(s1, (m) => m.type === "SEAT_ASSIGNED");
+
+      expect(_capturedEngine?.destroyed).toBe(false);
+
+      s0.ws.send(JSON.stringify({ type: "RESIGN" }));
+
+      await waitForMessage(s0, (m) => m.type === "DUEL_END");
+      // Give the server a tick to complete cleanup
+      await new Promise<void>((r) => setTimeout(r, 20));
+
+      expect(_capturedEngine?.destroyed).toBe(true);
+      expect(manager.getLive(setup.duelId)).toBeUndefined();
+
+      s0.close();
+      s1.close();
+    });
+  });
+
+  it(
+    "destroy() is called on engine when duel ends via timeout",
+    async () => {
+      const { sid: aliceSid, userId: aliceUserId } = await seedAndLogin(
+        "AliceDst_" + randomUUID().slice(0, 4),
+        "pass123",
+      );
+      const { sid: bobSid, userId: bobUserId } = await seedAndLogin(
+        "BobDst_" + randomUUID().slice(0, 4),
+        "pass456",
+      );
+      const aliceDeckId = insertLegalDeck(aliceUserId);
+      const bobDeckId = insertLegalDeck(bobUserId);
+
+      const createRes = await request(app)
+        .post("/api/duels")
+        .set("Cookie", `sid=${aliceSid}`)
+        .send({ deckId: aliceDeckId, timer: { perMoveSeconds: 1 } });
+      expect(createRes.status).toBe(201);
+      const duelId = createRes.body.duelId as string;
+      const joinToken = createRes.body.joinToken as string;
+      const seat0Token = createRes.body.creatorSeatToken as string;
+
+      const joinRes = await request(app)
+        .post("/api/duels/join")
+        .set("Cookie", `sid=${bobSid}`)
+        .send({ joinToken, deckId: bobDeckId });
+      expect(joinRes.status).toBe(201);
+      const seat1Token = joinRes.body.seatToken as string;
+
+      await new Promise<void>((r) => setTimeout(r, 50));
+
+      await withServer(async (port) => {
+        const s0 = await connectWs(port, duelId, seat0Token);
+        const s1 = await connectWs(port, duelId, seat1Token);
+        await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+        expect(_capturedEngine?.destroyed).toBe(false);
+
+        // Wait for 1s timer to fire
+        await new Promise<void>((r) => setTimeout(r, 2000));
+
+        await waitForMessage(s0, (m) => m.type === "DUEL_END", 500);
+
+        expect(_capturedEngine?.destroyed).toBe(true);
+        expect(manager.getLive(duelId)).toBeUndefined();
+
+        s0.close();
+        s1.close();
+      });
+    },
+    { timeout: 10_000 },
+  );
 });
 
 // ── Persistence tests ──────────────────────────────────────────────────────
