@@ -18,8 +18,14 @@ Per-card JSON keyed by **passcode** (our exact key). Each file has a `PSCT` obje
 - **Verified genuinely pre-errata for the hard cases** (not just reformatted-modern): Sangan & Rescue Cat & Red-Eyes Darkness Metal Dragon lose their modern hard "once per turn"; Brain Control loses the "that can be Normal Summoned/Set" restriction; Ancient Fairy Dragon is the pre-errata version. This matches prior functional-errata research.
 - Style: modern PSCT with ①②③/Ⓢ effect-number glyphs and mika's own phrasing/abbreviations. It is behavior-accurate, **not** verbatim 2010 printed wording (which used old templating: "Graveyard", "select", "side of the field").
 
-## Override set (the greenlit fix)
-- All **36** functional-errata cards have a clean, non-placeholder `PSCT.Edison`. Machine-readable set written to **`preerrata-desc-overrides.json`** (this dir): per card = `ourCurrentDesc`, `mikaEdisonRaw`, `preErrataDescClean` (glyphs stripped for catalog-style consistency), `edisonRuling`, `source`, `needsOverride`. Zero cards required manual authoring.
+## Override set (the greenlit fix) — 35 override + 1 no-override
+- **33** cards have a clean `PSCT.Edison` from mika (glyphs stripped → `preErrataDescClean`).
+- **2** cards had a mika placeholder ("No Edison-Accurate PSCT available") but a genuine pre-errata text DOES exist — **authored from Yugipedia's `Card Errata:` history** (the original TCG printing in effect March 2010):
+  - **Urgent Tuning** (94634433) — CSOC-EN065 (2008): "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. …". The modern "Immediately after this effect resolves…" is a 2014 (LC5D) erratum.
+  - **Destiny End Dragoon** (76263644) — LODT-EN042 (2008): revival has **no "once per turn"**, destroy effect does not target and inflicts damage = the monster's ATK. The OPT + "target/face-up" wording were added by 2011 (LCGX) / 2016 (DESO) errata.
+- **1** card needs NO override: **Susa Soldier** (40473581) — its only English errata (removing "Flip Summoned") was Tournament Pack 6 (~2004), well before Edison, so its March-2010 text already equals modern. Its functional-errata status is a Spirit ruling (engine, not text).
+- Machine-readable set: **`preerrata-desc-overrides.json`** (per card: `needsOverride`, `preErrataDescClean`, `mikaEdisonRaw`, `edisonRuling`, `source`, `note`).
+- LESSON: "the accurate-text repo didn't have it" ≠ "no accurate text exists." Yugipedia `Card Errata:<name>` pages give dated printing-by-printing text history — the authoritative fallback for any card mika lacks.
 - The other ~3,645 cards need no functional override (see the catalog-text audit — differences are cosmetic terminology only).
 
 ## Style decision the CTO needs from us (flagged to CEO)

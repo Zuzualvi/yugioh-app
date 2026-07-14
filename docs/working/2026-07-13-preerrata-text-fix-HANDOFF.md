@@ -31,11 +31,11 @@ For most cards this is harmless (only cosmetic terminology like "GY" vs "Graveya
 ## Requirements
 
 ### MUST
-- **REQ-1** For each of the **33** cards flagged `needsOverride: true` in the data file, the catalog's `desc` MUST equal the provided Edison text (`preErrataDescClean`). Authoritative data: `docs/working/2026-07-13-preerrata-desc-overrides.json` (table also embedded below).
-- **REQ-2** The **3** cards flagged `needsOverride: false` (Destiny End Dragoon `76263644`, Susa Soldier `40473581`, Urgent Tuning `94634433`) MUST be left on their current text — the source has no Edison-accurate text because their Edison difference is a ruling/engine matter, not a printed-text change. Do **not** invent text for these.
+- **REQ-1** For each of the **35** cards flagged `needsOverride: true` in the data file, the catalog's `desc` MUST equal the provided Edison text (`preErrataDescClean`). Authoritative data: `docs/working/2026-07-13-preerrata-desc-overrides.json` (table also embedded below). Note: 33 come from mikaRulings `PSCT.Edison`; **2 (Urgent Tuning `94634433`, Destiny End Dragoon `76263644`) were authored from Yugipedia original-print errata history** (mika had no Edison text) — see each card's `source`/`note` in the JSON.
+- **REQ-2** The **1** card flagged `needsOverride: false` (Susa Soldier `40473581`) MUST be left on its current text — its only English errata predates Edison (Tournament Pack 6, ~2004), so its March-2010 text already equals modern; its functional-errata status is a Spirit **ruling** (mandatory-return timing) for the future engine, not printed text. Do **not** invent text for it.
 - **REQ-3** The override MUST be applied so it **cannot be silently reverted** by re-running the catalog build. The build pipeline copies YGOPRODeck text; the override must be a deliberate, data-driven layer the pipeline applies on top (e.g. an `overrides` map keyed by passcode, applied in `build-catalog.mjs`, with the source data checked into the repo). Re-running the build MUST reproduce the corrected text.
 - **REQ-4** A test MUST assert the corrected text for a representative sample and guard against regression to modern text — minimum: Goyo `7391448` desc contains "1 Tuner" and does **not** contain "EARTH Tuner"; Sangan `26202165` desc does **not** contain "once per turn"; Brain Control `87910978` desc does **not** contain "Normal Summoned/Set". (Per the repo rule: tests merge in the same commit; green `verify` is sign-off.)
-- **REQ-5** Every one of the 33 override strings MUST be **human-verified against a second reference** (Yugipedia original-print / "Previous errata" text) and **copyedited** before shipping. The source text is behavior-accurate but has known artifacts — e.g. Armory Arm "…Special it…" (missing "Summon"), Mausoleum "…pay choose 1 or 2…", Necrovalley is an over-simplified paraphrase, and some entries have stray glyph residue (`©`, a leading lowercase "can't"). This is a proofread pass, not a blind import.
+- **REQ-5** Every one of the 35 override strings MUST be **human-verified against a second reference** (Yugipedia original-print / "Previous errata" text) and **copyedited** before shipping. The 33 mika-sourced strings are behavior-accurate but have known artifacts — e.g. Armory Arm "…Special it…" (missing "Summon"), Mausoleum "…pay choose 1 or 2…", Necrovalley is an over-simplified paraphrase, and some entries have stray glyph residue (`©`, a leading lowercase "can't"). The 2 Yugipedia-authored strings (Urgent Tuning, Destiny End Dragoon) are **verbatim 2008 print text** in old templating — during this pass, terminology MAY be normalized to catalog style (Graveyard→GY, "remove from play"→banish) but the pre-errata **behavior MUST be preserved** (each card's `note` states exactly what to preserve: Urgent Tuning summons on resolution not "immediately after"; Dragoon's destroy doesn't target and its revival is not "once per turn"). This is a proofread pass, not a blind import.
 
 ### SHOULD
 - **REQ-6** SHOULD surface a small "Edison errata" note on these cards (tooltip/badge), e.g. "In Edison this card uses any Tuner, not an EARTH Tuner." Text available per card as `edisonRuling` (mika `Rulings.Edison`) in the data file. Optional; UX to keep it lightweight (see UX below).
@@ -62,10 +62,10 @@ No new screens. The change is data behind existing surfaces:
 - **Q2** Effect-number formatting: we strip glyphs for consistency now. If we later adopt mika text catalog-wide, revisit whether to standardize on numbered effects across all cards.
 
 ## Acceptance criteria
-- [ ] All 33 `needsOverride` cards display the corrected Edison text; the 3 no-override cards are unchanged.
+- [ ] All 35 `needsOverride` cards display the corrected Edison text; the 1 no-override card (Susa Soldier) is unchanged.
 - [ ] Re-running `node packages/card-data/scripts/build-catalog.mjs` reproduces the corrected catalog (override is not lost).
 - [ ] Regression test present and green (REQ-4); repo-wide `npm run verify` green on a clean checkout.
-- [ ] All 33 strings proofread against a second reference and free of typos/glyph residue (REQ-5).
+- [ ] All 35 strings proofread against a second reference and free of typos/glyph residue; the 2 Yugipedia-authored strings preserve pre-errata behavior per their `note` (REQ-5).
 - [ ] Goyo Guardian on app.zuhayr.io reads "1 Tuner + 1 or more non-Tuners…" with no "EARTH Tuner".
 - [ ] (If REQ-6 shipped) Edison note renders in the inspector without layout regressions.
 
@@ -74,7 +74,7 @@ Authoritative machine-readable data: **`docs/working/2026-07-13-preerrata-desc-o
 
 Below, `⏎` = newline. **Use the JSON for exact strings; the table is for review.** These strings still require the REQ-5 proofread.
 
-### OVERRIDE (33) — passcode | name | new desc (newlines shown as ⏎; authoritative source = preErrataDescClean in JSON)
+### OVERRIDE (35) — passcode | name | new desc (⏎ = newline; authoritative source = preErrataDescClean in JSON)
 | 25862681 | Ancient Fairy Dragon | 1 Tuner + 1+ non-Tuner monsters ⏎ Once per turn: You can Special Summon 1 Level 4 or lower monster from your hand ⏎ (You can't conduct your Battle Phase the turn you activate this effect). ⏎ Once per turn: You can destroy a card in the Field Spell Card Zone, and if you do, gain 1000 LP, ⏎ then you can add 1 Field Spell from your Deck to your hand. |
 | 29071332 | Armory Arm | 1 Tuner + 1 or more non-Tuners ⏎ Once per turn: You can choose 1; ● Target 1 monster on the field; equip this card to that target. ⏎ ● Unequip and Special it in Attack Position. ⏎ That equipped monster gains 1000 ATK. ⏎ If that monster destroys a monster by battle and sends it to the GY: ⏎ Your opponent takes damage equal to their destroyed monster’s ATK on the field. |
 | 71645242 | Black Garden | If a monster(s) is Normal/Special Summoned (except by “Black Garden”): Halve its ATK, also, if it is still on the field (even if face-down), you Special Summon 1 “Rose Token” (Plant/DARK/Level 2/ATK 800/DEF 800) to that monster's opponent's field, in Attack Position. ⏎ You can target 1 monster in your GY with ATK equal to the total ATK of all face-up Plants; destroy this card and as many Plants on the field as possible, then, if you destroyed all of them, Special Summon that target. |
@@ -85,6 +85,7 @@ Below, `⏎` = newline. **Use the JSON for exact strings; the table is for revie
 | 48092532 | D.D. Survivor | Once per End Phase, if this card was banished, while face-up on your field, this turn: ⏎ Special Summon this banished card. |
 | 88643579 | Dark End Dragon | 1 Tuner + 1 or more non-Tuner DARKs ⏎ Once per turn: ⏎ You can target 1 monster your opponent controls; this card loses 500 ATK and DEF, and if it does, send that target to the GY. |
 | 80168720 | Darkness Approaches | Discard 2 cards, then target 1 face-up monster; Set it (but don’t change its Battle Position). |
+| 76263644 | Destiny End Dragoon *(authored from Yugipedia original print — see JSON source/note)* | "Destiny Hero - Plasma" + "Destiny Hero - Dogma" ⏎ A Fusion Summon of this monster can only be conducted with the above Fusion Material Monsters. Once per turn, you can destroy 1 monster your opponent controls and inflict damage to your opponent equal to its ATK. If you activate this effect, you cannot conduct your Battle Phase this turn. During your Standby Phase, if this card is in your Graveyard you can remove from play 1 "Destiny Hero" card from your Graveyard to Special Summon this card. |
 | 89312388 | Elemental HERO Prisma | Once per turn: You can activate this effect; You can reveal 1 Fusion Monster from your Extra Deck, and send 1 Monster from your Deck to the GY, whose name is specifically listed on that Fusion Monster, and until the End Phase, this card's name becomes the sent monster's. |
 | 34471458 | Fortune Lady Light | This card's ATK/DEF become its Level x 200. ⏎ Once per turn, during your Standby Phase: Increase this card's Level by 1 (max. 12). ⏎ When this card leaves the field by a card effect: You can Special Summon 1 "Fortune Lady" monster from your Deck. |
 | 77565204 | Future Fusion | If this card is activated: ⏎ Reveal 1 Fusion Monster from your Extra Deck, and send its Materials from your Deck to GY, and, during your 2nd Standby Phase after activation, Fusion Summon 1 Monster from your Extra Deck with the same name as that revealed monster, and target it with this card. ⏎ If this leaves the field, destroy that monster. ⏎ If that monster is destroyed, destroy this card. |
@@ -108,9 +109,7 @@ Below, `⏎` = newline. **Use the JSON for exact strings; the table is for revie
 | 9126351 | Swap Frog | You can Special Summon this card (from your hand) by discarding 1 other WATER. ⏎ When this card is Summoned: You can send 1 Level 2 or lower WATER Aqua from your Deck or face-up-field to the GY. ⏎ Once per turn: You can return 1 monster you control to the hand; this turn, you can Normal Summon 1 "Frog" monster (except “Swap Frog” or “Frog the Jam”), in addition to your Normal Summon/Set. |
 | 12538374 | Treeborn Frog | During your Standby Phase, if this card is in your GY, and you don’t control "Treeborn Frog": ⏎ You can Special Summon this card. ⏎ (Activate & Resolve only if you control no Spells/Traps.) |
 | 80604091 | Ultimate Offering | During your Main Phase or your opponent's Battle Phase: You can pay 500 LP; during this effect's resolution, Normal Summon/Set 1 monster. |
+| 94634433 | Urgent Tuning *(authored from Yugipedia original print — see JSON source/note)* | Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the Graveyard.) |
 
-### NO OVERRIDE (3) — display modern text unchanged (ruling/engine-only)
-| 76263644 | Destiny End Dragoon |
-| 40473581 | Susa Soldier |
-| 94634433 | Urgent Tuning |
-
+### NO OVERRIDE (1) — display modern text unchanged
+| 40473581 | Susa Soldier | ruling/engine-only; errata predates Edison — text already correct |

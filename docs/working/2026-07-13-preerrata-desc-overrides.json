@@ -91,13 +91,13 @@
  },
  "76263644": {
   "name": "Destiny End Dragoon",
-  "needsOverride": false,
-  "preErrataDescClean": null,
-  "mikaEdisonRaw": "No Edison-Accurate PSCT available for this card.",
+  "needsOverride": true,
+  "preErrataDescClean": "\"Destiny Hero - Plasma\" + \"Destiny Hero - Dogma\"\nA Fusion Summon of this monster can only be conducted with the above Fusion Material Monsters. Once per turn, you can destroy 1 monster your opponent controls and inflict damage to your opponent equal to its ATK. If you activate this effect, you cannot conduct your Battle Phase this turn. During your Standby Phase, if this card is in your Graveyard you can remove from play 1 \"Destiny Hero\" card from your Graveyard to Special Summon this card.",
+  "mikaEdisonRaw": null,
   "edisonRuling": "No rulings found for this card. Request new rulings at https://discord.gg/shVJnYJNpg",
   "ourCurrentDesc": "\"Destiny HERO - Plasma\" + \"Destiny HERO - Dogma\"\r\nA Fusion Summon of this card can only be done with the above Fusion Materials. Once per turn: You can target 1 monster your opponent controls; destroy that target, and if it was face-up, inflict damage to your opponent equal to the ATK it had on the field. You cannot conduct your Battle Phase the turn you activate this effect. Once per turn, during your Standby Phase, if this card is in your GY: You can banish 1 \"Destiny HERO\" card from your GY; Special Summon this card.",
-  "source": null,
-  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+  "source": "Yugipedia Card Errata:Destiny End Dragoon lore0 — LODT-EN042 (Light of Destruction, 2008), original TCG printing in effect during Edison. 'Once per turn' on the Standby-Phase revival + 'target/face-up' wording were added by later errata (LCGX 2011 / DESO 2016).",
+  "note": "Verbatim original TCG print text (in effect March 2010). May be terminology-normalized (Graveyard→GY, remove from play→banish, Hero→HERO) during REQ-5 proofread. PRESERVE behavior: destroy effect does NOT target and inflicts damage = its ATK (no 'face-up'/'on the field'); revival is NOT 'once per turn'."
  },
  "89312388": {
   "name": "Elemental HERO Prisma",
@@ -287,7 +287,7 @@
   "edisonRuling": "●When this card inflicts Battle Damage to the opponent it is halved, regardless if it was a direct attack, or from an attack against another monster. For example, if your Susa Soldier (ATK 2000) attacks the opponent’s Gemini Elf (ATK 1900), the opponent will take 50 points of Battle Damage. The damage points are rounded up when there is a fraction.",
   "ourCurrentDesc": "This card cannot be Special Summoned. This card returns to the owner's hand during the End Phase of the turn that this card is Normal Summoned or flipped face-up. The Battle Damage this card inflicts to your opponent's Life Points is halved.",
   "source": null,
-  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+  "note": "VERIFIED no printed-text override: Susa Soldier's only English errata (removing 'Flip Summoned') was Tournament Pack 6 (~2004), well before Edison — so the March-2010 text equals our current text. Its functional-errata status is a Spirit RULING (phase-dependent mandatory return trigger) handled by the engine, not display text."
  },
  "9126351": {
   "name": "Swap Frog",
@@ -318,12 +318,12 @@
  },
  "94634433": {
   "name": "Urgent Tuning",
-  "needsOverride": false,
-  "preErrataDescClean": null,
-  "mikaEdisonRaw": "No Edison-Accurate PSCT available for this card.",
+  "needsOverride": true,
+  "preErrataDescClean": "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the Graveyard.)",
+  "mikaEdisonRaw": null,
   "edisonRuling": "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the GY.)\n●This card does not target.\n●This card can't be activated during the Damage Step.\n●The Synchro Summon occurs when this effect resolves, it does not occur immediately after this effect resolves. as seen in the most recent erratum.\n●Solemn Judgment can't negate the Synchro Summon performed when this effect resolves.\n●If the number of monsters you control changes due to an effect chained to “Urgent Tuning”, and you don't have a Synchro Monster of a Level you could Summon when “Urgent Tuning” resolves, you must show your Extra Deck to your opponent to prove that you can't Summon a monster. You don't have to show your Extra Deck to your opponent if you would not be able to Synchro Summon at all when “Urgent Tuning” resolves. (Because you control only 1 monster, or control only Tuner monsters, etc.)\n●You can use monsters that are not affected by Trap Cards, like “Elemental Hero Wildheart” as Synchro Material Monsters for “Urgent Tuning”.",
   "ourCurrentDesc": "During the Battle Phase: Immediately after this effect resolves, Synchro Summon 1 Synchro Monster using monsters you control.",
-  "source": null,
-  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+  "source": "Yugipedia Card Errata:Urgent Tuning lore0 — CSOC-EN065 (Crossroads of Chaos, 2008), original TCG printing in effect during Edison. Modern 'Immediately after this effect resolves…' wording is the 2014 LC5D erratum.",
+  "note": "Verbatim original TCG print text (in effect March 2010). May be terminology-normalized (Graveyard→GY) during REQ-5 proofread. PRESERVE behavior: Synchro Summon happens ON resolution, NOT 'immediately after this effect resolves'."
  }
 }
