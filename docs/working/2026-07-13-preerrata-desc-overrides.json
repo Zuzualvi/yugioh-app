@@ -1,0 +1,329 @@
+{
+ "29071332": {
+  "name": "Armory Arm",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1 or more non-Tuners\nOnce per turn: You can choose 1; ● Target 1 monster on the field; equip this card to that target.\n● Unequip and Special it in Attack Position.\nThat equipped monster gains 1000 ATK.\nIf that monster destroys a monster by battle and sends it to the GY:\nYour opponent takes damage equal to their destroyed monster’s ATK on the field.",
+  "mikaEdisonRaw": "1 Tuner + 1 or more non-Tuners\n① Once per turn: You can choose 1; ● Target 1 monster on the field; equip this card to that target. \n● Unequip and Special it in Attack Position.\n② That equipped monster gains 1000 ATK. \n③ If that monster destroys a monster by battle      and sends it to the GY:\nYour opponent takes damage equal to their destroyed monster’s ATK on the field.",
+  "edisonRuling": "● The ③ effect will trigger even if that monster is no longer in the GY when it resolves.\n● You can equip this card to an opponent's monster. If you do, and that opponent's monster destroys your monster by battle, your opponent takes the damage (Arm is still your card, in your Spell/Trap Zone).\n● If control of the equipped monster is changed, this card does not change control.\n● The damage dealt it equal to the atk of the monster on the field. \nIf \"Tragoedia\" is destroyed, damage will be dealt equal to its atk on the field.",
+  "ourCurrentDesc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can either: Target 1 monster on the field; equip this card to that target, OR: Unequip this card and Special Summon it in Attack Position. While equipped by this effect, that target gains 1000 ATK. If that target destroys a monster by battle and sends it to the Graveyard: Inflict damage to your opponent equal to the ATK of the destroyed monster in the Graveyard.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "25862681": {
+  "name": "Ancient Fairy Dragon",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1+ non-Tuner monsters\nOnce per turn: You can Special Summon 1 Level 4 or lower monster from your hand\n(You can't conduct your Battle Phase the turn you activate this effect).\nOnce per turn: You can destroy a card in the Field Spell Card Zone, and if you do, gain 1000 LP,\nthen you can add 1 Field Spell from your Deck to your hand.",
+  "mikaEdisonRaw": "1 Tuner + 1+ non-Tuner monsters\n① Once per turn: You can Special Summon 1 Level 4 or lower monster from your hand \n(You can't conduct your Battle Phase the turn you activate this effect). \n② Once per turn: You can destroy a card in the Field Spell Card Zone, and if you do, gain 1000 LP, \nthen you can add 1 Field Spell from your Deck to your hand.",
+  "edisonRuling": "And if you do\" effects are simultaneous. \"Then\" effects are sequential.\nSimultaneous effects don't cause cards to miss their timing.\nSequential effects can cause cards to miss their timing.\n● If \"Geartown\" is destroyed, and no Field Spell is searched, you CAN activate Geartown's effect.\n● If \"Geartown\" is destroyed, and a Field Spell is searched, you CAN'T activate Geartown's effect.\nYou can read more about Timing here:\nhttps://edisonformat.net/rules/compendium/missing-the-timing",
+  "ourCurrentDesc": "1 Tuner + 1+ non-Tuner monsters\r\nDuring your Main Phase: You can Special Summon 1 Level 4 or lower monster from your hand. You cannot conduct your Battle Phase the turn you activate this effect. During your Main Phase: You can destroy as many cards in the Field Zones as possible (min. 1), and if you do, gain 1000 LP, then you can add 1 Field Spell with a different name than the destroyed card(s), from your Deck to your hand. You can only use each effect of \"Ancient Fairy Dragon\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "71645242": {
+  "name": "Black Garden",
+  "needsOverride": true,
+  "preErrataDescClean": "If a monster(s) is Normal/Special Summoned (except by “Black Garden”): Halve its ATK, also, if it is still on the field (even if face-down), you Special Summon 1 “Rose Token” (Plant/DARK/Level 2/ATK 800/DEF 800) to that monster's opponent's field, in Attack Position.\nYou can target 1 monster in your GY with ATK equal to the total ATK of all face-up Plants; destroy this card and as many Plants on the field as possible, then, if you destroyed all of them, Special Summon that target.",
+  "mikaEdisonRaw": "① If a monster(s) is Normal/Special Summoned (except by “Black Garden”): Halve its ATK, also, if it is still on the field (even if face-down), you Special Summon 1 “Rose Token” (Plant/DARK/Level 2/ATK 800/DEF 800) to that monster's opponent's field, in Attack Position.\n② You can target 1 monster in your GY with ATK equal to the total ATK of all face-up Plants; destroy this card and as many Plants on the field as possible, then, if you destroyed all of them, Special Summon that target.",
+  "edisonRuling": "Regarding Summoning Tokens with the ①: \n● A token is Summoned even if the monster's ATK can't be halved, as long as the monster is still on the field when the ① resolves (even if it's face-down/was summoned face-down).\n● Even if 2+ monsters are summoned at the same time, only 1 Token is Summoned.\n● The player who Summons the token is always the player who controls Black Garden.\n● The \"owner\" of the token is opponent of the player whose field it is Summoned to.\nIf you control Garden and activate Scapegoat, no Rose Token is Summoned.\nIf you control Garden, and the opponent activates Scapegoat, you Summon a Rose Token.\n\nHalving ATK with the ①: \n● The ATK loss remains even if Garden leaves the field or later becomes negated.\n● If \"Shrink\" is later used on the monster whose ATK was halved: \nIts ATK becomes half its original ATK, and in the End Phase, its ATK becomes its original (printed) ATK.",
+  "ourCurrentDesc": "If a monster(s) is Normal or Special Summoned face-up, except by the effect of \"Black Garden\": Halve its ATK, then, the controller of that monster Special Summons 1 \"Rose Token\" (Plant/DARK/Level 2/ATK 800/DEF 800) to their opponent's field in Attack Position. (This ATK loss remains even if this card leaves the field.) You can target 1 monster in your GY with ATK equal to the total ATK of all Plant monsters on the field; destroy this card and as many Plant monsters on the field as possible, then, if you destroyed all of them, Special Summon that targeted monster.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "87910978": {
+  "name": "Brain Control",
+  "needsOverride": true,
+  "preErrataDescClean": "Pay 800 LP, then target 1 face-up monster your opponent controls; take control of that target (until the End Phase).",
+  "mikaEdisonRaw": "① Pay 800 LP, then target 1 face-up monster your opponent controls; take control of that target (until the End Phase).",
+  "edisonRuling": "● If that target isn't face-up in your opponent's control when this resolves, control of it does not change.\n● If that monster is later flipped face-down, control still returns during the End Phase.",
+  "ourCurrentDesc": "Pay 800 LP, then target 1 face-up monster your opponent controls that can be Normal Summoned/Set; take control of that target until the End Phase.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "50321796": {
+  "name": "Brionac, Dragon of the Ice Barrier",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1 or more non-Tuners\nYou can discard any number of cards to the GY, then target that many cards on the field; return them to the hand.",
+  "mikaEdisonRaw": "1 Tuner + 1 or more non-Tuners\n① You can discard any number of cards to the GY, then target that many cards on the field; return them to the hand.",
+  "edisonRuling": "● You can target cards on either field, and can use this effect multiple times per turn.● This effect targets (all Mika PSCT from this bot will tell you if an effect targets).\n● Brionac’s effect is an ignition Effect. If Synchro Summoned using “Goblin Zombie”, Goblin’s effect (a mandatory trigger effect) must be activated, in which case you can't use Brionac’s effect with ignition Priority.",
+  "ourCurrentDesc": "1 Tuner + 1+ non-Tuner monsters\nYou can discard any number of cards to the GY, then target the same number of cards your opponent controls; return those cards to the hand. You can only use this effect of \"Brionac, Dragon of the Ice Barrier\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "95727991": {
+  "name": "Catapult Turtle",
+  "needsOverride": true,
+  "preErrataDescClean": "You can Tribute 1 monster; Your opponent takes damage equal to half of its ATK on the field.",
+  "mikaEdisonRaw": "① You can Tribute 1 monster; Your opponent takes damage equal to half of its ATK on the field.",
+  "edisonRuling": "● You can use this effect multiple times per turn.",
+  "ourCurrentDesc": "Once per turn: You can Tribute 1 monster; inflict damage to your opponent equal to half the Tributed monster's ATK on the field.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "3370104": {
+  "name": "Cyber Phoenix",
+  "needsOverride": true,
+  "preErrataDescClean": "While this card is in Attack Position,\nnegate all Spell/Trap effects that target exactly 1 Machine you control (and no other cards).\nIf this card is destroyed by battle and sent to the GY, and was face-up at attack declaration: You can Draw 1 card,",
+  "mikaEdisonRaw": "① While this card is in Attack Position, \nnegate all Spell/Trap effects that target exactly 1 Machine you control (and no other cards).\n② If this card is destroyed by battle and sent to the GY, and was face-up at attack declaration: You can Draw 1 card,",
+  "edisonRuling": "● If this Set card was destroyed by battle, you can't activate the ② effect. \nIt must be face-up when targeted for the attack.",
+  "ourCurrentDesc": "While this card is in Attack Position, negate any Spell/Trap effects that target 1 Machine monster you control (and no other cards). When this card is destroyed by battle and sent to the GY: You can draw 1 card.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "48092532": {
+  "name": "D.D. Survivor",
+  "needsOverride": true,
+  "preErrataDescClean": "Once per End Phase, if this card was banished, while face-up on your field, this turn:\nSpecial Summon this banished card.",
+  "mikaEdisonRaw": "① Once per End Phase, if this card was banished, while face-up on your field, this turn: \nSpecial Summon this banished card.",
+  "edisonRuling": "● If this Set card is attacked (while “Dimensional Fissure” is on the field), its effect won't activate in the End Phase. It needs to be face-up when targeted for the attack.\n● If the activation or effect is negated, it does not activate again in the same End Phase.\n● If this card is banished during the End Phase, it returns to the field during the next turn's End Phase.",
+  "ourCurrentDesc": "During the End Phase, if this card was banished while face-up, on your side of the field, this turn: Special Summon this banished card. This effect can only activate once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "88643579": {
+  "name": "Dark End Dragon",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1 or more non-Tuner DARKs\nOnce per turn:\nYou can target 1 monster your opponent controls; this card loses 500 ATK and DEF, and if it does, send that target to the GY.",
+  "mikaEdisonRaw": "1 Tuner + 1 or more non-Tuner DARKs \n① Once per turn: \nYou can target 1 monster your opponent controls; this card loses 500 ATK and DEF, and if it does, send that target to the GY.",
+  "edisonRuling": "● Even if the target is no longer on the field, this card still loses 500 ATK/DEF.\n● If this card does not lose 500 ATK/DEF, that target is not sent to the GY.",
+  "ourCurrentDesc": "1 Tuner + 1 or more non-Tuner DARK monsters\nOnce per turn: You can target 1 monster your opponent controls; this card loses 500 ATK and DEF, and you send that target to the Graveyard.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "80168720": {
+  "name": "Darkness Approaches",
+  "needsOverride": true,
+  "preErrataDescClean": "Discard 2 cards, then target 1 face-up monster; Set it (but don’t change its Battle Position).",
+  "mikaEdisonRaw": "① Discard 2 cards, then target 1 face-up monster; Set it (but don’t change its Battle Position).",
+  "edisonRuling": "● If you target an Attack Position monster, it is flipped into face-down Attack Position.\n● You can Flip Summon a Set Attack Position monster into Attack Position.\n● If a Set Attack Position monster is attacked, it is flipped into Attack Position.\n● A Set Attack Position monster can't attack.",
+  "ourCurrentDesc": "Discard 2 cards from your hand. Select 1 face-up monster and change it to face-down Defense Position.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "76263644": {
+  "name": "Destiny End Dragoon",
+  "needsOverride": false,
+  "preErrataDescClean": null,
+  "mikaEdisonRaw": "No Edison-Accurate PSCT available for this card.",
+  "edisonRuling": "No rulings found for this card. Request new rulings at https://discord.gg/shVJnYJNpg",
+  "ourCurrentDesc": "\"Destiny HERO - Plasma\" + \"Destiny HERO - Dogma\"\r\nA Fusion Summon of this card can only be done with the above Fusion Materials. Once per turn: You can target 1 monster your opponent controls; destroy that target, and if it was face-up, inflict damage to your opponent equal to the ATK it had on the field. You cannot conduct your Battle Phase the turn you activate this effect. Once per turn, during your Standby Phase, if this card is in your GY: You can banish 1 \"Destiny HERO\" card from your GY; Special Summon this card.",
+  "source": null,
+  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+ },
+ "89312388": {
+  "name": "Elemental HERO Prisma",
+  "needsOverride": true,
+  "preErrataDescClean": "Once per turn: You can activate this effect; You can reveal 1 Fusion Monster from your Extra Deck, and send 1 Monster from your Deck to the GY, whose name is specifically listed on that Fusion Monster, and until the End Phase, this card's name becomes the sent monster's.",
+  "mikaEdisonRaw": "① Once per turn: You can activate this effect; You can reveal 1 Fusion Monster from your Extra Deck, and send 1 Monster from your Deck to the GY, whose name is specifically listed on that Fusion Monster, and until the End Phase, this card's name becomes the sent monster's.",
+  "edisonRuling": "● This effect has no cost (This is an erratum).\n● It will resolve without effect if \"Elemental HERO Prisma\" is not face-up on the field when it resolves. No monster will not be sent from the deck to the GY.\n● It can be activated while the effects of \"Macro Cosmos\" or \"Dimensional Fissure\" are applying. The sent monster will be banished.\n● If after resolving this effect, the effects of \"Elemental HERO Prisma\" are negated (e.g. by \"Skill Drain\" or \"Forbidden Chalice\"), it keeps the name of the sent monster.",
+  "ourCurrentDesc": "Once per turn: You can reveal 1 Fusion Monster from your Extra Deck, then send 1 of the Fusion Materials whose name is specifically listed on that card from your Deck to the Graveyard; this card's name becomes the sent monster's until the End Phase.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "34471458": {
+  "name": "Fortune Lady Light",
+  "needsOverride": true,
+  "preErrataDescClean": "This card's ATK/DEF become its Level x 200.\nOnce per turn, during your Standby Phase: Increase this card's Level by 1 (max. 12).\nWhen this card leaves the field by a card effect: You can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
+  "mikaEdisonRaw": "① This card's ATK/DEF become its Level x 200. \n② Once per turn, during your Standby Phase: Increase this card's Level by 1 (max. 12). \n③ When this card leaves the field by a card effect: You can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
+  "edisonRuling": "The ③:\n●Will trigger even if Fortune Lady Light left the field while face-down.\n●Will trigger even if this card returns to the hand (even if it was face-down, in which case you must reveal it to activate the effect).",
+  "ourCurrentDesc": "This card's ATK/DEF become its Level x 200. Once per turn, during your Standby Phase: Increase this card's Level by 1 (max. 12). When this face-up card leaves the field by card effect: You can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "77565204": {
+  "name": "Future Fusion",
+  "needsOverride": true,
+  "preErrataDescClean": "If this card is activated:\nReveal 1 Fusion Monster from your Extra Deck, and send its Materials from your Deck to GY, and, during your 2nd Standby Phase after activation, Fusion Summon 1 Monster from your Extra Deck with the same name as that revealed monster, and target it with this card.\nIf this leaves the field, destroy that monster.\nIf that monster is destroyed, destroy this card.",
+  "mikaEdisonRaw": "① If this card is activated: \nReveal 1 Fusion Monster from your Extra Deck, and send its Materials from your Deck to GY, and, during your 2nd Standby Phase after activation, Fusion Summon 1 Monster from your Extra Deck with the same name as that revealed monster, and target it with this card.\n③ If this leaves the field, destroy that monster.\n④ If that monster is destroyed, destroy this card.",
+  "edisonRuling": "● If you can't Special Summon, you can't activate this card.\n● This card’s Special Summon can't be negated by “Thunder King Rai-Oh” or “Horn of Heaven”.\n● You can chain “Royal Oppression” to this card’s activation. (but not when the Monster is Fusion Summoned).",
+  "ourCurrentDesc": "During your 1st Standby Phase after this card's activation: Show 1 Fusion Monster in your Extra Deck and send the Fusion Materials listed on it from your Main Deck to the GY. During your 2nd Standby Phase after this card's activation: Fusion Summon 1 Fusion Monster from your Extra Deck with the same name as the monster you showed, and target it with this card. When this card leaves the field, destroy that target. When that target is destroyed, destroy this card.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "7391448": {
+  "name": "Goyo Guardian",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1 or more non-Tuners\nIf this card destroys a monster by battle and sends it to the GY:\nYou can Special Summon that monster to your field in Defense Position.",
+  "mikaEdisonRaw": "1 Tuner + 1 or more non-Tuners \n① If this card destroys a monster by battle and sends it to the GY: \nYou can Special Summon that monster to your field in Defense Position.",
+  "edisonRuling": "● This card does not require an EARTH Tuner. You can use any Tuner (This is an Erratum).\n● This card’s effect specifies “and sends it to the GY”. It triggers at the end of the Damage Step, but not if the destroyed monster wasn’t sent to the GY, or if this card is no longer face-up on the field.",
+  "ourCurrentDesc": "1 EARTH Tuner + 1 or more non-Tuner monsters\nWhen this card destroys an opponent's monster by battle and sends it to the Graveyard: You can Special Summon that monster to your field in Defense Position.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "44364207": {
+  "name": "Jade Knight",
+  "needsOverride": true,
+  "preErrataDescClean": "While this card is in Attack Position, Machines you control with 1200 or less ATK can't be destroyed by Trap effects.\nIf this card is destroyed by battle and sent to the GY, and was face-up at attack declaration:\nYou can add 1 Level 4 LIGHT Machine from your Deck to your hand.",
+  "mikaEdisonRaw": "① While this card is in Attack Position, Machines you control with 1200 or less ATK can't be destroyed by Trap effects. \n② If this card is destroyed by battle and sent to the GY, and was face-up at attack declaration: \nYou can add 1 Level 4 LIGHT Machine from your Deck to your hand.",
+  "edisonRuling": "● If this Set card was destroyed by battle, you can't activate the ② effect. It must be face-up when targeted for the attack. This ruling also applies to “Cyber Phoenix”.",
+  "ourCurrentDesc": "While this card is in Attack Position, Machine-Type monsters you control with 1200 or less ATK cannot be destroyed by Trap effects. When this card is destroyed by battle and sent to the Graveyard: You can add 1 Level 4 LIGHT Machine-Type monster from your Deck to your hand.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "47297616": {
+  "name": "Light and Darkness Dragon",
+  "needsOverride": true,
+  "preErrataDescClean": "Cannot be Special Summoned.\nWhile face-up on the field, this card is also DARK.\nOnce per Chain, if a Spell/Trap Card, or Monster Effect is activated (Quick):\nThis card loses exactly 500 ATK/DEF and that activation is negated.\nIf this card is destroyed and sent to the GY: Target 1 monster in your GY (if possible); destroy all cards you control, also, after that, Special Summon that monster (if any).",
+  "mikaEdisonRaw": "① Cannot be Special Summoned. \n② While face-up on the field, this card is also DARK. \n③ Once per Chain, if a Spell/Trap Card, or Monster Effect is activated (Quick): \nThis card loses exactly 500 ATK/DEF and that activation is negated. \n④ If this card is destroyed and sent to the GY: Target 1 monster in your GY (if possible); destroy all cards you control, also, after that, Special Summon that monster (if any).",
+  "edisonRuling": "● For the mandatory ③ effect to resolve, this card must be able to both negate the activation and also lose exactly 500 ATK and 500 DEF. If you can’t do either, you do neither.\n● Vs Spirit Monsters, Lyla, Treeborn Frog, Vayu, etc: \nThese trigger effects will be negated by this card’s ③ effect, and can then trigger again. \n(This can “loop” until Light and Darkness Dragon can’t lose any more ATK/DEF.)\n● Summoning a monster with the ④ happens after cards are destroyed.\n● The ④ effect will trigger even if Light and Darkness Dragon's summon was negated by a card like \"Solemn Judgment\".",
+  "ourCurrentDesc": "Cannot be Special Summoned. While face-up on the field, this card is also DARK-Attribute. Once per Chain, during either player's turn, when a Spell Card, Trap Card, or monster effect is activated: This card loses exactly 500 ATK and DEF and that activation is negated. When this card is destroyed and sent to the Graveyard: Target 1 monster in your Graveyard (if possible); destroy all cards you control, also Special Summon that monster (if any).",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "25132288": {
+  "name": "Light End Dragon",
+  "needsOverride": true,
+  "preErrataDescClean": "1 Tuner + 1 or more non-Tuner LIGHTs\nIf an attack is declared involving this monster: You can have this card lose 500 ATK/DEF, and if you do, this turn, the monster it is battling loses 1500 ATK/DEF.",
+  "mikaEdisonRaw": "1 Tuner + 1 or more non-Tuner LIGHTs\n① If an attack is declared involving this monster: You can have this card lose 500 ATK/DEF, and if you do, this turn, the monster it is battling loses 1500 ATK/DEF.",
+  "edisonRuling": "● If this card can't lose 500 ATK and 500 DEF,  the other monster doesn't lose any ATK/DEF.\n● This card's ATK/DEF loss is permanent (until this card is flipped face-down or leaves the field).",
+  "ourCurrentDesc": "1 Tuner + 1 or more non-Tuner LIGHT monsters\nAt attack declaration, if this card battles another monster: You can have this card lose 500 ATK and DEF (permanently), and the monster this card is battling loses 1500 ATK and DEF until the End Phase.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "95503687": {
+  "name": "Lumina, Lightsworn Summoner",
+  "needsOverride": true,
+  "preErrataDescClean": "Once per turn: You can discard 1 card, then target 1 level 4 or lower \"Lightsworn\" monster in your GY; Special Summon it.\nDuring your End Phase: Send the top 3 cards of your Deck to the GY.\n(Activate & Resolve only if this card is face-up on the field).",
+  "mikaEdisonRaw": "① Once per turn: You can discard 1 card, then target 1 level 4 or lower \"Lightsworn\" monster in your GY; Special Summon it.\n② During your End Phase: Send the top 3 cards of your Deck to the GY.\n(Activate & Resolve only if this card is face-up on the field).",
+  "edisonRuling": "● You can only activate the ① effect if you already have a \"Lightsworn\" monster in your GY. However, when choosing a target, you can choose to target the card you discarded, instead. \n● If you control multiple “Lightsworn” monsters, their End Phase effects don’t chain to each other (they each activate, one after another).",
+  "ourCurrentDesc": "Once per turn: You can discard 1 card, then target 1 Level 4 or lower \"Lightsworn\" monster in your GY; Special Summon that target. Once per turn, during your End Phase: Send the top 3 cards of your Deck to the GY.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "42940404": {
+  "name": "Machina Gearframe",
+  "needsOverride": true,
+  "preErrataDescClean": "When Normal Summoned: You can add 1 \"Machina\" monster from your Deck to your hand, except \"Machina Gearframe\".\nOnce per turn: you can activate 1 of these effects; ● Target 1 Machine you control; equip this monster to that target.\n● Unequip and Special Summon this card in Attack Position.\nIf a monster equipped by this card's effect would be destroyed, destroy this card instead.\n© A monster can never be equipped with more than 1 Union Monster.",
+  "mikaEdisonRaw": "① When Normal Summoned: You can add 1 \"Machina\" monster from your Deck to your hand, except \"Machina Gearframe\".\n② Once per turn: you can activate 1 of these effects; ● Target 1 Machine you control; equip this monster to that target.\n● Unequip and Special Summon this card in Attack Position.\n③ If a monster equipped by this card's effect would be destroyed, destroy this card instead.\n© A monster can never be equipped with more than 1 Union Monster.",
+  "edisonRuling": "These rulings apply to all Union Monsters: https://edisonformat.net/rules/compendium/union-monsters\n● If both \"Machina Gearframe\" and the \"Machina\" monster it is equipped to would be destroyed by the same effect (e.g. vs \"Icarus Attack\"/\"Black Rose Dragon\"), the effect to \"destroy this card instead\" is not applied.",
+  "ourCurrentDesc": "When this card is Normal Summoned: You can add 1 \"Machina\" monster from your Deck to your hand, except \"Machina Gearframe\". Once per turn, you can either: Target 1 Machine monster you control; equip this card to that target, OR: Unequip this card and Special Summon it. If the equipped monster would be destroyed by battle or card effect, destroy this card instead.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "45247637": {
+  "name": "Mark of the Rose",
+  "needsOverride": true,
+  "preErrataDescClean": "Activate by banishing 1 Plant from your GY, then target 1 monster your opponent controls; equip this card to that target.\nGain control of the equipped monster.\nDuring your End Phase: Your opponent gains control of the equipped monster.\nDuring your Standby Phase: Gain control of the equipped monster.",
+  "mikaEdisonRaw": "Ⓒ Activate by banishing 1 Plant from your GY, then target 1 monster your opponent controls; equip this card to that target.\n① Gain control of the equipped monster.\n② During your End Phase: Your opponent gains control of the equipped monster.\n③ During your Standby Phase: Gain control of the equipped monster.",
+  "edisonRuling": "The Ⓒ: \n● Banishing a card from the GY is a cost to activate this card.\n\nThe ② and ③:\n● These effects are activated Trigger Effects.\n● While Cold Wave is applying, control is not changed.\n\n● If you control of an opponent's monster with this card, and that monster is flipped face-down, Mark of the Rose is destroyed. However, the monster remains under your control, even if the monster is flipped face-up again.",
+  "ourCurrentDesc": "Activate this card by banishing 1 Plant monster from your GY, then target 1 face-up monster your opponent controls; equip this card to it. Take control of the equipped monster. Once per turn, during your End Phase: Negate this card's effect until your next Standby Phase.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "80921533": {
+  "name": "Mausoleum of the Emperor",
+  "needsOverride": true,
+  "preErrataDescClean": "During the Main Phase: The turn player can pay choose 1 or 2, then pay that much LP x1000; during this effect's resolution, they Normal Summon/Set 1 monster from their hand, which requires that many tributes, without Tributing (This is their 1 Normal Summon/Set for the turn).",
+  "mikaEdisonRaw": "① During the Main Phase: The turn player can pay choose 1 or 2, then pay that much LP x1000; during this effect's resolution, they Normal Summon/Set 1 monster from their hand, which requires that many tributes, without Tributing (This is their 1 Normal Summon/Set for the turn).",
+  "edisonRuling": "● This effect starts a chain.\n● The monster summoned this way is not Tribute Summoned.\n● This Summon can't be negated by \"Solemn Judgment\" or \"Horn of Heaven\".",
+  "ourCurrentDesc": "During any Main Phase: The turn player can pay 1000 LP x the number of monsters normally needed for the Tribute Summon of a monster (max. 2000); that player Normal Summons/Sets that monster without Tributing. (This is their one Normal Summon/Set for that turn. This is not a Tribute Summon.)",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "69279219": {
+  "name": "My Body as a Shield",
+  "needsOverride": true,
+  "preErrataDescClean": "If your opponent activates a Card/Effect that would destroy a monster(s) on the field (except during the Damage Step): Pay 1500 LP; negate the activation, and if you do, destroy it.",
+  "mikaEdisonRaw": "① If your opponent activates a Card/Effect that would destroy a monster(s) on the field   (except during the Damage Step): Pay 1500 LP; negate the activation, and if you do, destroy it.",
+  "edisonRuling": "● This card can't be activated during the Damage Step.\n● This card can negate either the Activation or Effect of cards.\n\nVs \"Deck Devastation Virus:\n● You can chain this card, but only if there you control a face-up monster with 1500 or less ATK.\n● You can't chain this if the monster(s) that would be destroyed are face-down/in-hand.",
+  "ourCurrentDesc": "When your opponent activates a Spell/Trap Card or monster effect that would destroy a monster(s) on the field: Pay 1500 LP; negate the activation, and if you do, destroy it.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "47355498": {
+  "name": "Necrovalley",
+  "needsOverride": true,
+  "preErrataDescClean": "\"Gravekeeper's\" monsters gain 500 ATK/DEF.\nNeither player can banish cards from GY(s).\nNegate any card effect that targets a card(s) in the GY.",
+  "mikaEdisonRaw": "① \"Gravekeeper's\" monsters gain 500 ATK/DEF. \n② Neither player can banish cards from GY(s). \n③ Negate any card effect that targets a card(s) in the GY.",
+  "edisonRuling": "● Effects of cards like “Red-Eyes Darkness Metal Dragon”, “Goyo Guardian”, and “Treeborn Frog” are not negated by this card’s ③ effect, as they don't target.\n● \"Question\", \"Fiber Jar\", \"Penguin Knight\", and \"Agido\" are negated by this card’s ③ effect, even though they don't target (yes, this is weird).",
+  "ourCurrentDesc": "All \"Gravekeeper's\" monsters gain 500 ATK and DEF. Cards in the Graveyard cannot be banished. Negate any card effect that would move a card in the Graveyard to a different place. Negate any card effect that changes Types or Attributes in the Graveyard.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "20932152": {
+  "name": "Quickdraw Synchron",
+  "needsOverride": true,
+  "preErrataDescClean": "During your Main Phase: You can send 1 other monster from your hand to the GY, and Special Summon this card from your hand.\nFor a Synchro Summon, you can substitute this card for any 1 \"Synchron\" Tuner.\ncan't be used as a Synchro Material, except for a monster that lists a \"Synchron\" Tuner as material.",
+  "mikaEdisonRaw": "① During your Main Phase: You can send 1 other monster from your hand to the GY, and Special Summon this card from your hand.\nⒸ For a Synchro Summon, you can substitute this card for any 1 \"Synchron\" Tuner. \nⒸ can't be used as a Synchro Material, except for a monster that lists a \"Synchron\" Tuner as material.",
+  "edisonRuling": "● The ① effect is an ignition effect. It activates, and can be chained to.\n● Sending a card to the GY is part of the ① effect. It happens when this effect resolves. \nIf you can't send, you can't Summon. If you can't Summon, you don't send.\n(If the effect is negated, you don't send a card from your hand to the GY)",
+  "ourCurrentDesc": "You can Special Summon this card (from your hand) by sending 1 monster from your hand to the GY. For a Synchro Summon, you can substitute this card for any 1 \"Synchron\" Tuner. Cannot be used as a Synchro Material, except for the Synchro Summon of a monster that lists a \"Synchron\" Tuner as material.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "88264978": {
+  "name": "Red-Eyes Darkness Metal Dragon",
+  "needsOverride": true,
+  "preErrataDescClean": "You can Special Summon this card (from your hand) by banishing 1 face-up Dragon you control.\nOnce per turn:\nYou can Special Summon 1 Dragon from your hand/GY (except \"Red-Eyes Darkness Metal Dragon”).",
+  "mikaEdisonRaw": "Ⓢ You can Special Summon this card (from your hand) by banishing 1 face-up Dragon you control. \n① Once per turn: \nYou can Special Summon 1 Dragon from your hand/GY (except \"Red-Eyes Darkness Metal Dragon”).",
+  "edisonRuling": "● You can Special Summon multiple copies of this card per turn (this is an erratum).\n● You can activate the effects of multiple copies of this card per turn (this is an erratum).",
+  "ourCurrentDesc": "You can Special Summon this card (from your hand) by banishing 1 face-up Dragon monster you control. You can only Special Summon \"Red-Eyes Darkness Metal Dragon\" once per turn this way. During your Main Phase: You can Special Summon 1 Dragon monster from your hand or GY, except \"Red-Eyes Darkness Metal Dragon\". You can only use this effect of \"Red-Eyes Darkness Metal Dragon\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "14878871": {
+  "name": "Rescue Cat",
+  "needsOverride": true,
+  "preErrataDescClean": "You can send this card you control to the GY; Special Summon 2 Level 3 or lower Beasts from your Deck (destroy them during the End Phase).",
+  "mikaEdisonRaw": "① You can send this card you control to the GY; Special Summon 2 Level 3 or lower Beasts from your Deck (destroy them during the End Phase).",
+  "edisonRuling": "● If a monster summoned this way is later flipped face-down, it isn’t destroyed.",
+  "ourCurrentDesc": "You can send this card to the GY; Special Summon 2 Level 3 or lower Beast monsters from your Deck, but their effects are negated, also they are destroyed during the End Phase. You can only use this effect of \"Rescue Cat\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "21502796": {
+  "name": "Ryko, Lightsworn Hunter",
+  "needsOverride": true,
+  "preErrataDescClean": "FLIP: You can target 1 card on the field; destroy that target (if any), then (regardless), send the top 3 cards of your Deck to the GY.",
+  "mikaEdisonRaw": "① FLIP: You can target 1 card on the field; destroy that target (if any), then (regardless), send the top 3 cards of your Deck to the GY.",
+  "edisonRuling": "● You always send the top 3 cards of your Deck (or all, if less than 3) to the GY, even if you don't destroy a card on the field.\n● This effect targets.",
+  "ourCurrentDesc": "FLIP: Apply these effects (simultaneously).\r\n● You can destroy 1 card on the field.\r\n● Send the top 3 cards of your Deck to the GY.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "26202165": {
+  "name": "Sangan",
+  "needsOverride": true,
+  "preErrataDescClean": "If this card is sent from the field to the GY:\nAdd 1 monster with 1500 or less ATK from your Deck to your hand.",
+  "mikaEdisonRaw": "① If this card is sent from the field to the GY: \nAdd 1 monster with 1500 or less ATK from your Deck to your hand.",
+  "edisonRuling": "● This card’s effect can be activated multiple times per turn. You may use the effects of cards searched this way the same turn that you searched them.\n\n● Mandatory effects such as these cannot miss their activation timing.",
+  "ourCurrentDesc": "If this card is sent from the field to the GY: Add 1 monster with 1500 or less ATK from your Deck to your hand, but you cannot activate cards, or the effects of cards, with that name for the rest of this turn. You can only use this effect of \"Sangan\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "68005187": {
+  "name": "Soul Exchange",
+  "needsOverride": true,
+  "preErrataDescClean": "Target 1 monster your opponent controls; this turn, if you Tribute a monster, you can Tribute that monster, as if you controlled it.\n(You can't conduct your Battle Phase the turn you activate this card).",
+  "mikaEdisonRaw": "① Target 1 monster your opponent controls; this turn, if you Tribute a monster, you can Tribute that monster, as if you controlled it. \n(You can't conduct your Battle Phase the turn you activate this card).",
+  "edisonRuling": "● Even if that monster becomes flipped face-down, you can still tribute it.\n● You are not forced to tribute that monster. You can tribute other monsters instead.\n● Face-down monsters don't have Types nor Attributes. \nYou can't tribute an opponent's face-down monster for a Ritual Summon, not for \"Icarus Attack\".\n\n● If this card's activation is negated, you can still conduct your Battle Phase.\n● If this card's effect is negated, you can't conduct your Battle Phase.\n● You can use this card to tribute an opponent's face-up Plant for \"Lonefire Blossom\". \n● You can't use this card to tribute an opponent's monster for your \"Exiled Force\".",
+  "ourCurrentDesc": "Target 1 monster your opponent controls; this turn, if you Tribute a monster, you must Tribute that target, as if you controlled it. You cannot conduct your Battle Phase the turn you activate this card.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "41006930": {
+  "name": "Strike Ninja",
+  "needsOverride": true,
+  "preErrataDescClean": "Once per turn (Quick Effect):\nYou can banish 2 DARKs from your GY; banish this face-up card (until the End Phase).",
+  "mikaEdisonRaw": "① Once per turn (Quick Effect): \nYou can banish 2 DARKs from your GY; banish this face-up card (until the End Phase).",
+  "edisonRuling": "● You may activate the effects of multiple “Strike Ninja” in the same turn (but only one per copy).",
+  "ourCurrentDesc": "(Quick Effect): You can banish 2 DARK monsters from your GY; banish this face-up card until the End Phase. You can only use this effect of \"Strike Ninja\" once per turn.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "40473581": {
+  "name": "Susa Soldier",
+  "needsOverride": false,
+  "preErrataDescClean": null,
+  "mikaEdisonRaw": "No Edison-Accurate PSCT available for this card.",
+  "edisonRuling": "●When this card inflicts Battle Damage to the opponent it is halved, regardless if it was a direct attack, or from an attack against another monster. For example, if your Susa Soldier (ATK 2000) attacks the opponent’s Gemini Elf (ATK 1900), the opponent will take 50 points of Battle Damage. The damage points are rounded up when there is a fraction.",
+  "ourCurrentDesc": "This card cannot be Special Summoned. This card returns to the owner's hand during the End Phase of the turn that this card is Normal Summoned or flipped face-up. The Battle Damage this card inflicts to your opponent's Life Points is halved.",
+  "source": null,
+  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+ },
+ "9126351": {
+  "name": "Swap Frog",
+  "needsOverride": true,
+  "preErrataDescClean": "You can Special Summon this card (from your hand) by discarding 1 other WATER.\nWhen this card is Summoned: You can send 1 Level 2 or lower WATER Aqua from your Deck or face-up-field to the GY.\nOnce per turn: You can return 1 monster you control to the hand; this turn, you can Normal Summon 1 \"Frog\" monster (except “Swap Frog” or “Frog the Jam”), in addition to your Normal Summon/Set.",
+  "mikaEdisonRaw": "Ⓢ You can Special Summon this card (from your hand) by discarding 1 other WATER. \n① When this card is Summoned: You can send 1 Level 2 or lower WATER Aqua from your Deck or face-up-field to the GY. \n② Once per turn: You can return 1 monster you control to the hand; this turn, you can Normal Summon 1 \"Frog\" monster (except “Swap Frog” or “Frog the Jam”),  in addition to your Normal Summon/Set.",
+  "edisonRuling": "The Ⓢ:\n● Discarding 1 WATER monster for this card’s Ⓢ is a cost. \n● This does not start a chain.\n\n The ①:\n● You can send a monster you control to the GY, so if you activate this effect and then realize that you have nothing in your Deck to send, you must send an appropriate monster you control to the GY.\n\n The ②:\n● Returning a monster to the hand is a cost, so you cannot return a Token/Fusion/Synchro.\n● If Swap leaves the field, and is Summoned again that same turn, it can be activated again. \n● Even if it resolves more than once, you can't gain more than 1 additional Summon this way (but the cost of returning a monster is still paid). \n● You can return an opponent's monster to the hand. If you do, it returns to its owner's hand.\n\n The Frog Summon:\n●You may use the additional Summon before your normal Normal Summon.\n●Summons are not Sets. You can't Set a Frog with your Extra Summon.",
+  "ourCurrentDesc": "You can Special Summon this card (from your hand) by discarding 1 other WATER monster. When this card is Summoned: You can send 1 Level 2 or lower WATER Aqua monster from your Deck or face-up field to the GY. Once per turn: You can return 1 monster you control to the hand; you can Normal Summon 1 \"Frog\" monster during your Main Phase this turn, except \"Swap Frog\", in addition to your Normal Summon/Set. (You can only gain this effect once per turn.)",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "12538374": {
+  "name": "Treeborn Frog",
+  "needsOverride": true,
+  "preErrataDescClean": "During your Standby Phase, if this card is in your GY, and you don’t control \"Treeborn Frog\":\nYou can Special Summon this card.\n(Activate & Resolve only if you control no Spells/Traps.)",
+  "mikaEdisonRaw": "① During your Standby Phase, if this card is in your GY, and you don’t control \"Treeborn Frog\":\nYou can Special Summon this card. \n(Activate & Resolve only if you control no Spells/Traps.)",
+  "edisonRuling": "● You can't activate this card’s effect if you control a Treeborn Frog in the Spell/Trap Zone.\n● If this card’s effect/activation is negated, it can activate again in the same Phase.",
+  "ourCurrentDesc": "Once per turn, during your Standby Phase, if this card is in your Graveyard and you do not control \"Treeborn Frog\": You can Special Summon this card. You must control no Spell/Trap Cards to activate and to resolve this effect.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "80604091": {
+  "name": "Ultimate Offering",
+  "needsOverride": true,
+  "preErrataDescClean": "During your Main Phase or your opponent's Battle Phase: You can pay 500 LP; during this effect's resolution, Normal Summon/Set 1 monster.",
+  "mikaEdisonRaw": "① During your Main Phase or your opponent's Battle Phase: You can pay 500 LP; during this effect's resolution, Normal Summon/Set 1 monster.",
+  "edisonRuling": "● The summon does not happen \"immediately after this effect resolves\". It can't be negated by \"Solemn Judgment\".\n● You can chain this effect to itself, even if you only have 1 monster in hand. However, this effect cannot be activated more than once during the same chain that this card was activated (flipped face-up).",
+  "ourCurrentDesc": "During your Main Phase or your opponent's Battle Phase: You can pay 500 Life Points; immediately after this effect resolves, Normal Summon/Set 1 monster.",
+  "source": "MikaMikaDE/mikaRulings PSCT.Edison"
+ },
+ "94634433": {
+  "name": "Urgent Tuning",
+  "needsOverride": false,
+  "preErrataDescClean": null,
+  "mikaEdisonRaw": "No Edison-Accurate PSCT available for this card.",
+  "edisonRuling": "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the GY.)\n●This card does not target.\n●This card can't be activated during the Damage Step.\n●The Synchro Summon occurs when this effect resolves, it does not occur immediately after this effect resolves. as seen in the most recent erratum.\n●Solemn Judgment can't negate the Synchro Summon performed when this effect resolves.\n●If the number of monsters you control changes due to an effect chained to “Urgent Tuning”, and you don't have a Synchro Monster of a Level you could Summon when “Urgent Tuning” resolves, you must show your Extra Deck to your opponent to prove that you can't Summon a monster. You don't have to show your Extra Deck to your opponent if you would not be able to Synchro Summon at all when “Urgent Tuning” resolves. (Because you control only 1 monster, or control only Tuner monsters, etc.)\n●You can use monsters that are not affected by Trap Cards, like “Elemental Hero Wildheart” as Synchro Material Monsters for “Urgent Tuning”.",
+  "ourCurrentDesc": "During the Battle Phase: Immediately after this effect resolves, Synchro Summon 1 Synchro Monster using monsters you control.",
+  "source": null,
+  "note": "No Edison-accurate printed-text change (ruling/engine-only). Display modern text unchanged."
+ }
+}
