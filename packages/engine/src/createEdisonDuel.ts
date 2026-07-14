@@ -18,9 +18,7 @@ import { EdisonDuel, type CreateEdisonDuelOpts } from "./EdisonDuel.js";
  * @throws If the custom WASM is not present (run build-wasm.sh first).
  * @throws If card DB is not populated (run card-data pipeline first).
  */
-export async function createEdisonDuel(
-  opts: CreateEdisonDuelOpts,
-): Promise<EdisonDuel> {
+export async function createEdisonDuel(opts: CreateEdisonDuelOpts): Promise<EdisonDuel> {
   const { seed, deck0, deck1 } = opts;
   const lib = await loadEdisonCore();
 

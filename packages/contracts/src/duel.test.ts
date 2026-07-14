@@ -134,9 +134,7 @@ describe("RedactedEngineMessageSchema", () => {
     expect((result as Record<string, unknown>).drawn).toBeDefined();
   });
   it("rejects missing name", () => {
-    expect(() =>
-      RedactedEngineMessageSchema.parse({ engineType: 90 }),
-    ).toThrow();
+    expect(() => RedactedEngineMessageSchema.parse({ engineType: 90 })).toThrow();
   });
 });
 
@@ -241,9 +239,7 @@ describe("DuelServerMessageSchema", () => {
     expect(result.type).toBe("DUEL_END");
   });
   it("rejects unknown type", () => {
-    expect(() =>
-      DuelServerMessageSchema.parse({ type: "UNKNOWN", msg: {} }),
-    ).toThrow();
+    expect(() => DuelServerMessageSchema.parse({ type: "UNKNOWN", msg: {} })).toThrow();
   });
 });
 

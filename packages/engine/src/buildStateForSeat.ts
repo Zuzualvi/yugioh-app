@@ -19,15 +19,13 @@ function isFaceDown(position: number | undefined): boolean {
   return (position & FD_MASK) !== 0;
 }
 
-const QUERY_FLAGS = (
-  OcgQueryFlagsConst.CODE |
+const QUERY_FLAGS = (OcgQueryFlagsConst.CODE |
   OcgQueryFlagsConst.POSITION |
   OcgQueryFlagsConst.IS_PUBLIC |
   OcgQueryFlagsConst.TYPE |
   OcgQueryFlagsConst.ATTACK |
   OcgQueryFlagsConst.DEFENSE |
-  OcgQueryFlagsConst.LEVEL
-) as OcgQueryFlags;
+  OcgQueryFlagsConst.LEVEL) as OcgQueryFlags;
 
 const ZONE_DEFS = [
   { ctrl: 0 as 0 | 1, loc: OcgLocation.HAND, name: "p0_hand" as const },
@@ -82,18 +80,14 @@ export function buildStateForSeat(
     }
 
     const isOpponentZone = ctrl !== viewer;
-    const alwaysHidden =
-      (loc & (OcgLocation.HAND | OcgLocation.DECK)) !== 0;
+    const alwaysHidden = (loc & (OcgLocation.HAND | OcgLocation.DECK)) !== 0;
 
     zonesRecord[name] = cards
       .filter((c): c is Record<string, unknown> => c != null)
       .map((card) => {
         const position = card["position"] as number | undefined;
         const needsRedact =
-          isOpponentZone &&
-          (alwaysHidden ||
-            isFaceDown(position) ||
-            card["isPublic"] === false);
+          isOpponentZone && (alwaysHidden || isFaceDown(position) || card["isPublic"] === false);
 
         const base: ZoneCard = {
           code: needsRedact ? 0 : ((card["code"] as number) ?? 0),

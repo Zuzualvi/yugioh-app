@@ -22,6 +22,7 @@ The LP-cost strict patch (Edison rule #10) is applied **unconditionally** by the
 ### 2. Populate card assets
 
 Copy `cards.cdb` and CardScripts to `assets/`:
+
 ```
 assets/
   cards.cdb            ← Edison pool DB (from card-data pipeline)

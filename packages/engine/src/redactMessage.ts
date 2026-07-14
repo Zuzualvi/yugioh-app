@@ -101,12 +101,7 @@ const REVEAL_TYPES: Set<number> = new Set([
   MSG.CONFIRM_EXTRATOP,
 ]);
 
-const HINT_TYPES: Set<number> = new Set([
-  MSG.HINT,
-  MSG.PLAYER_HINT,
-  MSG.CARD_HINT,
-  MSG.SHOW_HINT,
-]);
+const HINT_TYPES: Set<number> = new Set([MSG.HINT, MSG.PLAYER_HINT, MSG.CARD_HINT, MSG.SHOW_HINT]);
 
 const HAND_SHUFFLE_TYPES: Set<number> = new Set([MSG.SHUFFLE_HAND, MSG.SHUFFLE_SET_CARD]);
 
@@ -120,7 +115,7 @@ function isFaceDown(position: unknown): boolean {
 function toRedacted(raw: RawEngineMessage): RedactedEngineMessage {
   // Map numeric type to a human-readable name for the envelope.
   return {
-    name: raw["name"] as string ?? "UNKNOWN",
+    name: (raw["name"] as string) ?? "UNKNOWN",
     engineType: raw.type,
     player: raw.player,
     ...raw,
@@ -144,7 +139,12 @@ export function redactMessageForSeat(
 
   // ── Layer 1: routing ───────────────────────────────────────────────────────
 
-  if (DECISION_TYPES.has(t) || REVEAL_TYPES.has(t) || HINT_TYPES.has(t) || HAND_SHUFFLE_TYPES.has(t)) {
+  if (
+    DECISION_TYPES.has(t) ||
+    REVEAL_TYPES.has(t) ||
+    HINT_TYPES.has(t) ||
+    HAND_SHUFFLE_TYPES.has(t)
+  ) {
     if (msg.player !== viewer) return null;
     return toRedacted(msg);
   }
@@ -172,9 +172,7 @@ export function redactMessageForSeat(
     const destLoc = (to["location"] as number) ?? 0;
     const destPos = to["position"] as number | undefined;
     const destinationHidden =
-      (destLoc & LOC_HAND) !== 0 ||
-      (destLoc & LOC_DECK) !== 0 ||
-      isFaceDown(destPos);
+      (destLoc & LOC_HAND) !== 0 || (destLoc & LOC_DECK) !== 0 || isFaceDown(destPos);
     if (isOpponentCard && destinationHidden) {
       return toRedacted({ ...msg, card: 0 });
     }
