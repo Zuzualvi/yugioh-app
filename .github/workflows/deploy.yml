@@ -18,7 +18,7 @@ on:
 
 concurrency:
   group: deploy-master
-  cancel-in-progress: false
+  cancel-in-progress: true   # supersede a hung deploy run rather than queue behind it
 
 jobs:
   verify:
@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 30
     concurrency:
       group: deploy-backend
-      cancel-in-progress: false
+      cancel-in-progress: true
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     steps:
@@ -84,7 +84,10 @@ jobs:
       # do NOT add || true or continue-on-error. --verbose surfaces the exact
       # remote-build / release step that fails.
       - name: Deploy image to Fly (remote build from Dockerfile)
-        run: flyctl deploy --remote-only --app yugioh-app --verbose
+        # Bound with `timeout` so a stalled release (e.g. a new machine that never
+        # passes the /healthz check) FAILS FAST with the --verbose trace intact,
+        # instead of hanging until the 30-min job timeout with no readable error.
+        run: timeout 420 flyctl deploy --remote-only --app yugioh-app --verbose
 
       # ── BEST-EFFORT (idempotent Fly housekeeping) ──────────────────────────
       # IPs and certs are already allocated after the first deploy; these are
