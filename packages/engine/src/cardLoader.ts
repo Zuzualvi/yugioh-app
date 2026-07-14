@@ -9,7 +9,7 @@ import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const CDB_PATH = resolve(__dir, "../assets/cards.cdb");
+const CDB_PATH = process.env["EDISON_CDB_PATH"] ?? resolve(__dir, "../assets/cards.cdb");
 
 // Lazy-opened singleton — one DB handle per process lifetime.
 let _db: InstanceType<typeof Database> | null = null;

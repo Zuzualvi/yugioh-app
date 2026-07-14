@@ -1,7 +1,7 @@
 /**
  * prod-server.ts — Production entry point for Fly.io deployment.
  *
- * Serves: /api/* routes + /images/* (from volume) + /healthz
+ * Serves: /api/* routes + /images/* (from volume) + /healthz + duel WS
  * The SPA is served separately by Vercel.
  *
  * This file is bundled by esbuild into dist/server.mjs (see Dockerfile).
@@ -14,10 +14,15 @@
  *   NODE_ENV                — Should be "production" (set in fly.toml / docker env)
  *   CORS_ALLOWED_ORIGINS    — Comma-separated allowed origins (e.g. https://app.example.com)
  *   BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD — See bootstrapAdmin.ts
+ *   EDISON_WASM_PATH        — Override path to ocgcore-custom.sync.wasm
+ *   EDISON_CDB_PATH         — Override path to cards.cdb
+ *   EDISON_SCRIPTS_DIR      — Override path to scripts/assets directory
+ *   EDISON_OVERRIDES_DIR    — Override path to edison-overrides directory
  */
 
 import express from "express";
 import cookieParser from "cookie-parser";
+import { createServer } from "node:http";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
@@ -36,8 +41,18 @@ import {
 import { createCardsRouter } from "./packages/server/src/routes/cards.js";
 import { createDecksRouter } from "./packages/server/src/routes/decks.js";
 import { requireSession, requireAdmin } from "./packages/server/src/middleware/requireSession.js";
+import { createDuelRouter } from "./packages/server/src/duel/duelRoutes.js";
+import { DuelManager } from "./packages/server/src/duel/duelManager.js";
+import { attachDuelWsServer } from "./packages/server/src/duel/duelSocket.js";
+import type {
+  DuelEngineFactory,
+  DuelEngineReplay,
+} from "./packages/server/src/duel/engineInterface.js";
 import type { LoadedCatalog } from "./packages/server/src/catalog/loadCatalog.js";
 import type { CardDTO, CardCatalog } from "@yugioh-app/contracts";
+
+// Engine — provides the WASM-backed Edison duel factory
+import { createEdisonDuel, replayEdisonDuel } from "@yugioh-app/engine";
 
 // ---------------------------------------------------------------------------
 // Paths — resolved relative to the bundle (import.meta.url = file:///app/server.mjs)
@@ -114,6 +129,14 @@ const catalog = buildLoadedCatalog();
 console.log(`[prod-server] Catalog loaded: ${catalog.catalog.cards.length} cards`);
 
 // ---------------------------------------------------------------------------
+// Duel engine wiring
+// ---------------------------------------------------------------------------
+const factory: DuelEngineFactory = (opts) => createEdisonDuel(opts);
+const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
+  replayEdisonDuel(seed, deck0, deck1, log);
+const duelManager = new DuelManager(factory, replay);
+
+// ---------------------------------------------------------------------------
 // Express app
 // ---------------------------------------------------------------------------
 const app = express();
@@ -145,12 +168,21 @@ app.use("/api/cards", requireSession(db), createCardsRouter(catalog));
 app.use("/api/decks", requireSession(db), createDecksRouter(db, catalog));
 app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
 
+// Duel routes — requires session
+app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
+
 // /api/* that didn't match → JSON 404
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
 });
 
-app.listen(PORT, () => {
+// ---------------------------------------------------------------------------
+// HTTP server (wraps Express so the WS server can share the same port)
+// ---------------------------------------------------------------------------
+const httpServer = createServer(app);
+attachDuelWsServer(httpServer, db, duelManager);
+
+httpServer.listen(PORT, () => {
   console.log(`Yu-Gi-Oh API listening on port ${PORT} (NODE_ENV=${process.env["NODE_ENV"]})`);
   console.log(`  DB:     ${DB_PATH}`);
   console.log(`  Images: ${IMAGES_PATH}`);

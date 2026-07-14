@@ -47,7 +47,8 @@ RUN node_modules/.bin/esbuild prod-server.ts \
   --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
   --external:better-sqlite3 \
   --external:"@node-rs/argon2" \
-  --outfile=dist/server.mjs
+  --outfile=dist/server.mjs \
+  && echo "Bundle size: $(du -sh dist/server.mjs | cut -f1)"
 
 # ---- Stage 2: runtime --------------------------------------
 FROM node:22-slim AS runtime
@@ -61,6 +62,13 @@ COPY --from=builder /app/packages/card-data/out/edison-card-catalog.json \
      ./packages/card-data/out/edison-card-catalog.json
 COPY --from=builder /app/packages/card-data/out/alias-index.json \
      ./packages/card-data/out/alias-index.json
+
+# Engine runtime artifacts: WASM core, card DB, scripts.
+# The CI deploy job ensures packages/engine/vendor/ and packages/engine/assets/
+# are present in the build context before docker build runs.
+COPY --from=builder /app/packages/engine/vendor /app/engine/vendor
+COPY --from=builder /app/packages/engine/assets /app/engine/assets
+COPY --from=builder /app/packages/engine/scripts/edison-overrides /app/engine/scripts/edison-overrides
 
 # Image seeder (run post-deploy via `fly ssh console -C "node /app/deploy/seed-images.mjs"`).
 # Standalone: Node builtins + fetch only; reads the baked-in catalog, writes to the volume.

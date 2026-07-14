@@ -14,7 +14,8 @@ import type { OcgCoreSync } from "ocgcore-wasm";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
-const CUSTOM_WASM_PATH = resolve(__dir, "../vendor/ocgcore-custom.sync.wasm");
+const CUSTOM_WASM_PATH =
+  process.env["EDISON_WASM_PATH"] ?? resolve(__dir, "../vendor/ocgcore-custom.sync.wasm");
 
 /** Cached WASM bytes (read once from disk; reused across all createEdisonCore calls). */
 let _wasmBytes: ArrayBuffer | null = null;

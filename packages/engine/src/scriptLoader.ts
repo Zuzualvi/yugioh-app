@@ -18,8 +18,9 @@ import { fileURLToPath } from "url";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
-const OVERRIDES_DIR = resolve(__dir, "../scripts/edison-overrides");
-const SCRIPTS_DIR = resolve(__dir, "../assets/scripts");
+const OVERRIDES_DIR =
+  process.env["EDISON_OVERRIDES_DIR"] ?? resolve(__dir, "../scripts/edison-overrides");
+const SCRIPTS_DIR = process.env["EDISON_SCRIPTS_DIR"] ?? resolve(__dir, "../assets/scripts");
 
 /**
  * Return the Lua source for the given script name, or null if not found.

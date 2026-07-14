@@ -34,6 +34,11 @@ ci/
 # Card images — large blobs go on the Fly volume, not in the image
 packages/card-data/images/
 
+# Engine build tooling — NOT needed in the image (only compiled artifacts are).
+# The .wasm and .mjs compiled files in vendor/ ARE included (not excluded here).
+packages/engine/vendor/emsdk/
+packages/engine/vendor/ocgcore-wasm-src/
+
 # node_modules — rebuilt via npm ci inside the builder stage
 node_modules/
 packages/*/node_modules/

@@ -26,6 +26,11 @@ primary_region = "ord"      # Chicago — where the provisioned volume/machine l
   # ALLOW_FIXTURE_CATALOG is intentionally NOT set here.
   # The real 3,681-card catalog is baked into the image.
   CORS_ALLOWED_ORIGINS = "https://app.zuhayr.io"
+  # Engine asset paths — point to artifacts baked into the image by the Dockerfile.
+  EDISON_WASM_PATH     = "/app/engine/vendor/ocgcore-custom.sync.wasm"
+  EDISON_CDB_PATH      = "/app/engine/assets/cards.cdb"
+  EDISON_SCRIPTS_DIR   = "/app/engine/assets/scripts"
+  EDISON_OVERRIDES_DIR = "/app/engine/scripts/edison-overrides"
 
 # ---------------------------------------------------------------------------
 # Persistent volume — holds SQLite DB + card images.
