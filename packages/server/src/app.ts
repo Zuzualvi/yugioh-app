@@ -7,6 +7,8 @@ import { createCardsRouter } from "./routes/cards.js";
 import { createDecksRouter } from "./routes/decks.js";
 import { requireSession, requireAdmin } from "./middleware/requireSession.js";
 import { corsMiddleware, allowedOriginsFromEnv } from "./middleware/cors.js";
+import { createDuelRouter } from "./duel/duelRoutes.js";
+import type { DuelManager } from "./duel/duelManager.js";
 
 // ---------------------------------------------------------------------------
 // Express app factory — wires all routes and middleware.
@@ -16,6 +18,7 @@ import { corsMiddleware, allowedOriginsFromEnv } from "./middleware/cors.js";
 export function createApp(
   db: InstanceType<typeof Database>,
   catalog: LoadedCatalog,
+  duelManager?: DuelManager,
 ): express.Application {
   const app = express();
 
@@ -39,6 +42,11 @@ export function createApp(
 
   // Admin routes — requires session + admin role
   app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
+
+  // Duel routes — requires session
+  if (duelManager) {
+    app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
+  }
 
   // 404 fallback
   app.use((_req, res) => {

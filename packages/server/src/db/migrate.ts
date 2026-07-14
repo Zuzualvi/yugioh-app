@@ -52,6 +52,38 @@ const MIGRATIONS: string[] = [
     applied_at  TEXT NOT NULL
   );
   `,
+
+  // Migration 2: duel tables (Spec 20)
+  `
+  CREATE TABLE IF NOT EXISTS duel (
+    id                     TEXT NOT NULL PRIMARY KEY,
+    join_token             TEXT NOT NULL UNIQUE,
+    seat0_token            TEXT NOT NULL,
+    seat1_token            TEXT NOT NULL,
+    seat0_user_id          TEXT NOT NULL,
+    seat1_user_id          TEXT,
+    seed_json              TEXT NOT NULL,
+    duel_flags             TEXT NOT NULL,
+    deck0_json             TEXT NOT NULL,
+    deck1_json             TEXT,
+    timer_per_move_seconds INTEGER NOT NULL,
+    deadline_at            INTEGER,
+    on_clock_seat          INTEGER,
+    status                 TEXT NOT NULL DEFAULT 'waiting_for_opponent',
+    winner                 INTEGER,
+    end_reason             TEXT,
+    created_at             INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS response_log (
+    duel_id       TEXT NOT NULL REFERENCES duel(id),
+    seq           INTEGER NOT NULL,
+    seat          INTEGER NOT NULL,
+    response_json TEXT NOT NULL,
+    received_at   INTEGER NOT NULL,
+    PRIMARY KEY (duel_id, seq)
+  );
+  `,
 ];
 
 export function runMigrations(db: InstanceType<typeof Database>): void {

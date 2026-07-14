@@ -1,7 +1,12 @@
+import { createServer } from "node:http";
 import { openDb } from "./db/openDb.js";
 import { bootstrapAdmin } from "./db/bootstrapAdmin.js";
 import { loadCatalog } from "./catalog/loadCatalog.js";
 import { createApp } from "./app.js";
+import { DuelManager } from "./duel/duelManager.js";
+import { attachDuelWsServer } from "./duel/duelSocket.js";
+import { createEdisonDuel, replayEdisonDuel } from "@yugioh-app/engine";
+import type { DuelEngineFactory, DuelEngineReplay } from "./duel/engineInterface.js";
 
 // ---------------------------------------------------------------------------
 // Server entry point.
@@ -24,8 +29,19 @@ const db = openDb(DB_PATH);
 await bootstrapAdmin(db);
 
 const catalog = loadCatalog();
-const app = createApp(db, catalog);
 
-app.listen(PORT, () => {
+const factory: DuelEngineFactory = (opts) => createEdisonDuel(opts);
+
+// Rehydrate by creating a fresh engine and replaying the persisted response log.
+const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
+  replayEdisonDuel(seed, deck0, deck1, log);
+
+const duelManager = new DuelManager(factory, replay);
+const app = createApp(db, catalog, duelManager);
+
+const httpServer = createServer(app);
+attachDuelWsServer(httpServer, db, duelManager);
+
+httpServer.listen(PORT, () => {
   console.log(`Yu-Gi-Oh server listening on port ${PORT}`);
 });
