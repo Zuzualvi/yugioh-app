@@ -37,7 +37,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   accuracy:
-    name: accuracy (Edison rules 1–5)
+    name: accuracy (Edison rules 1–6)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -81,5 +81,5 @@ jobs:
         if: steps.cache-assets.outputs.cache-hit != 'true'
         run: bash packages/engine/scripts/fetch-assets.sh
 
-      - name: Run Edison accuracy tests (Rules 1–5; Rule 6 is todo)
-        run: cd packages/engine && npx vitest run src/edisonRules.accuracy.test.ts
+      - name: Run Edison accuracy tests (Rules 1–6)
+        run: npx vitest run packages/engine/src/edisonRules.accuracy.test.ts
