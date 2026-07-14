@@ -26,13 +26,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: "npm"
       - run: npm ci
       - run: npm run verify
+      - name: Notify Discord on verify failure
+        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **CI verify FAILED** on `master`
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   deploy-backend:
     name: deploy backend (Fly · api.zuhayr.io)
@@ -45,7 +54,7 @@ jobs:
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Stage admin-bootstrap secrets (applied on next deploy)
         run: |
@@ -62,3 +71,12 @@ jobs:
         run: flyctl certs add api.zuhayr.io --app yugioh-app || true
       - name: Seed card images onto the volume (idempotent — fast no-op once seeded)
         run: flyctl ssh console --app yugioh-app -C "node /app/deploy/seed-images.mjs"
+      - name: Notify Discord on deploy failure
+        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **Backend deploy FAILED** on `master`
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -95,6 +95,24 @@ package(s)** (scoped `tsc --noEmit`, `eslint`, and `vitest` for your package). T
 CTO runs the full repo-wide `verify` on a clean checkout once a slice's workstreams
 all land, and resolves any integration issue then.
 
+### Pre-commit format hook (husky + lint-staged)
+
+A husky pre-commit hook runs `prettier --write` on STAGED files only via lint-staged.
+This fires automatically on `git commit` after `npm install` (which runs `npm run
+prepare` → `husky`). It is staged-files-only — safe on the shared working tree because
+it never touches your siblings' unstaged work.
+
+- **After cloning or `npm install`:** husky installs itself automatically via the
+  `prepare` script. No manual step needed.
+- **Before committing:** the hook runs `prettier --write` on your staged
+  `*.{ts,tsx,js,jsx,json,css,md}` files. Prettier errors block the commit.
+- **Manual format check (before push, belt-and-suspenders):** run
+  `npx prettier --check packages/<your-package>` or `npx prettier --check .` from the
+  root. This mirrors what `npm run lint` checks in CI.
+- **CI always re-checks format** (`npm run lint` includes `prettier --check .`); the
+  hook is a local safety net that prevents the unformatted-commit CI failure from
+  ever reaching master.
+
 ---
 
 ## Local verify command (authoritative gate)
