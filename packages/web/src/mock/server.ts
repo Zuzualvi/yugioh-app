@@ -277,6 +277,39 @@ export async function handleRequest(
     return;
   }
 
+  // ─── Duel endpoints ────────────────────────────────────────────────────────
+  if (path === "/duels" && method === "POST") {
+    if (!currentUser) {
+      err(res, 401, "unauthenticated", "Not authenticated");
+      return;
+    }
+    const duelId = `duel-${Date.now()}`;
+    const joinToken = `join-${Math.random().toString(36).slice(2)}`;
+    const creatorSeatToken = `seat-${Math.random().toString(36).slice(2)}`;
+    json(res, 201, {
+      duelId,
+      joinToken,
+      creatorSeatToken,
+      seat: 0,
+    });
+    return;
+  }
+
+  if (path === "/duels/join" && method === "POST") {
+    if (!currentUser) {
+      err(res, 401, "unauthenticated", "Not authenticated");
+      return;
+    }
+    const duelId = `duel-${Date.now()}`;
+    const seatToken = `seat-${Math.random().toString(36).slice(2)}`;
+    json(res, 200, {
+      duelId,
+      seat: 1,
+      seatToken,
+    });
+    return;
+  }
+
   // ─── Admin endpoints ───────────────────────────────────────────────────────
   if (path === "/admin/invites" && method === "POST") {
     if (!currentUser) {

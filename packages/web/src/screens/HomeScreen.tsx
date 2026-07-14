@@ -120,13 +120,12 @@ export function HomeScreen() {
             marginBottom: 40,
           }}
         >
-          {/* Duel a friend — stub for this slice */}
+          {/* Duel a friend — live */}
           <ActionCard
             icon="⚔"
             title="Duel a friend"
             description="Challenge a group member to a real-time or async duel."
-            comingSoon
-            href="#"
+            href="/duel/new"
           />
 
           {/* Build a deck — live */}

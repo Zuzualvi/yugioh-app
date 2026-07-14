@@ -5,6 +5,9 @@ import { DeckBuilderScreen } from "./screens/DeckBuilderScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { MyDecksScreen } from "./screens/MyDecksScreen";
+import { CreateDuelScreen } from "./screens/CreateDuelScreen";
+import { JoinDuelScreen } from "./screens/JoinDuelScreen";
+import { DuelScreen } from "./screens/DuelScreen";
 import "./styles/global.css";
 import "./styles/builder.css";
 
@@ -90,6 +93,32 @@ export function App() {
         element={
           <RequireAuth>
             <DeckBuilderScreen />
+          </RequireAuth>
+        }
+      />
+
+      {/* Duel routes */}
+      <Route
+        path="/duel/new"
+        element={
+          <RequireAuth>
+            <CreateDuelScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/duel/join/:joinToken"
+        element={
+          <RequireAuth>
+            <JoinDuelScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/duel/:duelId"
+        element={
+          <RequireAuth>
+            <DuelScreen />
           </RequireAuth>
         }
       />
