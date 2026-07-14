@@ -12,9 +12,13 @@
 ---
 
 ## TL;DR — where the code is
-- **master is GREEN at `bfd86ce`** (docs commits on top: `af33afb`, `6e03c87`). I ran the
-  full CI pipeline (`npm run verify`) locally: **372 tests pass, 11 skipped** (only the
-  WASM-gated empirical tests); typecheck + prettier + arch:check all green.
+- **CI (GitHub Actions) is RED on recent master commits.** My local `npm run verify` at
+  `bfd86ce` passed (372 pass, 11 WASM-skipped; typecheck/prettier/arch green) — but that is
+  **not** the same as CI, and the two disagree. **Treat CI as red / unverified.** Local
+  passing means the cause is something local verify doesn't reproduce — most likely the
+  deploy job or a CI-environment difference (`npm ci` native builds, or tests that need
+  gitignored vendored assets absent in CI), not the local unit suite. Unconfirmed — needs
+  real GitHub Actions log visibility.
 - **Stream 1 (card-text fix): DONE.**
 - **Stream 2 (dueling slice, scope B = synchronous invite-link duels): all four build
   slices LANDED** (contracts, engine, web UI, server infra) + card-script curation done.
@@ -54,7 +58,9 @@ This is the top engineering priority.
 
 ## How to pick up (first actions)
 1. **Read the CEO's tooling/process brief.**
-2. Confirm master CI status (was green at `bfd86ce` on my local run).
+2. **Get real CI visibility and find why GitHub Actions is red** on recent master commits
+   (local `npm run verify` passes, so it's likely the deploy job or a CI-environment
+   difference — not the unit suite). Get CI actually green before feature work.
 3. Stand QA up as the independent gate for the landed slices (they had scoped verify only).
 4. Drive the accuracy critical path above.
 
