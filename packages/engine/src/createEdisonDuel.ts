@@ -7,7 +7,7 @@
 
 import { OcgLocation, OcgPosition } from "ocgcore-wasm";
 import { EDISON_FLAGS } from "./edisonFlags.js";
-import { loadEdisonCore } from "./coreFactory.js";
+import { createEdisonCore } from "./coreFactory.js";
 import { getCard } from "./cardLoader.js";
 import { getScript } from "./scriptLoader.js";
 import { EdisonDuel, type CreateEdisonDuelOpts } from "./EdisonDuel.js";
@@ -15,12 +15,15 @@ import { EdisonDuel, type CreateEdisonDuelOpts } from "./EdisonDuel.js";
 /**
  * Create a new EdisonDuel, ready to step().
  *
+ * Each duel gets its own isolated ocgcore instance so concurrent duels never
+ * share Lua state and a destroyed duel's deferred GC cannot corrupt another.
+ *
  * @throws If the custom WASM is not present (run build-wasm.sh first).
  * @throws If card DB is not populated (run card-data pipeline first).
  */
 export async function createEdisonDuel(opts: CreateEdisonDuelOpts): Promise<EdisonDuel> {
   const { seed, deck0, deck1 } = opts;
-  const lib = await loadEdisonCore();
+  const lib = await createEdisonCore();
 
   const seedBig = typeof seed === "bigint" ? seed : BigInt(seed);
   // Seed is a Xoshiro256** 4-element state; we use [seed, 0, 0, 0] for a simple seed.

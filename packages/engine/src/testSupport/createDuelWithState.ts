@@ -18,7 +18,7 @@ import type {
   OcgPosition as OcgPositionType,
 } from "ocgcore-wasm";
 import { OcgLocation, OcgPosition } from "ocgcore-wasm";
-import { loadEdisonCore } from "../coreFactory.js";
+import { createEdisonCore } from "../coreFactory.js";
 import { getCard } from "../cardLoader.js";
 import { EDISON_FLAGS } from "../edisonFlags.js";
 
@@ -116,7 +116,7 @@ export interface DuelHandle {
  * Call `destroy()` on the returned handle at the end of each test.
  */
 export async function createDuelWithState(opts: DuelSetupOptions = {}): Promise<DuelHandle> {
-  const lib = await loadEdisonCore();
+  const lib = await createEdisonCore();
 
   const flags = opts.flags ?? EDISON_FLAGS;
   const startingLP = opts.startingLP ?? 8000;
@@ -190,10 +190,15 @@ export async function createDuelWithState(opts: DuelSetupOptions = {}): Promise<
 
   lib.startDuel(handle);
 
+  let _lib: typeof lib | null = lib;
   return {
     lib,
     handle,
-    destroy: () => lib.destroyDuel(handle),
+    destroy: () => {
+      if (!_lib) return;
+      _lib.destroyDuel(handle);
+      _lib = null;
+    },
   };
 }
 

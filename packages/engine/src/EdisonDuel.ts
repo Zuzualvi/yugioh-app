@@ -86,7 +86,7 @@ const MSG_NAMES: Record<number, string> = {
 };
 
 export class EdisonDuel {
-  private readonly lib: OcgCoreSync;
+  private lib: OcgCoreSync | null;
   private readonly handle: OcgDuelHandle;
   private readonly responseLog: EngineResponse[] = [];
   private ended = false;
@@ -104,6 +104,11 @@ export class EdisonDuel {
     this.handle = handle;
   }
 
+  private getLib(): OcgCoreSync {
+    if (!this.lib) throw new Error("EdisonDuel: core already released (internal error)");
+    return this.lib;
+  }
+
   /**
    * Release the duel handle back to ocgcore, freeing native heap memory.
    * Must be called when a duel is no longer needed; omitting it leaks WASM
@@ -113,7 +118,9 @@ export class EdisonDuel {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    this.lib.destroyDuel(this.handle);
+    this.lib!.destroyDuel(this.handle);
+    // Drop the core reference so this duel's isolated WASM instance can be GC'd.
+    this.lib = null;
   }
 
   /**
@@ -128,14 +135,15 @@ export class EdisonDuel {
    */
   step(): EngineStepResult {
     if (this.destroyed) throw new Error("EdisonDuel.step() called after destroy()");
+    const lib = this.getLib();
     const events: RawEngineMessage[] = [];
     const messages: RawEngineMessage[] = [];
 
     while (true) {
-      const result = this.lib.duelProcess(this.handle);
+      const result = lib.duelProcess(this.handle);
 
       // Collect messages from this processing step
-      const msgs = this.lib.duelGetMessage(this.handle) as unknown[];
+      const msgs = lib.duelGetMessage(this.handle) as unknown[];
       const isFinal = result === OcgProcessResult.END || result === OcgProcessResult.WAITING;
       for (const m of msgs) {
         if (m == null) continue;
@@ -180,7 +188,7 @@ export class EdisonDuel {
   respond(response: EngineResponse): void {
     if (this.destroyed) throw new Error("EdisonDuel.respond() called after destroy()");
     this.responseLog.push(response);
-    this.lib.duelSetResponse(
+    this.getLib().duelSetResponse(
       this.handle,
       response as Parameters<OcgCoreSync["duelSetResponse"]>[1],
     );
@@ -193,7 +201,7 @@ export class EdisonDuel {
 
   /** Build a per-seat DuelStateSnapshot with hidden codes zeroed. */
   getStateForSeat(seat: Seat): DuelStateSnapshot {
-    return buildStateForSeat(this.lib, this.handle, seat, this.phaseInfo);
+    return buildStateForSeat(this.getLib(), this.handle, seat, this.phaseInfo);
   }
 
   isEnded(): boolean {
