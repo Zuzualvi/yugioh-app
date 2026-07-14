@@ -56,21 +56,61 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
       - name: Stage admin-bootstrap secrets (applied on next deploy)
+        # Best-effort: if BOOTSTRAP_ADMIN_* secrets haven't been provisioned in the
+        # repo yet (first-time setup, or CEO hasn't set them), flyctl rejects empty
+        # values and would red the pipeline even though the deploy is fine.
+        # We guard by only calling flyctl when both values are non-empty.
         run: |
-          flyctl secrets set --stage --app yugioh-app \
-            BOOTSTRAP_ADMIN_USERNAME="${{ secrets.BOOTSTRAP_ADMIN_USERNAME }}" \
-            BOOTSTRAP_ADMIN_PASSWORD="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}"
+          if [ -n "${{ secrets.BOOTSTRAP_ADMIN_USERNAME }}" ] && \
+             [ -n "${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}" ]; then
+            flyctl secrets set --stage --app yugioh-app \
+              BOOTSTRAP_ADMIN_USERNAME="${{ secrets.BOOTSTRAP_ADMIN_USERNAME }}" \
+              BOOTSTRAP_ADMIN_PASSWORD="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}"
+          else
+            echo "WARN: BOOTSTRAP_ADMIN_* secrets not set — skipping secrets staging (set them in repo Settings → Secrets)"
+          fi
+
+      # ── MUST SUCCEED ──────────────────────────────────────────────────────────
+      # This is the real deploy. A failure here means the image didn't land;
+      # do NOT add || true or continue-on-error.
       - name: Deploy image to Fly (remote build from Dockerfile)
         run: flyctl deploy --remote-only --app yugioh-app
+
+      # ── BEST-EFFORT (idempotent Fly housekeeping) ──────────────────────────
+      # IPs and certs are already allocated after the first deploy; these are
+      # no-ops thereafter. They can transiently fail (rate-limit, already-exists
+      # error) without meaning the deploy is broken — hence || true.
       - name: Ensure public IPs (shared IPv4 + IPv6 are free)
         run: |
           flyctl ips allocate-v4 --shared --app yugioh-app || true
           flyctl ips allocate-v6 --app yugioh-app || true
+
       - name: Ensure TLS cert for the custom domain (idempotent)
         run: flyctl certs add api.zuhayr.io --app yugioh-app || true
+
+      # ── BEST-EFFORT (post-deploy image seed) ──────────────────────────────
+      # `flyctl ssh console` is inherently flaky: the Fly machine may still be
+      # starting up after the deploy, the SSH handshake can time out, or the
+      # builder VM may not be reachable yet. These are transient — the deploy
+      # itself already succeeded. We retry 3×/15 s and treat ultimate failure as
+      # a warning rather than a broken pipeline. Re-run manually if images are
+      # missing: `flyctl ssh console --app yugioh-app -C "node /app/deploy/seed-images.mjs"`
       - name: Seed card images onto the volume (idempotent — fast no-op once seeded)
-        run: flyctl ssh console --app yugioh-app -C "node /app/deploy/seed-images.mjs"
+        continue-on-error: true
+        run: |
+          for attempt in 1 2 3; do
+            echo "Seed attempt $attempt/3…"
+            flyctl ssh console --app yugioh-app -C "node /app/deploy/seed-images.mjs" && break
+            if [ $attempt -lt 3 ]; then
+              echo "SSH failed — waiting 20 s before retry…"
+              sleep 20
+            else
+              echo "WARN: image seeding failed after 3 attempts — deploy is still live; seed manually if needed"
+            fi
+          done
+
       - name: Notify Discord on deploy failure
         if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
         uses: tsickert/discord-webhook@v6.0.0
