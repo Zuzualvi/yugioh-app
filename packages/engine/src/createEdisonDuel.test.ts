@@ -7,9 +7,10 @@
 // blocker and run build-wasm.sh to activate them.
 // ---------------------------------------------------------------------------
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { isCustomWasmAvailable } from "./coreFactory.js";
 import { createEdisonDuel } from "./createEdisonDuel.js";
+import type { EdisonDuel } from "./EdisonDuel.js";
 
 const WASM_AVAILABLE = isCustomWasmAvailable();
 
@@ -33,32 +34,38 @@ const DECK = { main: fillerDeck(20), extra: [] };
 // ── R4: createEdisonDuel API ──────────────────────────────────────────────────
 
 describe.skipIf(!WASM_AVAILABLE)("createEdisonDuel API (R4) [requires custom WASM]", () => {
+  let duel: EdisonDuel | null = null;
+  afterEach(() => {
+    duel?.destroy();
+    duel = null;
+  });
+
   it("creates a duel and steps to first WAITING", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     const result = duel.step();
     expect(["waiting", "continue", "ended"]).toContain(result.status);
     expect(Array.isArray(result.messages)).toBe(true);
   });
 
   it("isEnded() returns false before duel ends", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     duel.step();
     expect(duel.isEnded()).toBe(false);
   });
 
   it("getResult() returns null while duel is in progress", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     duel.step();
     expect(duel.getResult()).toBeNull();
   });
 
   it("getResponseLog() starts empty", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     expect(duel.getResponseLog()).toHaveLength(0);
   });
 
   it("getStateForSeat() returns valid DuelStateSnapshot shape", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     duel.step();
     const state = duel.getStateForSeat(0);
     expect(state.seat).toBe(0);
@@ -71,7 +78,7 @@ describe.skipIf(!WASM_AVAILABLE)("createEdisonDuel API (R4) [requires custom WAS
   });
 
   it("redactMessageForSeat() returns null for opponent decision messages", async () => {
-    const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     const stepResult = duel.step();
     // Find first decision message
     const decisionMsg = stepResult.messages.find((m) => m.player === 0 || m.player === 1);
@@ -92,10 +99,12 @@ describe.skipIf(!WASM_AVAILABLE)("createEdisonDuel API (R4) [requires custom WAS
 describe.skipIf(!WASM_AVAILABLE)("Determinism (R5) [requires custom WASM]", () => {
   it("two duels with same seed produce identical first-step messages", async () => {
     const duel1 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
-    const duel2 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
-
     const result1 = duel1.step();
+    duel1.destroy();
+
+    const duel2 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
     const result2 = duel2.step();
+    duel2.destroy();
 
     expect(JSON.stringify(result1.messages)).toBe(JSON.stringify(result2.messages));
     expect(result1.status).toBe(result2.status);
@@ -103,23 +112,26 @@ describe.skipIf(!WASM_AVAILABLE)("Determinism (R5) [requires custom WASM]", () =
 
   it("getStateForSeat produces identical output for same-seed duels", async () => {
     const duel1 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
-    const duel2 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
-
     duel1.step();
-    duel2.step();
-
     const state1 = duel1.getStateForSeat(0);
+    duel1.destroy();
+
+    const duel2 = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+    duel2.step();
     const state2 = duel2.getStateForSeat(0);
+    duel2.destroy();
 
     expect(JSON.stringify(state1)).toBe(JSON.stringify(state2));
   });
 
   it("different seeds produce different message sequences", async () => {
     const duel1 = await createEdisonDuel({ seed: 1n, deck0: DECK, deck1: DECK });
-    const duel2 = await createEdisonDuel({ seed: 2n, deck0: DECK, deck1: DECK });
-
     const result1 = duel1.step();
+    duel1.destroy();
+
+    const duel2 = await createEdisonDuel({ seed: 2n, deck0: DECK, deck1: DECK });
     const result2 = duel2.step();
+    duel2.destroy();
 
     // Messages may differ (different shuffle due to different seed)
     // At minimum the test validates both run without error
@@ -133,6 +145,12 @@ describe.skipIf(!WASM_AVAILABLE)("Determinism (R5) [requires custom WASM]", () =
 describe.skipIf(!WASM_AVAILABLE)(
   "LP-cost strict patch (R2 / Edison rule #10) [requires custom WASM]",
   () => {
+    let duel: EdisonDuel | null = null;
+    afterEach(() => {
+      duel?.destroy();
+      duel = null;
+    });
+
     it("an 800-LP-cost effect is ILLEGAL at exactly 800 LP (must survive with ≥ 1 LP)", async () => {
       // This test requires a card that pays 800 LP as a cost and can be activated.
       // Poison of the Old Man [73910089] pays 800 LP. In Edison format this card
@@ -154,7 +172,7 @@ describe.skipIf(!WASM_AVAILABLE)(
       expect(WASM_AVAILABLE).toBe(true);
 
       // When the custom WASM is present, create a duel and verify it runs
-      const duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
+      duel = await createEdisonDuel({ seed: SEED, deck0: DECK, deck1: DECK });
       const result = duel.step();
       // If patch is applied, engine doesn't crash on normal operation
       expect(result).toBeDefined();
