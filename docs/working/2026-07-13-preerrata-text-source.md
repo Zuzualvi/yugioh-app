@@ -1,5 +1,10 @@
 # Pre-Errata TEXT Source — Findings & Override Set
 
+> **FINAL DECISION (post-proofread):** we ship the **verbatim March-2010 printed text** from Yugipedia
+> `Card Errata:` history, NOT the mikaRulings `PSCT.Edison` text described below. A proofread found
+> substantive errors in mika's text on 8/35 cards. mika research retained here for provenance; see
+> `2026-07-13-proofread-report.md` for the final override set and rationale.
+
 **Date:** 2026-07-13  •  **Author:** Product Lead  •  For: CTO handoff on the functional-errata display fix.
 
 ## Where edisonformat.net's Edison-accurate text actually comes from
