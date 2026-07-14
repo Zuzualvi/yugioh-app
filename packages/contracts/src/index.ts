@@ -21,6 +21,40 @@ export type { User, RedeemInviteBody, LoginBody } from "./user.js";
 export { UserSchema, RedeemInviteBodySchema, LoginBodySchema } from "./user.js";
 
 export type {
+  Seat,
+  DuelId,
+  PerMoveTimer,
+  CreateDuelBody,
+  CreateDuelResult,
+  JoinDuelBody,
+  JoinDuelResult,
+  EngineResponse,
+  RedactedEngineMessage,
+  ZoneCard,
+  DuelZones,
+  DuelStateSnapshot,
+  DuelEndReason,
+  DuelServerMessage,
+  DuelClientMessage,
+} from "./duel.js";
+export {
+  SeatSchema,
+  PerMoveTimerSchema,
+  CreateDuelBodySchema,
+  CreateDuelResultSchema,
+  JoinDuelBodySchema,
+  JoinDuelResultSchema,
+  EngineResponseSchema,
+  RedactedEngineMessageSchema,
+  ZoneCardSchema,
+  DuelZonesSchema,
+  DuelStateSnapshotSchema,
+  DuelEndReasonSchema,
+  DuelServerMessageSchema,
+  DuelClientMessageSchema,
+} from "./duel.js";
+
+export type {
   Violation,
   ViolationCode,
   DeckValidation,
