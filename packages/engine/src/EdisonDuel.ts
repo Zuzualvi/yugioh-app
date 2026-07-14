@@ -208,25 +208,6 @@ export class EdisonDuel {
     return null;
   }
 
-  // ── Static replay factory ──────────────────────────────────────────────────
-
-  /**
-   * Rehydrate from a response log (spike-d determinism / server-restart resume).
-   * Creates a fresh duel with the same seed+decks, replays all responses,
-   * and returns the duel object at the same logical state.
-   */
-  static async replay(
-    seed: bigint | number,
-    deck0: DeckLists,
-    deck1: DeckLists,
-    log: EngineResponse[],
-  ): Promise<EdisonDuel> {
-    const { createEdisonDuel } = await import("./createEdisonDuel.js");
-    const duel = await createEdisonDuel({ seed, deck0, deck1 });
-    await duel.applyLog(log);
-    return duel;
-  }
-
   /**
    * Apply a response log to this duel (for resume after restart).
    * Steps until each WAITING, then feeds the stored response.

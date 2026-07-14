@@ -9,6 +9,7 @@
 
 // Public API (R4 — LOCKED, server codes against this)
 export { createEdisonDuel } from "./createEdisonDuel.js";
+export { replayEdisonDuel } from "./replayEdisonDuel.js";
 export { EdisonDuel } from "./EdisonDuel.js";
 export type { DeckLists, EngineStepResult, CreateEdisonDuelOpts } from "./EdisonDuel.js";
 
