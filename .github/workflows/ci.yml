@@ -14,6 +14,9 @@ jobs:
     name: typecheck · lint · arch · test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -23,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run verify
       - name: Notify Discord on CI failure
-        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
         uses: tsickert/discord-webhook@v6.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}

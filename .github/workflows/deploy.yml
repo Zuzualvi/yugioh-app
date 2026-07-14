@@ -18,13 +18,16 @@ on:
 
 concurrency:
   group: deploy-master
-  cancel-in-progress: true # supersede a hung deploy run rather than queue behind it
+  cancel-in-progress: false
 
 jobs:
   verify:
     name: verify (typecheck · lint · arch · test)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -34,7 +37,7 @@ jobs:
       - run: npm ci
       - run: npm run verify
       - name: Notify Discord on verify failure
-        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
         uses: tsickert/discord-webhook@v6.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -53,6 +56,7 @@ jobs:
       cancel-in-progress: true
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v5
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -84,10 +88,11 @@ jobs:
       # do NOT add || true or continue-on-error. --verbose surfaces the exact
       # remote-build / release step that fails.
       - name: Deploy image to Fly (remote build from Dockerfile)
-        # Bound with `timeout` so a stalled release (e.g. a new machine that never
-        # passes the /healthz check) FAILS FAST with the --verbose trace intact,
-        # instead of hanging until the 30-min job timeout with no readable error.
-        run: timeout 420 flyctl deploy --remote-only --app yugioh-app --verbose
+        # --verbose surfaces the exact remote-build / release step in the run log.
+        # The job's timeout-minutes:30 is the backstop — do NOT bound with a shorter
+        # shell `timeout`; the first real image build + release legitimately takes
+        # several minutes.
+        run: flyctl deploy --remote-only --app yugioh-app --verbose
 
       # ── BEST-EFFORT (idempotent Fly housekeeping) ──────────────────────────
       # IPs and certs are already allocated after the first deploy; these are
@@ -123,7 +128,7 @@ jobs:
           done
 
       - name: Notify Discord on deploy failure
-        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
         uses: tsickert/discord-webhook@v6.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
