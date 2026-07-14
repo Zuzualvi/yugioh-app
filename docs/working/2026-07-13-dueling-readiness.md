@@ -85,12 +85,27 @@ Sweeping edisonformat.com's rule-difference list against our flag set (`OBSOLETE
 
 **Read-out:** 4 rules solidly confirmed, 2 partially covered but untested, 1 is card-level (Part A), and **6 are not yet confirmed against the engine (#4, #5, #9, #10, #11, #12).** These are "not yet validated," not "known broken" — but #4 and #10 in particular are real Edison rules that a friends-group would notice, so they need an empirical test each before we claim accurate Edison rules.
 
+### PART B.1 — Source dig on the 6 unconfirmed rules (edo9300 @ `8e5f4e4`, our pinned commit)
+Read the C++ engine to classify each "❓" as handled / card-level / genuine gap. Result: most were era-gated flags GOAT already leaves in the old state.
+
+| Rule | Verdict | Evidence |
+|---|---|---|
+| #5 Trap Monster zone | ✅ **HANDLED** (confirm) | `DUEL_TRAP_MONSTERS_NOT_USE_ZONE 0x8000` gates the *modern* behavior; MODE_GOAT does **not** set it, so `!is_flag(...)` branches (card.cpp:3810, operations.cpp:1089/1605/1660/4967/5125) enforce the old zone occupancy. |
+| #9 Trigger recognition mid-chain | ✅ **HANDLED** (confirm) | Era-gated: `DUEL_TRIGGER_ONLY_IN_LOCATION` (modern, **off** in GOAT) at field.cpp:3247; `DUEL_TRIGGER_WHEN_PRIVATE_KNOWLEDGE` (**on** in GOAT) at effect.cpp:236/256, processor.cpp:632/711/714. GOAT = old permissive recognition. |
+| #11 End-of-turn discard | ✅ **LIKELY HANDLED** (confirm) | processor.cpp:529-550 does the hand-size discard as a `REASON_RULE + REASON_ADJUST` action — a game-mechanic action, not a chainable effect, so it opens no response window. Matches "can't respond." |
+| #4 Mandatory-trigger re-activation | 🟡 **MOSTLY CARD-LEVEL** + 1 test | The behavior change was *card errata* (Judgment Dragon, Tsukuyomi, Duelist Saga) — so the pre-errata scripts for those named Lightsworn/Spirit cards carry the old behavior. The general engine re-activation behavior still wants one empirical test. Largely subsumed by Part A script curation. |
+| #12 Infinite loops | ⚪ **NOT SIM-REPRODUCIBLE** | The old Edison rule is a human-judge "primary cause" procedure; no automated engine reproduces it (they detect/abort). Document as a known non-reproducible edge case; not a build task. |
+| #10 LP cost that reduces LP to 0 | 🔴 **GENUINE GAP** | `field::check_lp_cost` (field.cpp:2364) returns true when `val <= player[playerid].lp` — **no era flag** — so the engine allows paying a cost down to exactly 0 (modern). Edison forbids it. Fix = small core-fork patch (`<` instead of `<=`, ideally behind a flag) **or** an accepted, documented exception (low frequency: requires having *exactly* the cost in LP). |
+
+**Net after the dig:** of the 6 "❓", three collapse to "handled, just confirm" (#5, #9, #11), one is mostly covered by the script curation (#4), one is a non-reproducible edge case (#12), and **one is a real but low-frequency engine gap (#10)** needing a core patch or an accepted exception. That leaves the empirical to-do list much smaller: confirm #5/#9/#11, test #7 (SEGOC) and #8 (single-chain-in-damage-substep), one test for #4's general behavior, and decide #10 (patch vs accept).
+
 ---
 
 ## Residual risks & recommended pre-dev validation (for the CTO to run during the dueling build)
 1. **Card scripts:** curate Buckets 1–3 (drop-in / verify-wire / fix-REDMD), then diff Bucket 5's 17 vs the verbatim text and author only real behavior gaps. Maintain a documented "left on modern text" list.
-2. **Flag sweep:** write one empirical test per ⚠️/❓ rule above (#4, #5, #7, #8, #9, #10, #11, #12). Prioritize #4 (mandatory-trigger re-activation) and #10 (LP-cost-to-0) — most likely to be missing and most player-visible.
-3. **Express the flag set as an explicit, per-flag-commented bitmask** (not a `MODE_GOAT` reference) — see the earlier note; removes the "are we playing GOAT?" ambiguity and forces each bit to carry its Edison justification.
+2. **Flag sweep — empirical to-do (much smaller after the source dig):** confirm #5/#9/#11 behave old-style; write a test for #7 (SEGOC ordering) and #8 (single-chain-in-damage-substep); one test for #4's general re-activation behavior.
+3. **Rule #10 (LP-cost-to-0) — decision needed:** patch the core fork (`check_lp_cost`/`PayLPCost` use `<` for Edison, ideally behind a duel flag) **or** accept + document the exception. Low frequency, but it's the one genuine unflagged gap.
+4. **Express the flag set as an explicit, per-flag-commented bitmask** (not a `MODE_GOAT` reference) — removes the "are we playing GOAT?" ambiguity and forces each bit to carry its Edison justification.
 
 ## Provenance / confidence
 Script statuses come from prior `.lua`-inspection research (Buckets 1 & 3 verified by source; Buckets 2/5 need re-verification at build since the repo may have changed). Flag statuses come from Spike A/A2/E (empirical where noted) + this rule-difference sweep. Sources: edisonformat.com/edison-rule-differences.html; ProjectIgnis CardScripts; team memory `edison-functional-errata.md`, `edison-engine-rules-flags.md`.
