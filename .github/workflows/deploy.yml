@@ -18,7 +18,7 @@ on:
 
 concurrency:
   group: deploy-master
-  cancel-in-progress: true   # supersede a hung deploy run rather than queue behind it
+  cancel-in-progress: true # supersede a hung deploy run rather than queue behind it
 
 jobs:
   verify:
