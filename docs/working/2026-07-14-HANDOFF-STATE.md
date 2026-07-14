@@ -1,102 +1,76 @@
 # HANDOFF — Edison App state & how to pick up (2026-07-14)
 
-**Author:** CTO • **For:** the next CTO session (likely fresh context, updated harness/persona).
+**Author:** CTO • **For:** the next CTO session (likely fresh context).
 **Read this first, then `docs/working/2026-07-13-CTO-BRIEF.md` for product context.**
 
----
-
-## TL;DR — where things are
-- **master is GREEN** at **`bfd86ce`**. I ran the full CI pipeline (`npm run verify`) on a
-  clean state: **372 tests pass, 11 skipped** (only the WASM-gated empirical tests),
-  typecheck + prettier + arch:check all green.
-- **Stream 1 (card-text fix): DONE & live-ready.**
-- **Stream 2 (dueling slice, scope B): all four build slices LANDED** (contracts, engine,
-  web UI, server infra) + card-script curation done. What's NOT done: empirical accuracy
-  validation (blocked on the WASM build) and the 13-card Lua authoring.
-- **Two standing problems the CEO is fixing via harness/persona:** (1) I can't see
-  GitHub CI/deploy status; (2) QA was never an independent gate. See the retrospective:
-  `/mnt/memory/yugioh-app-team-memory/lessons/cto-process-retrospective-2026-07-14.md`.
+> **IMPORTANT:** The CEO is making updates to tooling / harness / process and will give the
+> next session a BRIEF on what changed. Read that brief first. Do **not** assume the
+> environment or tooling notes below still hold — defer to the CEO's brief. This document
+> covers the **code / build state** only; it deliberately does not prescribe how any
+> infra/tooling issues will be solved (that's the CEO's call, pending).
 
 ---
 
-## HOW TO PICK UP (first actions, in order)
-1. **Confirm CI status with your new tooling.** master is `bfd86ce`; I verified green
-   locally but could not see GitHub Actions. First thing: check the actual CI + deploy
-   result. (If you now have a GH token: `gh api /repos/Zuzualvi/yugioh-app/commits/bfd86ce/check-runs`.)
-2. **Expect a RED Vercel deploy on every commit** until the deploy-email fix lands — this
-   is the "wall of red" the CEO saw. It is NOT the CI/verify gate (that's green); it's the
-   Vercel git-integration blocking bot-authored commits. Decision options are below.
-3. **Stand up QA as the gate.** No slice should be "done" until QA runs full repo-wide
-   `verify` on a clean checkout + the spec's acceptance criteria. Slices 20/30 landed on
-   scoped verify only — have QA independently verify them.
-4. **Unblock the WASM build** (critical path — see below). Docker IS available; the
-   `emscripten/emsdk` image can build `packages/engine/scripts/build-wasm.sh`.
-5. **Then** the 13-card Lua authoring can proceed (needs a runnable engine to verify).
+## TL;DR — where the code is
+- **master is GREEN at `bfd86ce`** (docs commits on top: `af33afb`, `6e03c87`). I ran the
+  full CI pipeline (`npm run verify`) locally: **372 tests pass, 11 skipped** (only the
+  WASM-gated empirical tests); typecheck + prettier + arch:check all green.
+- **Stream 1 (card-text fix): DONE.**
+- **Stream 2 (dueling slice, scope B = synchronous invite-link duels): all four build
+  slices LANDED** (contracts, engine, web UI, server infra) + card-script curation done.
+- **Remaining engineering = the ACCURACY layer:** empirical rule tests + 13-card Lua
+  authoring + QA verification — all pending a runnable engine (the custom WASM artifact
+  is not yet built).
 
----
-
-## Slice status (Stream 2, scope B = synchronous invite-link duels; NO auto-matchmaking)
+## Slice status
 | Slice | Package | Status | SHA |
 |---|---|---|---|
 | 00 Duel contracts | contracts | ✅ DONE (31 tests) | 2c96c8c |
 | 10 Engine core (WASM, EDISON_FLAGS, #10 patch, redaction, determinism) | engine | ✅ landed; **empirical tests SKIPPED pending WASM** | eb5e40d (+ cycle fix bfd86ce) |
 | 20 Server duel infra (lifecycle, persistence, WS relay, timer, reconnect) | server | ✅ landed (150 pass, 1 skip); scoped-verify only → **needs QA** | 3de754e |
-| 30 Web duel UI (board, action panel, timer, create/join-link) | web | ✅ landed (93 tests); runs full loop vs mock → **needs QA** | 701f548 |
+| 30 Web duel UI (board, action panel, timer, create/join-link) | web | ✅ landed (93 tests); full loop vs mock → **needs QA** | 701f548 |
 | 40 Card-script curation (diff+stage) | spikes/ | ✅ DONE — 11 drop-in + 1 fixed staged, 5 modern-ok, 6 rules-level, 13 need authoring | b3d28f6 |
-| Infra CI/deploy health | .github, hooks | ✅ format hook + Node@v5 + Discord steps (guarded) | 719c748 |
-| 50 Rules-validation tests (QA) | engine/server | 🔴 BLOCKED on WASM | — |
-| CTO Lua authoring — 13 cards | engine overrides | 🔴 BLOCKED on runnable WASM engine | — |
+| 50 Rules-validation tests (QA) | engine/server | ⏳ pending runnable WASM engine | — |
+| CTO Lua authoring — 13 cards | engine overrides | ⏳ pending runnable WASM engine | — |
 
-Board: `tasks/BOARD.md`. All specs in `/workspace/specs/stream2-*.md` + `infra-ci-deploy-health.md`.
+Board: `tasks/BOARD.md`. Specs: `/workspace/specs/stream2-*.md`.
 
----
+## Remaining engineering work (code)
+1. **Enable the custom WASM engine artifact** so the empirical tests can run — currently
+   the engine's 10 empirical tests + the server's 1 integration test skip when it's absent.
+   (Build script: `packages/engine/scripts/build-wasm.sh`; artifact expected at
+   `packages/engine/vendor/`, plus `packages/engine/assets/cards.cdb` + scripts for the
+   tests to execute.)
+2. **Author the 13 gap cards** (worklist + gap notes: `spikes/card-script-curation/REPORT.md`)
+   and wire the curated/staged `.lua` into `packages/engine/scripts/edison-overrides/`.
+3. **QA independently verify** slices 20 (server) + 30 (web) — they landed on scoped verify
+   only — and own the end-to-end rules suite.
 
-## KNOWN ISSUES / what's red and why
-1. **CI observability (highest):** the GitHub API is firewalled (403) from the agent
-   sandbox; the git token only works for push/pull. I cannot read Actions/deploy status.
-   → CEO provisioning a read token (`GH_CI_READ_TOKEN`) unlocks it. `gh` v2.45 is installed.
-2. **Vercel deploys BLOCKED:** git-integration rejects bot commits
-   (`noreply@anthropic.com` maps to no GitHub account). Every push shows a red Vercel
-   deployment. Deck builder stays live; nothing new deploys. Fix options below.
-3. **WASM build (critical path):** custom ocgcore WASM can't build where agents run (no
-   emsdk). Gates: engine's 10 empirical tests, server's 1 integration test, the 13-card
-   authoring verification, and QA's rules suite. **Docker IS available** → build via
-   `docker run --rm -v $PWD:/src emscripten/emsdk bash -c "cd /src && bash packages/engine/scripts/build-wasm.sh"`,
-   then artifact lands at `packages/engine/vendor/ocgcore-custom.sync.{wasm,mjs}` (gitignored;
-   also need `packages/engine/assets/cards.cdb` + scripts present for the tests to run).
+## Critical path to the accuracy promise (the product's whole point)
+Nothing has yet *proven* that two legal Edison decks reproduce March-2010 behavior. The
+chain: runnable engine → engine empirical tests (#5/#9/#11 confirm, #7/#8/#4 test, #10
+verify) → author the 13 gap cards → wire overrides → QA runs the rules suite end-to-end.
+This is the top engineering priority.
 
----
+## How to pick up (first actions)
+1. **Read the CEO's tooling/process brief.**
+2. Confirm master CI status (was green at `bfd86ce` on my local run).
+3. Stand QA up as the independent gate for the landed slices (they had scoped verify only).
+4. Drive the accuracy critical path above.
 
-## CEO ACTION ITEMS (from Infra memo `docs/working/2026-07-14-ci-deploy-health.md`)
-| # | Item | Why | CTO recommendation |
-|---|---|---|---|
-| 1 | Provision GH read token → secret `GH_CI_READ_TOKEN` | Unlocks CI observability for agents | Do it — this is the core fix |
-| 2 | Discord webhook → secret `DISCORD_WEBHOOK_URL` | Real-time failure alerts (steps already wired, no-op until set) | Do it — highest-leverage notification |
-| 3 | Vercel unblock | Deploys are red on every commit | **Option B** (Vercel CLI+token in CI, symmetric w/ Fly) is cleanest; needs `VERCEL_TOKEN`+`ORG_ID`+`PROJECT_ID` + disable dashboard auto-deploy. **Option A** (set git email to CEO's GH no-reply) is the zero-secret quick unblock but attributes commits to CEO |
-| 4 | Build WASM once in emsdk env → commit artifact | Un-skips all empirical accuracy tests | Do via docker (available); ~870KB |
-| 5 | Branch protection + required checks | Stop master going red silently | Consider — implies PR-based flow (workflow change) |
-
----
-
-## Critical path to the ACCURACY promise (the product's whole point)
-Nothing has yet verified that two legal Edison decks reproduce March-2010 behavior. The
-chain is: build WASM → engine empirical tests pass (#5/#9/#11 confirm, #7/#8/#4 test, #10
-verify) → author the 13 gap cards (`spikes/card-script-curation/REPORT.md` worklist) →
-wire curated `.lua` into `packages/engine/scripts/edison-overrides/` → QA runs the rules
-suite end-to-end. This is the top priority once observability + WASM are unblocked.
-
----
+## Environment notes (may be superseded by the CEO's brief — do not assume)
+- At time of writing I had **no CI/deploy status visibility** from the agent sandbox, and
+  **Vercel deploys showed red** for bot-authored commits. The CEO is addressing tooling —
+  **await the brief; do not assume these constraints still apply.**
+- Working facts: `npm install` first (no node_modules by default); repo is detached HEAD →
+  push with `git push origin HEAD:master`; a pre-commit prettier hook is enforced.
 
 ## Key pointers
 - Product context: `docs/working/2026-07-13-CTO-BRIEF.md`
-- Decisions: `docs/working/2026-07-14-cto-decisions-and-stream2-plan.md`; team memory
-  `/mnt/memory/yugioh-app-team-memory/decisions/`
-- Infra/CI memo: `docs/working/2026-07-14-ci-deploy-health.md`
+- Decisions: `docs/working/2026-07-14-cto-decisions-and-stream2-plan.md`; memory `.../decisions/`
 - Card-script worklist: `spikes/card-script-curation/REPORT.md`
-- Process retrospective: `/mnt/memory/.../lessons/cto-process-retrospective-2026-07-14.md`
-- Env facts every agent needs: `npm install` first (no node_modules); detached HEAD →
-  `git push origin HEAD:master`; pre-commit prettier hook now enforced.
+- CTO self-retrospective (input for the CEO's tooling pass): `/mnt/memory/.../lessons/cto-process-retrospective-2026-07-14.md`
 
 ## Agent threads (all idle; work landed & pushed)
-Backend×3 (Stream1, contracts+engine, curation), Frontend (web), Infra (CI), Server
+Backend×3 (Stream 1, contracts+engine, curation), Frontend (web), Infra (CI), Server
 (slice 20), Task Manager (board) — all reported DONE. No open questions outstanding.
