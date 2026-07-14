@@ -1,3 +1,7 @@
+> ⚠️ **SUPERSEDED — do not use.** This was the mid-session state (before the accuracy work
+> landed). Read **`2026-07-14-HANDOFF-END-OF-SESSION.md`** instead: master is now green, all 6
+> Edison rules pass in CI, and the dueling backend is live on Fly.
+
 # HANDOFF — Edison App state & how to pick up (2026-07-14)
 
 **Author:** CTO • **For:** the next CTO session (likely fresh context).
