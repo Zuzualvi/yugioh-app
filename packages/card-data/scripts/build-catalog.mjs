@@ -51,6 +51,20 @@ const PASSCODE_CORRECTIONS = {
 };
 
 // ---------------------------------------------------------------------------
+// Load pre-errata desc overrides (keyed by passcode string)
+// Only entries with needsOverride===true are applied; Susa Soldier (40473581) is skipped.
+// ---------------------------------------------------------------------------
+const _rawOverrides = JSON.parse(
+  fs.readFileSync(path.join(ROOT, "src/preErrataDescOverrides.json"), "utf8"),
+);
+/** @type {Record<string, string>} passcode → preErrataDescClean (needsOverride:true only) */
+const OVERRIDES = Object.fromEntries(
+  Object.entries(_rawOverrides)
+    .filter(([, v]) => v.needsOverride === true)
+    .map(([k, v]) => [k, v.preErrataDescClean]),
+);
+
+// ---------------------------------------------------------------------------
 // Load Spike-B artifacts (ground truth — do NOT re-derive)
 // ---------------------------------------------------------------------------
 const allowlist = JSON.parse(fs.readFileSync(path.join(SPIKE_B, "edison-allowlist.json"), "utf8"));
@@ -254,7 +268,7 @@ async function main() {
       level: raw.level ?? null,
       atk: raw.atk ?? null,
       def: raw.def ?? null,
-      desc: raw.desc ?? "",
+      desc: OVERRIDES[String(catalogPc)] ?? raw.desc ?? "",
       banlist: resolveBanlist(allowlistPc),
       aliasOf: null,
       imageId,

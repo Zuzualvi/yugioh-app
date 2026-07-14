@@ -1978,7 +1978,7 @@
       "level": 4,
       "atk": 1200,
       "def": 1600,
-      "desc": "While this card is in Attack Position, negate any Spell/Trap effects that target 1 Machine monster you control (and no other cards). When this card is destroyed by battle and sent to the GY: You can draw 1 card.",
+      "desc": "While this card is in face-up Attack Position on your side of the field, negate the effects of any Spell or Trap Card that targets 1 Machine-Type monster on your side of the field. When this face-up card on the field attacks or is attacked, and it is destroyed as a result of battle and sent to the Graveyard, you can draw 1 card from your Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 3370104
@@ -4378,7 +4378,7 @@
       "level": 6,
       "atk": 2800,
       "def": 2000,
-      "desc": "1 EARTH Tuner + 1 or more non-Tuner monsters\nWhen this card destroys an opponent's monster by battle and sends it to the Graveyard: You can Special Summon that monster to your field in Defense Position.",
+      "desc": "1 Tuner + 1 or more non-Tuner monsters\nWhen this card destroys an opponent's monster by battle and sends it to the Graveyard, you can Special Summon that monster to your side of the field in face-up Defense Position.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 7391448
@@ -5188,7 +5188,7 @@
       "level": 2,
       "atk": 1000,
       "def": 500,
-      "desc": "You can Special Summon this card (from your hand) by discarding 1 other WATER monster. When this card is Summoned: You can send 1 Level 2 or lower WATER Aqua monster from your Deck or face-up field to the GY. Once per turn: You can return 1 monster you control to the hand; you can Normal Summon 1 \"Frog\" monster during your Main Phase this turn, except \"Swap Frog\", in addition to your Normal Summon/Set. (You can only gain this effect once per turn.)",
+      "desc": "You can discard 1 WATER monster to Special Summon this card from your hand. When this card is Summoned, you can select and send 1 Level 2 or lower Aqua-Type WATER monster from your Deck or your side of the field to the Graveyard. Once per turn, you can return 1 monster you control to your hand to Normal Summon 1 \"Frog\" monster, except \"Swap Frog\" or \"Frog the Jam\", in addition to your Normal Summon or Set this turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 9126351
@@ -7168,7 +7168,7 @@
       "level": 1,
       "atk": 100,
       "def": 100,
-      "desc": "Once per turn, during your Standby Phase, if this card is in your Graveyard and you do not control \"Treeborn Frog\": You can Special Summon this card. You must control no Spell/Trap Cards to activate and to resolve this effect.",
+      "desc": "If this card is in your Graveyard during your Standby Phase and there are no Spell or Trap Cards on your side of the field, you can Special Summon this card to your side of the field. This effect cannot be activated if there is a face-up \"Treeborn Frog\" on your side of the field.",
       "banlist": "semi",
       "aliasOf": null,
       "imageId": 12538374
@@ -8383,7 +8383,7 @@
       "level": 4,
       "atk": 300,
       "def": 100,
-      "desc": "You can send this card to the GY; Special Summon 2 Level 3 or lower Beast monsters from your Deck, but their effects are negated, also they are destroyed during the End Phase. You can only use this effect of \"Rescue Cat\" once per turn.",
+      "desc": "Send this face-up card on your side of the field to the Graveyard to Special Summon 2 Level 3 or lower Beast-Type monsters from your Deck to the field. The monsters Special Summoned in this way are destroyed during the End Phase.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 14878871
@@ -11848,7 +11848,7 @@
       "level": 5,
       "atk": 700,
       "def": 1400,
-      "desc": "You can Special Summon this card (from your hand) by sending 1 monster from your hand to the GY. For a Synchro Summon, you can substitute this card for any 1 \"Synchron\" Tuner. Cannot be used as a Synchro Material, except for the Synchro Summon of a monster that lists a \"Synchron\" Tuner as material.",
+      "desc": "You can send 1 monster from your hand to the Graveyard and Special Summon this card from your hand. You can substitute this card for any 1 \"Synchron\" Tuner monster for a Synchro Summon. This card cannot be used as a Synchro Material Monster, except for the Synchro Summon of a monster that lists a \"Synchron\" monster as a Tuner monster.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 20932152
@@ -12268,7 +12268,7 @@
       "level": 2,
       "atk": 200,
       "def": 100,
-      "desc": "FLIP: Apply these effects (simultaneously).\r\n● You can destroy 1 card on the field.\r\n● Send the top 3 cards of your Deck to the GY.",
+      "desc": "FLIP: You can destroy 1 card on the field. Send the top 3 cards of your Deck to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 21502796
@@ -14278,7 +14278,7 @@
       "level": 8,
       "atk": 2600,
       "def": 2100,
-      "desc": "1 Tuner + 1 or more non-Tuner LIGHT monsters\nAt attack declaration, if this card battles another monster: You can have this card lose 500 ATK and DEF (permanently), and the monster this card is battling loses 1500 ATK and DEF until the End Phase.",
+      "desc": "1 Tuner + 1 or more non-Tuner LIGHT monsters\nWhen you declare an attack, you can activate this card's effect. If you do, this card loses 500 ATK and DEF (permanently), and the monster it is battling loses 1500 ATK and DEF until the End Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 25132288
@@ -14698,7 +14698,7 @@
       "level": 7,
       "atk": 2100,
       "def": 3000,
-      "desc": "1 Tuner + 1+ non-Tuner monsters\r\nDuring your Main Phase: You can Special Summon 1 Level 4 or lower monster from your hand. You cannot conduct your Battle Phase the turn you activate this effect. During your Main Phase: You can destroy as many cards in the Field Zones as possible (min. 1), and if you do, gain 1000 LP, then you can add 1 Field Spell with a different name than the destroyed card(s), from your Deck to your hand. You can only use each effect of \"Ancient Fairy Dragon\" once per turn.",
+      "desc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can Special Summon 1 Level 4 or lower monster from your hand. You cannot conduct your Battle Phase the turn you activate this effect. Once per turn, you can destroy a Field Spell Card. If you do, gain 1000 Life Points, and you can add 1 Field Spell Card from your Deck to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 25862681
@@ -14893,7 +14893,7 @@
       "level": 3,
       "atk": 1000,
       "def": 600,
-      "desc": "If this card is sent from the field to the GY: Add 1 monster with 1500 or less ATK from your Deck to your hand, but you cannot activate cards, or the effects of cards, with that name for the rest of this turn. You can only use this effect of \"Sangan\" once per turn.",
+      "desc": "When this card is sent from the field to the Graveyard, move 1 monster with an ATK of 1500 or less from your Deck to your hand. Your Deck is then shuffled.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 26202165
@@ -16288,7 +16288,7 @@
       "level": 4,
       "atk": 1800,
       "def": 1200,
-      "desc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can either: Target 1 monster on the field; equip this card to that target, OR: Unequip this card and Special Summon it in Attack Position. While equipped by this effect, that target gains 1000 ATK. If that target destroys a monster by battle and sends it to the Graveyard: Inflict damage to your opponent equal to the ATK of the destroyed monster in the Graveyard.",
+      "desc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can equip this card to a monster OR unequip it to Special Summon this card in face-up Attack Position. While equipped to a monster by this effect, that monster gains 1000 ATK. When the equipped monster destroys a monster by battle and sends it to the Graveyard, inflict damage to your opponent equal to the destroyed monster's ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 29071332
@@ -19513,7 +19513,7 @@
       "level": 1,
       "atk": -1,
       "def": -1,
-      "desc": "This card's ATK/DEF become its Level x 200. Once per turn, during your Standby Phase: Increase this card's Level by 1 (max. 12). When this face-up card leaves the field by card effect: You can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
+      "desc": "This card's ATK and DEF are equal to its Level x 200. During each of your Standby Phases, increase the Level of this card by 1 (max 12). When this card is removed from the field by a card effect, you can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 34471458
@@ -23188,7 +23188,7 @@
       "level": 4,
       "atk": 1700,
       "def": 1200,
-      "desc": "(Quick Effect): You can banish 2 DARK monsters from your GY; banish this face-up card until the End Phase. You can only use this effect of \"Strike Ninja\" once per turn.",
+      "desc": "You can remove this card from play until the End Phase of this turn by removing 2 DARK monsters in your Graveyard from play. You can use this effect during either player's turn. You can only use this effect once per turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 41006930
@@ -24328,7 +24328,7 @@
       "level": 4,
       "atk": 1800,
       "def": 0,
-      "desc": "When this card is Normal Summoned: You can add 1 \"Machina\" monster from your Deck to your hand, except \"Machina Gearframe\". Once per turn, you can either: Target 1 Machine monster you control; equip this card to that target, OR: Unequip this card and Special Summon it. If the equipped monster would be destroyed by battle or card effect, destroy this card instead.",
+      "desc": "When this card is Normal Summoned, you can add 1 \"Machina\" monster, except \"Machina Gearframe\", from your Deck to your hand. Once per turn, during your Main Phase, you can equip this card to a Machine-Type monster you control as an Equip Card, OR unequip it to Special Summon this card in face-up Attack Position. (A monster can only be equipped with 1 Union Monster at a time. If the equipped monster would be destroyed, destroy this card instead.)",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 42940404
@@ -25183,7 +25183,7 @@
       "level": 4,
       "atk": 1000,
       "def": 1800,
-      "desc": "While this card is in Attack Position, Machine-Type monsters you control with 1200 or less ATK cannot be destroyed by Trap effects. When this card is destroyed by battle and sent to the Graveyard: You can add 1 Level 4 LIGHT Machine-Type monster from your Deck to your hand.",
+      "desc": "Face-up Machine-Type monsters you control with 1200 or less ATK cannot be destroyed by the effects of Trap Cards. When this face-up card is destroyed by battle and sent to the Graveyard, you can add 1 Level 4 LIGHT Machine-Type monster from your Deck to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 44364207
@@ -25663,7 +25663,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate this card by banishing 1 Plant monster from your GY, then target 1 face-up monster your opponent controls; equip this card to it. Take control of the equipped monster. Once per turn, during your End Phase: Negate this card's effect until your next Standby Phase.",
+      "desc": "Remove from play 1 Plant-Type monster from your Graveyard and equip this card to a monster your opponent controls. Gain control of the equipped monster. During your End Phase, give control of the equipped monster to your opponent. During your Standby Phase, gain control of the equipped monster.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 45247637
@@ -26743,7 +26743,7 @@
       "level": 8,
       "atk": 2800,
       "def": 2400,
-      "desc": "Cannot be Special Summoned. While face-up on the field, this card is also DARK-Attribute. Once per Chain, during either player's turn, when a Spell Card, Trap Card, or monster effect is activated: This card loses exactly 500 ATK and DEF and that activation is negated. When this card is destroyed and sent to the Graveyard: Target 1 monster in your Graveyard (if possible); destroy all cards you control, also Special Summon that monster (if any).",
+      "desc": "This card cannot be Special Summoned. While this card is face-up on the field its Attribute is also treated as DARK. When a Spell or Trap Card is activated, or the effect of an Effect Monster is activated, that activation is negated and this card loses 500 ATK and DEF. When this card is destroyed and sent to the Graveyard, select 1 monster in your Graveyard. Then destroy all cards you control, and Special Summon that monster.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 47297616
@@ -26773,7 +26773,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "All \"Gravekeeper's\" monsters gain 500 ATK and DEF. Cards in the Graveyard cannot be banished. Negate any card effect that would move a card in the Graveyard to a different place. Negate any card effect that changes Types or Attributes in the Graveyard.",
+      "desc": "As long as this card remains face-up on the field, all effects of Magic, Trap and/or Effect Monster Cards that involve Graveyards are negated and neither player can remove cards in the Graveyards from play. In addition, increase the ATK and DEF of all monsters that includes \"Gravekeeper's\" in their card name by 500 points.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 47355498
@@ -27148,7 +27148,7 @@
       "level": 4,
       "atk": 1800,
       "def": 200,
-      "desc": "During the End Phase, if this card was banished while face-up, on your side of the field, this turn: Special Summon this banished card. This effect can only activate once per turn.",
+      "desc": "If this face-up card on your side of the field is removed from play, this card is Special Summoned to the owner's side of the field during the End Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 48092532
@@ -28393,7 +28393,7 @@
       "level": 6,
       "atk": 2300,
       "def": 1400,
-      "desc": "1 Tuner + 1+ non-Tuner monsters\nYou can discard any number of cards to the GY, then target the same number of cards your opponent controls; return those cards to the hand. You can only use this effect of \"Brionac, Dragon of the Ice Barrier\" once per turn.",
+      "desc": "1 Tuner + 1 or more non-Tuner monsters\nYou can discard any number of cards to return the same number of cards from the field to the hand.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 50321796
@@ -37798,7 +37798,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Target 1 monster your opponent controls; this turn, if you Tribute a monster, you must Tribute that target, as if you controlled it. You cannot conduct your Battle Phase the turn you activate this card.",
+      "desc": "Select an opponent's monster and use it as a Tribute in place of one of your own. You must skip your Battle Phase for the turn in which this card is activated.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 68005187
@@ -38638,7 +38638,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When your opponent activates a Spell/Trap Card or monster effect that would destroy a monster(s) on the field: Pay 1500 LP; negate the activation, and if you do, destroy it.",
+      "desc": "When your opponent activates a card that has the effect that destroys 1 or more monsters on the field, pay 1500 Life Points to negate the activation of the card and destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 69279219
@@ -39883,7 +39883,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "If a monster(s) is Normal or Special Summoned face-up, except by the effect of \"Black Garden\": Halve its ATK, then, the controller of that monster Special Summons 1 \"Rose Token\" (Plant/DARK/Level 2/ATK 800/DEF 800) to their opponent's field in Attack Position. (This ATK loss remains even if this card leaves the field.) You can target 1 monster in your GY with ATK equal to the total ATK of all Plant monsters on the field; destroy this card and as many Plant monsters on the field as possible, then, if you destroyed all of them, Special Summon that targeted monster.",
+      "desc": "When a monster is Normal or Special Summoned, except by the effect of \"Black Garden\", halve its ATK and Special Summon 1 \"Rose Token\" (Plant-Type/DARK/Level 2/ATK 800/DEF 800) to its controller's opponent's side of the field, in Attack Position. You can destroy this card and all face-up Plant-Type monsters on the field and Special Summon 1 monster with ATK equal to the total ATK of those monsters from your Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 71645242
@@ -42448,7 +42448,7 @@
       "level": 10,
       "atk": 3000,
       "def": 3000,
-      "desc": "\"Destiny HERO - Plasma\" + \"Destiny HERO - Dogma\"\r\nA Fusion Summon of this card can only be done with the above Fusion Materials. Once per turn: You can target 1 monster your opponent controls; destroy that target, and if it was face-up, inflict damage to your opponent equal to the ATK it had on the field. You cannot conduct your Battle Phase the turn you activate this effect. Once per turn, during your Standby Phase, if this card is in your GY: You can banish 1 \"Destiny HERO\" card from your GY; Special Summon this card.",
+      "desc": "\"Destiny Hero - Plasma\" + \"Destiny Hero - Dogma\"\nA Fusion Summon of this monster can only be conducted with the above Fusion Material Monsters. Once per turn, you can destroy 1 monster your opponent controls and inflict damage to your opponent equal to its ATK. If you activate this effect, you cannot conduct your Battle Phase this turn. During your Standby Phase, if this card is in your Graveyard you can remove from play 1 \"Destiny Hero\" card from your Graveyard to Special Summon this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 76263644
@@ -43213,7 +43213,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During your 1st Standby Phase after this card's activation: Show 1 Fusion Monster in your Extra Deck and send the Fusion Materials listed on it from your Main Deck to the GY. During your 2nd Standby Phase after this card's activation: Fusion Summon 1 Fusion Monster from your Extra Deck with the same name as the monster you showed, and target it with this card. When this card leaves the field, destroy that target. When that target is destroyed, destroy this card.",
+      "desc": "Send, from your Deck to the Graveyard, Fusion Material Monsters that are listed on a Fusion Monster Card, and select that 1 Fusion Monster from your Fusion Deck. Special Summon the selected Fusion Monster during your 2nd Standby Phase after this card's activation. (This Special Summon is treated as a Fusion Summon.) When this card is removed from the field, destroy that monster. When the monster is destroyed, destroy this card.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 77565204
@@ -44743,7 +44743,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Discard 2 cards from your hand. Select 1 face-up monster and change it to face-down Defense Position.",
+      "desc": "Discard 2 cards from your hand. Select 1 face-up monster and flip it face-down, but do not change its battle position.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 80168720
@@ -44953,7 +44953,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During your Main Phase or your opponent's Battle Phase: You can pay 500 Life Points; immediately after this effect resolves, Normal Summon/Set 1 monster.",
+      "desc": "At the cost of 500 Life Points per monster, a player is allowed an extra Normal Summon or Set.",
       "banlist": "semi",
       "aliasOf": null,
       "imageId": 80604092
@@ -45163,7 +45163,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During any Main Phase: The turn player can pay 1000 LP x the number of monsters normally needed for the Tribute Summon of a monster (max. 2000); that player Normal Summons/Sets that monster without Tributing. (This is their one Normal Summon/Set for that turn. This is not a Tribute Summon.)",
+      "desc": "Both players can Normal Summon or Set monsters without Tribute(s) by paying 1000 Life Points x the number of monsters needed to Tribute Summon them.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 80921533
@@ -48838,7 +48838,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Pay 800 LP, then target 1 face-up monster your opponent controls that can be Normal Summoned/Set; take control of that target until the End Phase.",
+      "desc": "Pay 800 Life Points. Select 1 face-up monster on your opponent's side of the field. Take control of the selected card until the End Phase of the turn this card is activated.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 87910978
@@ -48973,7 +48973,7 @@
       "level": 10,
       "atk": 2800,
       "def": 2400,
-      "desc": "You can Special Summon this card (from your hand) by banishing 1 face-up Dragon monster you control. You can only Special Summon \"Red-Eyes Darkness Metal Dragon\" once per turn this way. During your Main Phase: You can Special Summon 1 Dragon monster from your hand or GY, except \"Red-Eyes Darkness Metal Dragon\". You can only use this effect of \"Red-Eyes Darkness Metal Dragon\" once per turn.",
+      "desc": "You can remove from play 1 Dragon-Type monster you control to Special Summon this card. Once per turn, you can Special Summon 1 Dragon-Type monster except \"Red-Eyes Darkness Metal Dragon\" from your hand or Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 88264978
@@ -49123,7 +49123,7 @@
       "level": 8,
       "atk": 2600,
       "def": 2100,
-      "desc": "1 Tuner + 1 or more non-Tuner DARK monsters\nOnce per turn: You can target 1 monster your opponent controls; this card loses 500 ATK and DEF, and you send that target to the Graveyard.",
+      "desc": "1 Tuner + 1 or more non-Tuner DARK monsters\nOnce per turn, you can have this card lose 500 ATK and DEF, and send 1 monster your opponent controls to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 88643579
@@ -49438,7 +49438,7 @@
       "level": 4,
       "atk": 1700,
       "def": 1100,
-      "desc": "Once per turn: You can reveal 1 Fusion Monster from your Extra Deck, then send 1 of the Fusion Materials whose name is specifically listed on that card from your Deck to the Graveyard; this card's name becomes the sent monster's until the End Phase.",
+      "desc": "Once per turn, you can reveal 1 Fusion Monster from your Fusion Deck and send 1 of the Fusion Material Monsters listed on that card from your Deck to the Graveyard. Until the End Phase, this card's name is treated as the sent monster's name.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 89312388
@@ -52003,7 +52003,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During the Battle Phase: Immediately after this effect resolves, Synchro Summon 1 Synchro Monster using monsters you control.",
+      "desc": "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the Graveyard.)",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 94634433
@@ -52648,7 +52648,7 @@
       "level": 3,
       "atk": 1000,
       "def": 1000,
-      "desc": "Once per turn: You can discard 1 card, then target 1 Level 4 or lower \"Lightsworn\" monster in your GY; Special Summon that target. Once per turn, during your End Phase: Send the top 3 cards of your Deck to the GY.",
+      "desc": "Once per turn, you can discard 1 card to Special Summon 1 Level 4 or lower \"Lightsworn\" monster from your Graveyard. During each of your End Phases, send the top 3 cards of your Deck to the Graveyard.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 95503687
@@ -52798,7 +52798,7 @@
       "level": 5,
       "atk": 1000,
       "def": 2000,
-      "desc": "Once per turn: You can Tribute 1 monster; inflict damage to your opponent equal to half the Tributed monster's ATK on the field.",
+      "desc": "Offer 1 monster on your side of the field as a Tribute to inflict Direct Damage equal to half of the Tribute monster's ATK to your opponent's Life Points. Monsters used for a Tribute Summon or that are offered as Tributes due to other cards' effects are excluded.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 95727991
