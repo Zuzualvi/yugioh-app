@@ -82,7 +82,7 @@ echo "  Changes: check_lp_cost + PayLPCost: val <= lp  →  val < lp"
 echo "  (Forbids paying LP cost that reduces LP to exactly 0)"
 patch -p1 < "$PATCHES_DIR/ocgcore-lp-cost-strict.patch" || {
   echo "  Patch already applied or failed — checking..."
-  if grep -q "return val < lp;" cpp/ygo/field.cpp; then
+  if grep -q "val < player\[playerid\]\.lp" cpp/ygo/field.cpp; then
     echo "  Already patched (idempotent). Continuing."
   else
     echo "ERROR: Patch failed and file is not already patched. Aborting."

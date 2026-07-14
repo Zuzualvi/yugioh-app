@@ -27,7 +27,10 @@ export interface DeckLists {
 
 export interface EngineStepResult {
   status: "waiting" | "continue" | "ended";
+  /** Decision/routing messages from the terminal process step (WAITING or END). */
   messages: RawEngineMessage[];
+  /** Broadcast/event messages from intermediate CONTINUE steps (draws, moves, etc.). */
+  events: RawEngineMessage[];
   awaiting?: { seat: Seat };
 }
 
@@ -102,9 +105,16 @@ export class EdisonDuel {
 
   /**
    * Advance the engine until the next WAITING decision or END.
-   * Returns all messages emitted, the status, and (if waiting) which seat.
+   *
+   * - `messages`: decision/routing messages from the terminal process step
+   *   (SELECT_CHAIN, SELECT_IDLECMD, etc.). These are player-targeted and are
+   *   null for the non-targeted seat via redactMessageForSeat().
+   * - `events`: broadcast messages from intermediate CONTINUE steps
+   *   (DRAW, MOVE, NEW_TURN, etc.). These carry public state and must be
+   *   stripped of hidden codes via redactMessageForSeat() before forwarding.
    */
   step(): EngineStepResult {
+    const events: RawEngineMessage[] = [];
     const messages: RawEngineMessage[] = [];
 
     while (true) {
@@ -112,6 +122,7 @@ export class EdisonDuel {
 
       // Collect messages from this processing step
       const msgs = this.lib.duelGetMessage(this.handle) as unknown[];
+      const isFinal = result === OcgProcessResult.END || result === OcgProcessResult.WAITING;
       for (const m of msgs) {
         if (m == null) continue;
         const raw = m as Record<string, unknown>;
@@ -122,13 +133,18 @@ export class EdisonDuel {
           ...raw,
         };
         this.updatePhaseFromMessage(rawMsg);
-        messages.push(rawMsg);
+        // Decision/terminal messages go into messages; broadcast goes into events
+        if (isFinal) {
+          messages.push(rawMsg);
+        } else {
+          events.push(rawMsg);
+        }
       }
 
       if (result === OcgProcessResult.END) {
         this.ended = true;
         this.phaseInfo = { ...this.phaseInfo, duelEnded: true };
-        return { status: "ended", messages };
+        return { status: "ended", messages, events };
       }
 
       if (result === OcgProcessResult.WAITING) {
@@ -137,6 +153,7 @@ export class EdisonDuel {
         return {
           status: "waiting",
           messages,
+          events,
           awaiting: awaitingSeat !== null ? { seat: awaitingSeat } : undefined,
         };
       }

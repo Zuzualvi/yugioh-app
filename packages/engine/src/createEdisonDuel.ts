@@ -68,5 +68,7 @@ export async function createEdisonDuel(opts: CreateEdisonDuelOpts): Promise<Edis
     }
   }
 
+  lib.startDuel(handle);
+
   return new EdisonDuel(lib, handle);
 }
