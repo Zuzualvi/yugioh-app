@@ -55,6 +55,9 @@ module.exports = {
     doNotFollow: {
       path: "node_modules",
     },
+    exclude: {
+      path: "packages/engine/(vendor|assets)/",
+    },
     tsConfig: {
       fileName: "tsconfig.json",
     },
