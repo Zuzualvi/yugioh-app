@@ -15,8 +15,20 @@ afterEach(() => {
 
 const MOCK_DECKS = {
   decks: [
-    { id: "deck-1", name: "Blackwings", counts: { main: 40, extra: 5, side: 0 }, isValid: true, updatedAt: "" },
-    { id: "deck-2", name: "Quickdraw", counts: { main: 42, extra: 8, side: 0 }, isValid: true, updatedAt: "" },
+    {
+      id: "deck-1",
+      name: "Blackwings",
+      counts: { main: 40, extra: 5, side: 0 },
+      isValid: true,
+      updatedAt: "",
+    },
+    {
+      id: "deck-2",
+      name: "Quickdraw",
+      counts: { main: 42, extra: 8, side: 0 },
+      isValid: true,
+      updatedAt: "",
+    },
   ],
 };
 
@@ -51,11 +63,7 @@ describe("CreateDuelScreen — create → shareable link", () => {
     setupMocks();
     const { CreateDuelScreen } = await import("./CreateDuelScreen");
 
-    render(
-      React.createElement(MemoryRouter, null,
-        React.createElement(CreateDuelScreen),
-      ),
-    );
+    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 
     await waitFor(() => screen.getByText("Blackwings"));
     expect(screen.getByText("Blackwings")).toBeTruthy();
@@ -66,11 +74,7 @@ describe("CreateDuelScreen — create → shareable link", () => {
     setupMocks();
     const { CreateDuelScreen } = await import("./CreateDuelScreen");
 
-    render(
-      React.createElement(MemoryRouter, null,
-        React.createElement(CreateDuelScreen),
-      ),
-    );
+    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 
     await waitFor(() => screen.getByText("5 min"));
     expect(screen.getByText("15 min")).toBeTruthy();
@@ -83,11 +87,7 @@ describe("CreateDuelScreen — create → shareable link", () => {
     setupMocks(createFn);
     const { CreateDuelScreen } = await import("./CreateDuelScreen");
 
-    render(
-      React.createElement(MemoryRouter, null,
-        React.createElement(CreateDuelScreen),
-      ),
-    );
+    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 
     await waitFor(() => screen.getByText("Blackwings"));
 
@@ -110,11 +110,7 @@ describe("CreateDuelScreen — create → shareable link", () => {
     setupMocks();
     const { CreateDuelScreen } = await import("./CreateDuelScreen");
 
-    render(
-      React.createElement(MemoryRouter, null,
-        React.createElement(CreateDuelScreen),
-      ),
-    );
+    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 
     await waitFor(() => screen.getByText("Blackwings"));
     fireEvent.click(screen.getByText("Blackwings"));
@@ -130,11 +126,7 @@ describe("CreateDuelScreen — create → shareable link", () => {
     setupMocks();
     const { CreateDuelScreen } = await import("./CreateDuelScreen");
 
-    render(
-      React.createElement(MemoryRouter, null,
-        React.createElement(CreateDuelScreen),
-      ),
-    );
+    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 
     await waitFor(() => screen.getByText("Blackwings"));
 

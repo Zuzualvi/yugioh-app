@@ -33,9 +33,7 @@ function makeFakeWebSocket() {
     listeners: {},
     triggerMessage(data: unknown) {
       const serialized = typeof data === "string" ? data : JSON.stringify(data);
-      (this.listeners["message"] ?? []).forEach((h) =>
-        h({ data: serialized }),
-      );
+      (this.listeners["message"] ?? []).forEach((h) => h({ data: serialized }));
     },
     triggerOpen() {
       this.readyState = 1; // OPEN
@@ -166,9 +164,7 @@ describe("openDuelSocket — message parsing", () => {
     fakeWsInstance.triggerOpen();
 
     // send raw string directly
-    (fakeWsInstance.listeners["message"] ?? []).forEach((h) =>
-      h({ data: "not-json!!!" }),
-    );
+    (fakeWsInstance.listeners["message"] ?? []).forEach((h) => h({ data: "not-json!!!" }));
 
     expect(received).toHaveLength(0);
     socket.close();

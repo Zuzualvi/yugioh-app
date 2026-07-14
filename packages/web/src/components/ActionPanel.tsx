@@ -4,7 +4,11 @@
  * Also provides the RESIGN control.
  */
 
-import type { DuelClientMessage, EngineResponse, RedactedEngineMessage } from "@yugioh-app/contracts";
+import type {
+  DuelClientMessage,
+  EngineResponse,
+  RedactedEngineMessage,
+} from "@yugioh-app/contracts";
 import { decisionPrompt, extractOptions } from "../api/decisionOptions";
 
 interface Props {
@@ -27,8 +31,7 @@ export function ActionPanel({ decision, onSend, disabled = false }: Props) {
 
   const options = decision ? extractOptions(decision) : [];
   const prompt = decision ? decisionPrompt(decision) : null;
-  const isPriorityWindow =
-    decision?.name === "SELECT_CHAIN" && options.some((o) => o.isPass);
+  const isPriorityWindow = decision?.name === "SELECT_CHAIN" && options.some((o) => o.isPass);
 
   return (
     <div

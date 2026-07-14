@@ -15,7 +15,13 @@ afterEach(() => {
 
 const MOCK_DECKS = {
   decks: [
-    { id: "deck-a", name: "Blackwings", counts: { main: 40, extra: 5, side: 0 }, isValid: true, updatedAt: "" },
+    {
+      id: "deck-a",
+      name: "Blackwings",
+      counts: { main: 40, extra: 5, side: 0 },
+      isValid: true,
+      updatedAt: "",
+    },
   ],
 };
 
@@ -56,10 +62,10 @@ describe("JoinDuelScreen — join via link", () => {
         React.createElement(
           Routes,
           null,
-          React.createElement(
-            Route,
-            { path: "/duel/join/:joinToken", element: React.createElement(JoinDuelScreen) },
-          ),
+          React.createElement(Route, {
+            path: "/duel/join/:joinToken",
+            element: React.createElement(JoinDuelScreen),
+          }),
         ),
       ),
     );
@@ -80,10 +86,10 @@ describe("JoinDuelScreen — join via link", () => {
         React.createElement(
           Routes,
           null,
-          React.createElement(
-            Route,
-            { path: "/duel/join/:joinToken", element: React.createElement(JoinDuelScreen) },
-          ),
+          React.createElement(Route, {
+            path: "/duel/join/:joinToken",
+            element: React.createElement(JoinDuelScreen),
+          }),
         ),
       ),
     );
@@ -110,10 +116,10 @@ describe("JoinDuelScreen — join via link", () => {
         React.createElement(
           Routes,
           null,
-          React.createElement(
-            Route,
-            { path: "/duel/join/:joinToken", element: React.createElement(JoinDuelScreen) },
-          ),
+          React.createElement(Route, {
+            path: "/duel/join/:joinToken",
+            element: React.createElement(JoinDuelScreen),
+          }),
         ),
       ),
     );

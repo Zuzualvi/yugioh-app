@@ -9,10 +9,7 @@
  * token; the server replies with a STATE snapshot to restore board state.
  */
 
-import type {
-  DuelClientMessage,
-  DuelServerMessage,
-} from "@yugioh-app/contracts";
+import type { DuelClientMessage, DuelServerMessage } from "@yugioh-app/contracts";
 import { DuelServerMessageSchema } from "@yugioh-app/contracts";
 
 export interface DuelSocketCallbacks {
@@ -29,8 +26,7 @@ export interface DuelSocket {
 
 const WS_BASE =
   (typeof import.meta !== "undefined" &&
-    (import.meta.env as Record<string, string> | undefined)
-      ?.VITE_WS_BASE_URL) ??
+    (import.meta.env as Record<string, string> | undefined)?.VITE_WS_BASE_URL) ??
   "";
 
 function buildWsUrl(duelId: string, token: string): string {

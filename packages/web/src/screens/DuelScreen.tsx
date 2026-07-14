@@ -56,61 +56,65 @@ export function DuelScreen() {
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
 
-  const sendMsg = useCallback((msg: DuelClientMessage) => {
-    if (mockSessionRef.current) {
-      if (msg.type === "RESPONSE") {
-        mockSessionRef.current.respond(
-          msg.response.value as number | string | null,
-        );
-      } else if (msg.type === "RESIGN") {
-        mockSessionRef.current.stop();
-        setDuelEnded({ winner: mySeat === 0 ? 1 : 0, reason: "resign" });
-      }
-    } else if (socketRef.current) {
-      socketRef.current.send(msg);
-    }
-  }, [mySeat]);
-
-  const handleServerMessage = useCallback((msg: DuelServerMessage) => {
-    switch (msg.type) {
-      case "SEAT_ASSIGNED":
-        setMySeat(msg.seat);
-        setConnected(true);
-        break;
-
-      case "STATE":
-        setState(msg.state);
-        // A state update after a decision message clears the pending decision
-        setPendingDecision(null);
-        break;
-
-      case "MSG": {
-        const { msg: engineMsg } = msg;
-        // Only route decision messages that target our seat (or have no player)
-        const targetsSeat =
-          engineMsg.player === undefined ||
-          engineMsg.player === null ||
-          engineMsg.player === mySeat;
-        if (targetsSeat) {
-          setPendingDecision(engineMsg);
+  const sendMsg = useCallback(
+    (msg: DuelClientMessage) => {
+      if (mockSessionRef.current) {
+        if (msg.type === "RESPONSE") {
+          mockSessionRef.current.respond(msg.response.value as number | string | null);
+        } else if (msg.type === "RESIGN") {
+          mockSessionRef.current.stop();
+          setDuelEnded({ winner: mySeat === 0 ? 1 : 0, reason: "resign" });
         }
-        break;
+      } else if (socketRef.current) {
+        socketRef.current.send(msg);
       }
+    },
+    [mySeat],
+  );
 
-      case "CLOCK":
-        setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
-        break;
+  const handleServerMessage = useCallback(
+    (msg: DuelServerMessage) => {
+      switch (msg.type) {
+        case "SEAT_ASSIGNED":
+          setMySeat(msg.seat);
+          setConnected(true);
+          break;
 
-      case "DUEL_END":
-        setDuelEnded({ winner: msg.winner, reason: msg.reason });
-        setPendingDecision(null);
-        break;
+        case "STATE":
+          setState(msg.state);
+          // A state update after a decision message clears the pending decision
+          setPendingDecision(null);
+          break;
 
-      case "ERROR":
-        setError(msg.message);
-        break;
-    }
-  }, [mySeat]);
+        case "MSG": {
+          const { msg: engineMsg } = msg;
+          // Only route decision messages that target our seat (or have no player)
+          const targetsSeat =
+            engineMsg.player === undefined ||
+            engineMsg.player === null ||
+            engineMsg.player === mySeat;
+          if (targetsSeat) {
+            setPendingDecision(engineMsg);
+          }
+          break;
+        }
+
+        case "CLOCK":
+          setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
+          break;
+
+        case "DUEL_END":
+          setDuelEnded({ winner: msg.winner, reason: msg.reason });
+          setPendingDecision(null);
+          break;
+
+        case "ERROR":
+          setError(msg.message);
+          break;
+      }
+    },
+    [mySeat],
+  );
 
   useEffect(() => {
     if (!duelId) return;
@@ -120,15 +124,17 @@ export function DuelScreen() {
 
     if (useMock) {
       const seat: Seat = seatFromState ?? 0;
-      import("../mock/duelSession").then(({ createMockDuelSession }) => {
-        const session = createMockDuelSession(seat, handleServerMessage);
-        mockSessionRef.current = session;
-        setConnected(true);
-        setMySeat(seat);
-        session.start();
-      }).catch(() => {
-        setError("Failed to load mock session");
-      });
+      import("../mock/duelSession")
+        .then(({ createMockDuelSession }) => {
+          const session = createMockDuelSession(seat, handleServerMessage);
+          mockSessionRef.current = session;
+          setConnected(true);
+          setMySeat(seat);
+          session.start();
+        })
+        .catch(() => {
+          setError("Failed to load mock session");
+        });
       return () => {
         mockSessionRef.current?.stop();
         mockSessionRef.current = null;
@@ -164,9 +170,7 @@ export function DuelScreen() {
   }
 
   return (
-    <div
-      style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}
-    >
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <header
         style={{
@@ -189,7 +193,14 @@ export function DuelScreen() {
         <span style={{ fontWeight: 700, fontSize: "1rem" }}>
           ⚔ Duel
           {!connected && (
-            <span style={{ color: "var(--text-2)", fontWeight: 400, fontSize: "0.8125rem", marginLeft: 8 }}>
+            <span
+              style={{
+                color: "var(--text-2)",
+                fontWeight: 400,
+                fontSize: "0.8125rem",
+                marginLeft: 8,
+              }}
+            >
               (connecting…)
             </span>
           )}
@@ -245,11 +256,7 @@ export function DuelScreen() {
         {state ? (
           <>
             <DuelBoard state={state} mySeat={effectiveSeat} />
-            <ActionPanel
-              decision={pendingDecision}
-              onSend={sendMsg}
-              disabled={!!duelEnded}
-            />
+            <ActionPanel decision={pendingDecision} onSend={sendMsg} disabled={!!duelEnded} />
           </>
         ) : (
           <div
@@ -293,9 +300,7 @@ function DuelEndBanner({ winner, reason, mySeat, onHome }: DuelEndBannerProps) {
   let reasonText: string;
   if (reason === "timeout") {
     resultText = iWon ? "🏆 You win!" : "You lose.";
-    reasonText = iWon
-      ? "Opponent's move timer ran out."
-      : "Your move timer ran out.";
+    reasonText = iWon ? "Opponent's move timer ran out." : "Your move timer ran out.";
   } else if (reason === "resign") {
     reasonText = iWon ? "Opponent resigned." : "You resigned.";
   } else {
@@ -334,9 +339,7 @@ function DuelEndBanner({ winner, reason, mySeat, onHome }: DuelEndBannerProps) {
         >
           {isDraw ? "🤝" : iWon ? "🏆" : "💀"}
         </div>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
-          {resultText}
-        </h2>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>{resultText}</h2>
         <p
           style={{
             color: "var(--text-1)",

@@ -120,9 +120,7 @@ function ZoneRow({
             aria-label={`${label} — empty`}
           />
         ) : (
-          cards.map((c, i) => (
-            <ZoneCardView key={i} card={c} isOwn={isOwn} size={size} />
-          ))
+          cards.map((c, i) => <ZoneCardView key={i} card={c} isOwn={isOwn} size={size} />)
         )}
       </div>
     </div>
@@ -182,7 +180,13 @@ function LpBar({ lp, isOwn }: { lp: number; isOwn: boolean }) {
         gap: 8,
       }}
     >
-      <span style={{ fontWeight: 700, minWidth: 48, color: lp <= 0 ? "var(--invalid)" : isOwn ? "var(--accent-light)" : "var(--text-0)" }}>
+      <span
+        style={{
+          fontWeight: 700,
+          minWidth: 48,
+          color: lp <= 0 ? "var(--invalid)" : isOwn ? "var(--accent-light)" : "var(--text-0)",
+        }}
+      >
         {lp}
       </span>
       <div

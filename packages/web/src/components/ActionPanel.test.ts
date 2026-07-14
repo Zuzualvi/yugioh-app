@@ -57,9 +57,7 @@ describe("ActionPanel — SELECT_IDLECMD", () => {
       ],
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns).toHaveLength(2);
@@ -74,9 +72,7 @@ describe("ActionPanel — SELECT_IDLECMD", () => {
       options: [{ label: "Normal Summon", index: 0 }],
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend }));
 
     const btns = getActionButtons();
     if (!btns[0]) throw new Error("No button found");
@@ -97,9 +93,7 @@ describe("ActionPanel — SELECT_CHAIN (priority window)", () => {
       canPass: true,
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     expect(screen.getByTestId("priority-window")).toBeTruthy();
   });
@@ -111,9 +105,7 @@ describe("ActionPanel — SELECT_CHAIN (priority window)", () => {
       canPass: true,
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const passBtn = screen.getByTestId("pass-option");
     expect(passBtn.textContent).toMatch(/no response/i);
@@ -127,9 +119,7 @@ describe("ActionPanel — SELECT_CHAIN (priority window)", () => {
       canPass: true,
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend }));
 
     fireEvent.click(screen.getByTestId("pass-option"));
 
@@ -145,9 +135,7 @@ describe("ActionPanel — SELECT_EFFECTYN / SELECT_YESNO", () => {
     const { ActionPanel } = await import("./ActionPanel");
     const decision = msg("SELECT_EFFECTYN", { question: "Activate Mirror Force?" });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns).toHaveLength(2);
@@ -161,9 +149,7 @@ describe("ActionPanel — SELECT_EFFECTYN / SELECT_YESNO", () => {
     const onSend = vi.fn();
     const decision = msg("SELECT_YESNO", { question: "Discard?" });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend }));
 
     const btns = getActionButtons();
     const yesBtn = btns.find((b) => b.textContent?.includes("Yes"));
@@ -181,9 +167,7 @@ describe("ActionPanel — SELECT_EFFECTYN / SELECT_YESNO", () => {
     const onSend = vi.fn();
     const decision = msg("SELECT_EFFECTYN", { question: "Discard?" });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend }));
 
     const btns = getActionButtons();
     const noBtn = btns.find((b) => b.textContent?.includes("No"));
@@ -208,9 +192,7 @@ describe("ActionPanel — SELECT_CARD", () => {
       ],
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns[0]?.textContent).toMatch(/Dark Magician/);
@@ -229,9 +211,7 @@ describe("ActionPanel — SELECT_OPTION", () => {
       ],
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns[0]?.textContent).toMatch(/Add to hand/);
@@ -249,9 +229,7 @@ describe("ActionPanel — SELECT_POSITION", () => {
       ],
     });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns[0]?.textContent).toMatch(/Attack Position/);
@@ -264,9 +242,7 @@ describe("ActionPanel — ANNOUNCE_ATTRIB", () => {
     const { ActionPanel } = await import("./ActionPanel");
     const decision = msg("ANNOUNCE_ATTRIB");
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn() }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn() }));
 
     const btns = getActionButtons();
     expect(btns).toHaveLength(7);
@@ -284,9 +260,7 @@ describe("ActionPanel — RESIGN", () => {
 
     vi.stubGlobal("confirm", () => true);
 
-    render(
-      React.createElement(ActionPanel, { decision: null, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision: null, onSend }));
 
     fireEvent.click(screen.getByTestId("resign-btn"));
 
@@ -299,9 +273,7 @@ describe("ActionPanel — RESIGN", () => {
 
     vi.stubGlobal("confirm", () => false);
 
-    render(
-      React.createElement(ActionPanel, { decision: null, onSend }),
-    );
+    render(React.createElement(ActionPanel, { decision: null, onSend }));
 
     fireEvent.click(screen.getByTestId("resign-btn"));
 
@@ -314,9 +286,7 @@ describe("ActionPanel — disabled state", () => {
     const { ActionPanel } = await import("./ActionPanel");
     const decision = msg("SELECT_YESNO", { question: "Discard?" });
 
-    render(
-      React.createElement(ActionPanel, { decision, onSend: vi.fn(), disabled: true }),
-    );
+    render(React.createElement(ActionPanel, { decision, onSend: vi.fn(), disabled: true }));
 
     const buttons = screen.getAllByRole("button");
     buttons.forEach((btn) => {

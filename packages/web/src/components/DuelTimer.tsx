@@ -55,10 +55,7 @@ export function DuelTimer({ onClockSeat, deadlineAt, mySeat }: Props) {
         fontSize: "0.875rem",
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{ color: isUrgent ? "var(--invalid)" : "var(--text-1)" }}
-      >
+      <span aria-hidden="true" style={{ color: isUrgent ? "var(--invalid)" : "var(--text-1)" }}>
         ⏱
       </span>
       <span

@@ -61,8 +61,7 @@ function toOptions(
 ): DecisionOption[] {
   if (!Array.isArray(arr)) return [];
   return arr.map((item, i) => {
-    if (!isRecord(item))
-      return { label: `Option ${i + 1}`, value: i, isPass: false };
+    if (!isRecord(item)) return { label: `Option ${i + 1}`, value: i, isPass: false };
     const label = typeof item[labelKey] === "string" ? item[labelKey] : `Option ${i + 1}`;
     const value = item[valueKey] !== undefined ? (item[valueKey] as number | string) : i;
     const isPass = extra?.passLabel ? label === extra.passLabel : false;
@@ -193,16 +192,12 @@ export function decisionPrompt(msg: RedactedEngineMessage): string {
     case "SELECT_BATTLECMD":
       return "Choose a battle action:";
     case "SELECT_CHAIN":
-      return typeof body["question"] === "string"
-        ? body["question"]
-        : "Do you wish to respond?";
+      return typeof body["question"] === "string" ? body["question"] : "Do you wish to respond?";
     case "SELECT_CARD":
       return typeof body["hint"] === "string" ? body["hint"] : "Select a card:";
     case "SELECT_EFFECTYN":
     case "SELECT_YESNO":
-      return typeof body["question"] === "string"
-        ? body["question"]
-        : "Yes or No?";
+      return typeof body["question"] === "string" ? body["question"] : "Yes or No?";
     case "SELECT_OPTION":
       return typeof body["hint"] === "string" ? body["hint"] : "Select an option:";
     case "SELECT_PLACE":

@@ -37,13 +37,15 @@ export function CreateDuelScreen() {
   const [duelId, setDuelId] = useState<string | null>(null);
 
   useEffect(() => {
-    void listDecks().then(({ decks: d }) => {
-      setDecks(d);
-      setDecksLoading(false);
-    }).catch(() => {
-      addToast("Failed to load decks", "error");
-      setDecksLoading(false);
-    });
+    void listDecks()
+      .then(({ decks: d }) => {
+        setDecks(d);
+        setDecksLoading(false);
+      })
+      .catch(() => {
+        addToast("Failed to load decks", "error");
+        setDecksLoading(false);
+      });
   }, [addToast]);
 
   function handlePreset(seconds: number) {
@@ -270,7 +272,9 @@ export function CreateDuelScreen() {
                       style={{ accentColor: "var(--accent)" }}
                     />
                     <span style={{ fontWeight: 500 }}>{d.name}</span>
-                    <span style={{ color: "var(--text-2)", fontSize: "0.875rem", marginLeft: "auto" }}>
+                    <span
+                      style={{ color: "var(--text-2)", fontSize: "0.875rem", marginLeft: "auto" }}
+                    >
                       {d.counts.main} cards
                     </span>
                   </label>
@@ -296,7 +300,10 @@ export function CreateDuelScreen() {
                     padding: "8px 16px",
                     minHeight: 44,
                     border: `1px solid ${!showCustom && timerSeconds === p.seconds ? "var(--accent)" : "var(--border)"}`,
-                    background: !showCustom && timerSeconds === p.seconds ? "var(--accent-dim)" : "var(--bg-2)",
+                    background:
+                      !showCustom && timerSeconds === p.seconds
+                        ? "var(--accent-dim)"
+                        : "var(--bg-2)",
                     borderRadius: 6,
                     color: "var(--text-0)",
                     cursor: "pointer",

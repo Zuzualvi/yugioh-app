@@ -64,9 +64,7 @@ describe("DuelBoard — hidden vs revealed cards", () => {
       },
     });
 
-    render(
-      React.createElement(DuelBoard, { state, mySeat: 0 }),
-    );
+    render(React.createElement(DuelBoard, { state, mySeat: 0 }));
 
     const images = screen.getAllByTestId("face-up-card");
     expect(images.length).toBeGreaterThan(0);

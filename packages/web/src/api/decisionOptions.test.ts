@@ -32,7 +32,10 @@ describe("extractOptions — SELECT_IDLECMD", () => {
 describe("extractOptions — SELECT_BATTLECMD", () => {
   it("returns battle options", () => {
     const m = msg("SELECT_BATTLECMD", {
-      options: [{ label: "Attack", index: 0 }, { label: "End Battle", index: 1 }],
+      options: [
+        { label: "Attack", index: 0 },
+        { label: "End Battle", index: 1 },
+      ],
     });
     const opts = extractOptions(m);
     expect(opts).toHaveLength(2);
@@ -95,7 +98,10 @@ describe("extractOptions — SELECT_EFFECTYN / SELECT_YESNO", () => {
 describe("extractOptions — SELECT_OPTION", () => {
   it("extracts option list", () => {
     const m = msg("SELECT_OPTION", {
-      options: [{ label: "Effect A", index: 0 }, { label: "Effect B", index: 1 }],
+      options: [
+        { label: "Effect A", index: 0 },
+        { label: "Effect B", index: 1 },
+      ],
     });
     const opts = extractOptions(m);
     expect(opts).toHaveLength(2);
@@ -158,9 +164,7 @@ describe("decisionPrompt", () => {
   });
 
   it("returns question string from SELECT_CHAIN", () => {
-    const prompt = decisionPrompt(
-      msg("SELECT_CHAIN", { question: "Respond to Dark Magician?" }),
-    );
+    const prompt = decisionPrompt(msg("SELECT_CHAIN", { question: "Respond to Dark Magician?" }));
     expect(prompt).toBe("Respond to Dark Magician?");
   });
 
