@@ -1,1 +1,0 @@
-/workspace/yugioh-app/packages/engine/assets/scripts/c0.lua

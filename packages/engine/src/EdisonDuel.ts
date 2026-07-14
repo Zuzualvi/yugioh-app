@@ -90,6 +90,7 @@ export class EdisonDuel {
   private readonly handle: OcgDuelHandle;
   private readonly responseLog: EngineResponse[] = [];
   private ended = false;
+  private destroyed = false;
   private winner: Seat | null = null;
   private phaseInfo: DuelPhaseInfo = {
     currentTurn: 0,
@@ -104,6 +105,18 @@ export class EdisonDuel {
   }
 
   /**
+   * Release the duel handle back to ocgcore, freeing native heap memory.
+   * Must be called when a duel is no longer needed; omitting it leaks WASM
+   * memory and eventually corrupts the shared core heap (OOB crash).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.lib.destroyDuel(this.handle);
+  }
+
+  /**
    * Advance the engine until the next WAITING decision or END.
    *
    * - `messages`: decision/routing messages from the terminal process step
@@ -114,6 +127,7 @@ export class EdisonDuel {
    *   stripped of hidden codes via redactMessageForSeat() before forwarding.
    */
   step(): EngineStepResult {
+    if (this.destroyed) throw new Error("EdisonDuel.step() called after destroy()");
     const events: RawEngineMessage[] = [];
     const messages: RawEngineMessage[] = [];
 
@@ -164,6 +178,7 @@ export class EdisonDuel {
 
   /** Feed the on-clock seat's response to the engine. */
   respond(response: EngineResponse): void {
+    if (this.destroyed) throw new Error("EdisonDuel.respond() called after destroy()");
     this.responseLog.push(response);
     this.lib.duelSetResponse(
       this.handle,

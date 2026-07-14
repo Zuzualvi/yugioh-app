@@ -43,6 +43,8 @@ export function getScript(name: string): string | null {
       resolve(SCRIPTS_DIR, "official", name),
       resolve(SCRIPTS_DIR, "pre-errata", name),
       resolve(SCRIPTS_DIR, "goat", name),
+      // Final fallback: root scripts dir (resolves c0.lua and any root-level card scripts)
+      resolve(SCRIPTS_DIR, name),
     );
   } else {
     // System scripts (constant.lua, system.lua, etc.)

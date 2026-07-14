@@ -28,6 +28,7 @@ BABEL_COMMIT="736536e0ce8bb1fafc798aea641631c690db9e83"
 CARDSCRIPTS_COMMIT="847f559049ed7e4e043709a319e5fa081490e234"
 
 BABEL_URL="https://github.com/ProjectIgnis/BabelCDB/raw/${BABEL_COMMIT}/cards.cdb"
+BABEL_UNOFFICIAL_URL="https://github.com/ProjectIgnis/BabelCDB/raw/${BABEL_COMMIT}/cards-unofficial.cdb"
 CARDSCRIPTS_URL="https://github.com/ProjectIgnis/CardScripts.git"
 
 echo "=== Edison Engine: asset fetch ==="
@@ -49,6 +50,42 @@ else
   echo "[1/3] Downloading BabelCDB cards.cdb..."
   curl -fsSL "$BABEL_URL" -o "$CDB_PATH"
   echo "      Done: $(du -h "$CDB_PATH" | cut -f1)"
+fi
+
+# ── Step 1b: Merge cards-unofficial.cdb into cards.cdb ───────────────────────
+# cards-unofficial.cdb contains pre-errata 511xxx passcode entries (with alias
+# pointing to the official passcode). These are required to load DROPIN override
+# scripts like c511002993.lua. INSERT OR IGNORE preserves all official rows.
+UNOFFICIAL_MERGED_MARKER="$ASSETS_DIR/.unofficial-merged"
+if [ -f "$UNOFFICIAL_MERGED_MARKER" ]; then
+  echo "[1b] cards-unofficial.cdb already merged — skipping."
+else
+  echo "[1b] Downloading and merging cards-unofficial.cdb..."
+  UNOFFICIAL_TMP="$(mktemp --suffix=.cdb)"
+  curl -fsSL "$BABEL_UNOFFICIAL_URL" -o "$UNOFFICIAL_TMP"
+  python3 - "$UNOFFICIAL_TMP" "$CDB_PATH" <<'PYEOF'
+import sqlite3, sys
+src_path, dst_path = sys.argv[1], sys.argv[2]
+src = sqlite3.connect(src_path)
+dst = sqlite3.connect(dst_path)
+with dst:
+    for row in src.execute("SELECT * FROM datas"):
+        dst.execute(
+            "INSERT OR IGNORE INTO datas VALUES (" + ",".join("?" * len(row)) + ")",
+            row,
+        )
+    for row in src.execute("SELECT * FROM texts"):
+        dst.execute(
+            "INSERT OR IGNORE INTO texts VALUES (" + ",".join("?" * len(row)) + ")",
+            row,
+        )
+src.close()
+dst.close()
+print(f"Merged unofficial entries into {dst_path}")
+PYEOF
+  rm -f "$UNOFFICIAL_TMP"
+  touch "$UNOFFICIAL_MERGED_MARKER"
+  echo "      Merge complete."
 fi
 
 # ── Step 2: Clone CardScripts ─────────────────────────────────────────────────
