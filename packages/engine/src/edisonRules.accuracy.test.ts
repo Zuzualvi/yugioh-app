@@ -36,6 +36,7 @@ const LONEFIRE = 48686504; // Lonefire Blossom — MZone ignition (tribute + SS 
 const UMI = 22702055; // Umi — Field Spell (Water)
 const MOUNTAIN = 50913601; // Mountain — Field Spell (Wind/EARTH)
 const OJAMA_GREEN = 12482652; // Ojama Green — 0/1000 normal monster
+const BRAIN_CONTROL = 87910978; // Brain Control — Normal Spell, 800 LP cost, take control of face-up opp. monster
 
 // ── Message-type numeric constants (OcgMessageType enum values) ──────────────
 const MSG_SUMMONED = OcgMessageType.SUMMONED; // 61
@@ -541,39 +542,111 @@ describe.skipIf(!WASM_AVAILABLE)(
 describe.skipIf(!WASM_AVAILABLE)(
   "Edison Rule 6 — LP-cost strict patch (Edison rule #10) [requires custom WASM]",
   () => {
-    it.todo(
-      // Cannot construct a clean deterministic scenario in this slice.
-      //
-      // The patch (packages/engine/patches/ocgcore-lp-cost-strict.patch) changes
-      // field.cpp check_lp_cost from `val <= lp` to `val < lp`, making any LP cost
-      // that would reduce LP to exactly 0 ILLEGAL.
-      //
-      // Constructing an empirical test requires:
-      //   1. A spell/trap card with a fixed LP cost (e.g. 500) that can be activated
-      //      from hand in Main Phase 1 without any other conditions.
-      //   2. Starting LP = that cost value.
-      //   3. Verifying the card does NOT appear in SELECT_IDLECMD.activates.
-      //
-      // All Edison-era candidates with simple fixed LP costs either:
-      //   (a) require additional conditions (face-up field, specific board state,
-      //       monsters on field, etc.) that make the scenario non-deterministic or
-      //       require many more turns to set up, OR
-      //   (b) are Continuous/Quick effects that appear in SELECT_CHAIN not
-      //       SELECT_IDLECMD, making them harder to assert reliably in isolation.
-      //
-      // The patch IS applied and verified by the build process (build-wasm.sh applies
-      // ocgcore-lp-cost-strict.patch). The presence of the custom WASM already
-      // guarantees the patch was applied at build time.
-      //
-      // A full empirical game-state test is deferred to slice 40 (card-script
-      // curation phase) when a suitable pre-errata card with a clean LP cost mechanic
-      // is available. A suggested card: "Solemn Judgment" (41420027) — pay half LP as
-      // a counter trap cost — but that requires a Spell/Trap to be chained to first,
-      // making setup complex.
-      //
-      // Coverage gap: DOCUMENTED. The patch mechanism is source-verified; empirical
-      // game-state coverage is deferred.
-      "LP-cost strict: card paying exact current LP must be ILLEGAL (deferred — see comment above)",
-    );
+    // Brain Control (87910978): Normal Spell that costs 800 LP and targets a
+    // face-up monster the opponent controls.  The LP-cost strict patch changes
+    // check_lp_cost from `val <= lp` to `val < lp` in field.cpp, so paying
+    // 800 LP when you have EXACTLY 800 LP is ILLEGAL (would reduce LP to 0).
+    //
+    // Setup (both sub-tests):
+    //   P0 HAND:  Brain Control [87910978]
+    //   P1 MZONE: Koumori Dragon [67724379] face-up — satisfies target precondition
+    //   Deck:     FILLER normal monsters (no scripts, no side-effects)
+    //
+    // The decisive assertion is checked at the FIRST SELECT_IDLECMD (P0's Main
+    // Phase 1, turn 1).  Brain Control uses EVENT_FREE_CHAIN so it appears in
+    // SELECT_IDLECMD.activates when its cost CAN be paid; it is absent when the
+    // cost check fails.
+
+    it("Brain Control [87910978] absent from activates when LP=800 (exact cost — ILLEGAL)", async () => {
+      currentDuel = await createDuelWithState({
+        startingLP: 800,
+        startingDrawCount: 1,
+        extraCards0: [
+          {
+            code: BRAIN_CONTROL,
+            location: OcgLocation.HAND,
+            sequence: 0,
+            position: OcgPosition.FACEUP,
+          },
+        ],
+        extraCards1: [
+          {
+            code: KOUMORI,
+            location: OcgLocation.MZONE,
+            sequence: 0,
+            position: OcgPosition.FACEUP_ATTACK,
+          },
+        ],
+        deck0: FILLER.slice(0, 16),
+        deck1: FILLER.slice(0, 16),
+      });
+
+      const { lib, handle } = currentDuel;
+      let activateCodes: number[] = [];
+
+      driveDuel(lib, handle, (_all, msgs, status) => {
+        for (const m of msgs as IdleCmdMsg[]) {
+          if (m.type === MSG_SELECT_IDLECMD) {
+            activateCodes = (m.activates ?? []).map((a) => a.code);
+            return { stop: true };
+          }
+        }
+        if (status !== 1) return {};
+        return { response: defaultRespond(msgs as never) };
+      });
+
+      expect(
+        activateCodes.includes(BRAIN_CONTROL),
+        `Brain Control [${BRAIN_CONTROL}] must NOT appear in activates at LP=800 ` +
+          `(LP-cost strict: cost==LP is illegal). ` +
+          `Got activates: ${JSON.stringify(activateCodes)}`,
+      ).toBe(false);
+    }, 15_000);
+
+    it("Brain Control [87910978] present in activates when LP=801 (cost+1 — LEGAL)", async () => {
+      currentDuel = await createDuelWithState({
+        startingLP: 801,
+        startingDrawCount: 1,
+        extraCards0: [
+          {
+            code: BRAIN_CONTROL,
+            location: OcgLocation.HAND,
+            sequence: 0,
+            position: OcgPosition.FACEUP,
+          },
+        ],
+        extraCards1: [
+          {
+            code: KOUMORI,
+            location: OcgLocation.MZONE,
+            sequence: 0,
+            position: OcgPosition.FACEUP_ATTACK,
+          },
+        ],
+        deck0: FILLER.slice(0, 16),
+        deck1: FILLER.slice(0, 16),
+      });
+
+      const { lib, handle } = currentDuel;
+      let activateCodes: number[] = [];
+
+      driveDuel(lib, handle, (_all, msgs, status) => {
+        for (const m of msgs as IdleCmdMsg[]) {
+          if (m.type === MSG_SELECT_IDLECMD) {
+            activateCodes = (m.activates ?? []).map((a) => a.code);
+            return { stop: true };
+          }
+        }
+        if (status !== 1) return {};
+        return { response: defaultRespond(msgs as never) };
+      });
+
+      expect(
+        activateCodes.includes(BRAIN_CONTROL),
+        `Brain Control [${BRAIN_CONTROL}] must appear in activates at LP=801 ` +
+          `(cost 800 < LP 801 is legal). ` +
+          `Got activates: ${JSON.stringify(activateCodes)}`,
+      ).toBe(true);
+    }, 15_000);
   },
 );
