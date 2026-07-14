@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   verify:
-    name: verify (typecheck · lint · arch · test)
+    name: verify (typecheck · lint · arch · actionlint · test)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
@@ -46,9 +46,57 @@ jobs:
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+  accuracy:
+    name: accuracy (Edison rules 1–5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+
+      # ── WASM cache ────────────────────────────────────────────────────────
+      # Key: hash of build-wasm.sh (embeds EDO9300_COMMIT + build flags).
+      # Stores emsdk toolchain (~290 MB) + ocgcore-wasm source + built artifacts.
+      # Cold: ~10–15 min (emsdk download + em++ build). Cached: ~30 s restore.
+      - name: Restore WASM build cache
+        id: cache-wasm
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/engine/vendor/emsdk
+            packages/engine/vendor/ocgcore-wasm-src
+            packages/engine/vendor/ocgcore-custom.sync.mjs
+            packages/engine/vendor/ocgcore-custom.sync.wasm
+          key: wasm-v1-${{ hashFiles('packages/engine/scripts/build-wasm.sh') }}
+
+      # ── Asset cache ───────────────────────────────────────────────────────
+      # Key: hash of fetch-assets.sh (embeds BabelCDB + CardScripts commits).
+      # Cold: ~1–2 min (git clone + cdb download). Cached: ~10 s restore.
+      - name: Restore assets cache
+        id: cache-assets
+        uses: actions/cache@v4
+        with:
+          path: packages/engine/assets
+          key: assets-v1-${{ hashFiles('packages/engine/scripts/fetch-assets.sh') }}
+
+      - name: Build WASM (skipped on cache hit)
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/build-wasm.sh
+
+      - name: Fetch assets (skipped on cache hit)
+        if: steps.cache-assets.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/fetch-assets.sh
+
+      - name: Run Edison accuracy tests (Rules 1–5; Rule 6 is todo)
+        run: cd packages/engine && npx vitest run src/edisonRules.accuracy.test.ts
+
   deploy-backend:
     name: deploy backend (Fly · api.zuhayr.io)
-    needs: verify
+    needs: [verify, accuracy]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -60,6 +108,43 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # ── Restore engine artifacts for Docker build context ─────────────────
+      # The Dockerfile COPYs packages/engine/vendor/ and packages/engine/assets/.
+      # Accuracy job already built + cached these; restore here so they exist
+      # in the workspace before `flyctl deploy`. Build steps run only if the
+      # cache somehow missed (e.g. first run or eviction).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Restore WASM build cache
+        id: cache-wasm
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/engine/vendor/emsdk
+            packages/engine/vendor/ocgcore-wasm-src
+            packages/engine/vendor/ocgcore-custom.sync.mjs
+            packages/engine/vendor/ocgcore-custom.sync.wasm
+          key: wasm-v1-${{ hashFiles('packages/engine/scripts/build-wasm.sh') }}
+
+      - name: Restore assets cache
+        id: cache-assets
+        uses: actions/cache@v4
+        with:
+          path: packages/engine/assets
+          key: assets-v1-${{ hashFiles('packages/engine/scripts/fetch-assets.sh') }}
+
+      - name: Build WASM (fallback — should be a cache hit from accuracy job)
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/build-wasm.sh
+
+      - name: Fetch assets (fallback — should be a cache hit from accuracy job)
+        if: steps.cache-assets.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/fetch-assets.sh
 
       - name: Stage admin-bootstrap secrets (applied on next deploy)
         # Best-effort: if BOOTSTRAP_ADMIN_* secrets haven't been provisioned in the

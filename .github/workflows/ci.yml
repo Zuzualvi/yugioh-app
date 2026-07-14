@@ -11,7 +11,7 @@ on:
 
 jobs:
   ci:
-    name: typecheck · lint · arch · test
+    name: typecheck · lint · arch · actionlint · test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
@@ -35,3 +35,51 @@ jobs:
             Branch: `${{ github.head_ref }}`
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  accuracy:
+    name: accuracy (Edison rules 1–5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+
+      # ── WASM cache ────────────────────────────────────────────────────────
+      # Key: hash of build-wasm.sh (embeds EDO9300_COMMIT + build flags).
+      # Stores emsdk toolchain (~290 MB) + ocgcore-wasm source + built artifacts.
+      # Cold: ~10–15 min (emsdk download + em++ build). Cached: ~30 s restore.
+      - name: Restore WASM build cache
+        id: cache-wasm
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/engine/vendor/emsdk
+            packages/engine/vendor/ocgcore-wasm-src
+            packages/engine/vendor/ocgcore-custom.sync.mjs
+            packages/engine/vendor/ocgcore-custom.sync.wasm
+          key: wasm-v1-${{ hashFiles('packages/engine/scripts/build-wasm.sh') }}
+
+      # ── Asset cache ───────────────────────────────────────────────────────
+      # Key: hash of fetch-assets.sh (embeds BabelCDB + CardScripts commits).
+      # Cold: ~1–2 min (git clone + cdb download). Cached: ~10 s restore.
+      - name: Restore assets cache
+        id: cache-assets
+        uses: actions/cache@v4
+        with:
+          path: packages/engine/assets
+          key: assets-v1-${{ hashFiles('packages/engine/scripts/fetch-assets.sh') }}
+
+      - name: Build WASM (skipped on cache hit)
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/build-wasm.sh
+
+      - name: Fetch assets (skipped on cache hit)
+        if: steps.cache-assets.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/fetch-assets.sh
+
+      - name: Run Edison accuracy tests (Rules 1–5; Rule 6 is todo)
+        run: cd packages/engine && npx vitest run src/edisonRules.accuracy.test.ts
