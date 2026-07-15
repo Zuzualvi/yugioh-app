@@ -20,6 +20,27 @@ part of the production build.
 
 ## Deploy trigger
 
-Pushes to `master` deploy the frontend. Note the plan's git-author gate: deploys are
-only accepted for commits authored by a team member. The durable path is a token-based
-`vercel deploy` in CI (authorship-independent, matching the Fly backend).
+Every push to `master` that touches non-docs files runs the GitHub Actions pipeline
+(`.github/workflows/deploy.yml`). Commits that change only `docs/**` or `*.md` are
+path-ignored and do **not** trigger a deploy.
+
+On green `verify` + `accuracy` jobs, the `deploy-frontend` job:
+
+1. Runs `vercel pull --yes --environment=production` to fetch project settings.
+2. Runs `vercel deploy --prod` — a **remote build** on Vercel's infrastructure using
+   the project's Root Directory (`packages/web`) and the `installCommand`/`buildCommand`
+   in `vercel.json`.
+3. Runs a fatal health check against `https://app.zuhayr.io` (expects HTTP 200 + SPA
+   shell); failure fails the pipeline.
+
+Authentication uses repo secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and
+`VERCEL_PROJECT_ID`. This token-based approach is authorship-independent — Vercel's
+Git integration is **not** used because it rejects bot-authored commits
+(`TEAM_ACCESS_REQUIRED`); the CLI + token always works regardless of commit author,
+matching the model the Fly backend uses.
+
+**Rollback:** Vercel dashboard → Instant Rollback, or:
+
+```sh
+vercel rollback <deployment-url> --token=$VERCEL_TOKEN
+```
