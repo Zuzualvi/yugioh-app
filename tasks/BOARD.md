@@ -6,15 +6,16 @@ _Last updated: 2026-07-15_
 
 ## ⚠ Blockers / Notes
 
-- **Slice 20** LANDED + deployed to Fly (`api.zuhayr.io`); the live 2-player duel loop has NOT been smoke-tested end-to-end — needs independent QA.
-- **Slice 30** LANDED (tested against a mock server); needs QA against the real backend.
-- **Slice 50 / per-card ERRATA assertions**: 6 Edison rules pass in CI; per-card behavioral assertions (pre-errata script correctness) are NOT yet written.
-- **INVITE-01 / INVITE-02**: MVP invite-link fixes (see section below) — unblocked, recommended before real use.
-- **No new hosting spend** for scope B: WebSockets ride the existing Fly backend + volume — no new service provisioning needed.
-- **Shared-tree env**: run `npm install` after pulling; repo is in detached HEAD state — push with `git push origin HEAD:master`.
+- **Live duel BACKBONE is now PROVEN in CI (2026-07-15)** — committed Playwright E2E (`e2e/playwright/duel.spec.ts`, workflow `.github/workflows/e2e.yml`) is green on master: 2 seats connect over the real WS, both boards render real engine STATE, the on-clock decision is delivered, RESIGN round-trips to both. Fixed two wiring bugs to get here (WS path + pending-decision-on-connect).
+- **Slice 20 / Slice 30**: exercised end-to-end against the REAL backend by the E2E. A dedicated separate-QA-agent pass is still pending (subagent spawn was DOWN this session).
+- **BIG remaining build**: the web interactive decision layer (`decisionOptions.ts` decode + ActionPanel response encode) is MOCK-ONLY — a human cannot yet play a FULL duel through the UI. Deferred completion of Slice 30's real-engine integration; flagged to CEO, OUT of close-out. See `docs/working/2026-07-15-residual-gap-list.md` (A1).
+- **Slice 50 / per-card ERRATA assertions**: 6 Edison rules pass in CI; per-card behavioral assertions still NOT written (held pending QA-agent spawn). Priority list in the residual-gap doc (B1).
+- **No new hosting spend** for scope B: WebSockets ride the existing Fly backend + volume.
+- **Shared-tree env**: run `npm install` after pulling; push with `git push origin HEAD:master`.
 
 ## 🔧 Recently Shipped / Fixed
 
+- **Live-duel wiring fixes + E2E — DONE (2026-07-15)**: WS path fix (SHA ca99526), pending-decision-on-connect (SHA a442645), committed Playwright E2E (SHA 10bf0b5) + CI workflow (SHA f36f321, via gated MCP). `E2E` workflow on master = SUCCESS.
 - **WASM build in CI — RESOLVED (2026-07-15)**: custom ocgcore WASM now builds via emsdk in the `accuracy` CI job (with caching + card-asset fetch); 6 Edison rules pass empirically on every push to master. Previous CRITICAL PATH BLOCKER is closed.
 - **Frontend Vercel deploy — DONE (2026-07-15)**: token-based CI deploy job in `.github/workflows/deploy.yml`; `app.zuhayr.io` now serves the current build on every push to master. The Vercel deploy gap is closed.
 - **master went red on the prettier gate** — scoped verify missed it; CTO hand-fixed (SHA f458e4b). Infra added a pre-commit format hook to prevent recurrence.
@@ -68,10 +69,10 @@ _Last updated: 2026-07-15_
 
 ### MVP fixes — recommended before real use
 
-| ID        | Item                                                                                                                                                                                                                                | Priority | Status  | Notes                                                                                            |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------ |
-| INVITE-01 | Preserve duel-invite link through login — `/duel/join/:token` while logged-out redirects to `/login` and DROPS the token; after login invitee lands on Home, not the room. Fix: capture intended path + resume after auth.          | MVP      | ⬜ TODO | `packages/web/src/App.tsx` (`RequireAuth`), `screens/LoginScreen.tsx`, `context/AuthContext.tsx` |
-| INVITE-02 | Show per-move timer on Join screen BEFORE "Accept" (informed consent, REQ-TIMER-11). Today `JoinDuelScreen` shows only a deck picker. Needs timer value available pre-join (e.g. GET-by-joinToken returning `timerPerMoveSeconds`). | MVP      | ⬜ TODO | `packages/web/src/screens/JoinDuelScreen.tsx`; server duel route (add safe pre-join lookup)      |
+| ID        | Item                                                                                 | Priority | Status  | Notes                                                                                           |
+| --------- | ------------------------------------------------------------------------------------ | -------- | ------- | ----------------------------------------------------------------------------------------------- |
+| INVITE-01 | Preserve duel-invite link through login — capture intended path + resume after auth. | MVP      | ✅ DONE | SHA be9c2b2; `RequireAuth` state.from + LoginScreen resume; E2E-covered.                        |
+| INVITE-02 | Show per-move timer on Join screen BEFORE "Accept" (informed consent, REQ-TIMER-11). | MVP      | ✅ DONE | SHA a442645 (GET /api/duels/join/:token) + be9c2b2 (JoinDuelScreen timer + disable-if-started). |
 
 ### Deferred — conscious decision, safe for a trusted 6-person club
 
