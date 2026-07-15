@@ -3,3 +3,6 @@ dist/
 build/
 coverage/
 *.log
+test-results/
+playwright-report/
+.playwright/
