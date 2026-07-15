@@ -2,7 +2,7 @@ name: Deploy
 
 # Every push to master runs the verify gate, then (only if green) deploys:
 #   • Fly backend  (api.zuhayr.io)  — flyctl remote build from Dockerfile
-#   • Vercel frontend (app.zuhayr.io) — token-based `vercel deploy` (authorship-independent,
+#   • Vercel frontend (app.zuhayr.io) — token-based `vercel deploy --prod` (authorship-independent,
 #     same model as the Fly backend). Vercel's Git integration is NOT used: it rejects
 #     bot-authored commits (TEAM_ACCESS_REQUIRED), so the CLI + VERCEL_TOKEN is the
 #     sole deployer.
@@ -224,7 +224,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   deploy-frontend:
-    name: deploy frontend (Vercel)
+    name: deploy frontend (Vercel · app.zuhayr.io — production)
     needs: [verify, accuracy]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -243,18 +243,32 @@ jobs:
           node-version: "22"
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
-      - name: Pull Vercel project settings (preview)
-        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
-      - name: Deploy to Vercel (preview — remote build)
+      - name: Pull Vercel project settings (production)
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Deploy to Vercel (production — remote build)
+        # Rollback: vercel rollback <deployment-url> --token=$VERCEL_TOKEN  (or Vercel dashboard → Instant Rollback)
         id: deploy
         run: |
           set -o pipefail
-          url=$(vercel deploy --token="$VERCEL_TOKEN" --yes | tail -n1)
+          url=$(vercel deploy --prod --token="$VERCEL_TOKEN" --yes | tail -n1)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           {
-            echo "### Vercel preview deployment"
+            echo "### Vercel production deployment"
             echo "$url"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Health check (production domain)
+        run: |
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' --max-time 30 https://app.zuhayr.io || echo 000)
+            echo "attempt $attempt: GET https://app.zuhayr.io -> $code"
+            if [ "$code" = "200" ] && grep -q 'id="root"' /tmp/body.html; then
+              echo "Health check passed."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check FAILED: app.zuhayr.io did not return a 200 SPA shell after retries"
+          exit 1
       - name: Notify Discord on failure
         if: failure() && env.DISCORD_WEBHOOK_URL != ''
         uses: tsickert/discord-webhook@v6.0.0
