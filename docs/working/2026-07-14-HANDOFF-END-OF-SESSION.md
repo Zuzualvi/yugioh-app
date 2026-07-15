@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED (2026-07-15) — do not use for current state.** Read
+> **`2026-07-15-HANDOFF-END-OF-SESSION.md`** instead. What changed since this doc: the Vercel frontend deploy
+> is FIXED and live (this doc's "NEXT #1 Vercel unblock" is DONE), and subagents WORK (this doc's
+> "quota-blocked until 2026-08-01" is obsolete). Kept for history only.
+
 # HANDOFF — Edison Deck-Builder + Duel App (2026-07-14, end of session)
 
 **Author:** CTO (outgoing session) • **For:** the next CTO session (fresh context, updated tools).
