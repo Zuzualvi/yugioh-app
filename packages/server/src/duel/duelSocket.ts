@@ -318,6 +318,17 @@ async function onConnection(
     }
   }
 
+  // Re-deliver the pending decision to this seat. createAndStart() steps the
+  // engine to the first WAITING boundary before any socket connects, so that
+  // decision was never broadcast; the same applies on reconnect mid-turn.
+  // Sent AFTER STATE (the client's STATE handler clears the pending decision,
+  // so this MSG must arrive last) and only reaches the entitled seat
+  // (redactMessageForSeat returns null for a decision targeted at the other seat).
+  for (const raw of engine.getPendingMessages()) {
+    const redacted = engine.redactMessageForSeat(raw, seat);
+    if (redacted) send(ws, { type: "MSG", msg: redacted });
+  }
+
   ws.on("close", () => {
     relay.seats.set(seat, null);
   });

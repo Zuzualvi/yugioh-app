@@ -167,6 +167,22 @@ export function createDuelRouter(
     });
   });
 
+  // GET /api/duels/join/:joinToken — safe pre-join lookup (INVITE-02, REQ-TIMER-11).
+  // Any authenticated member holding the shareable link may read the per-move timer +
+  // status BEFORE accepting. Returns ONLY timer + status — never seat tokens/decks/seed.
+  // Registered before GET /:id to avoid any param-shadowing ambiguity.
+  router.get("/join/:joinToken", (req, res): void => {
+    const row = getDuelByJoinToken(db, req.params["joinToken"]!);
+    if (!row) {
+      res.status(404).json({ error: { code: "not_found", message: "Duel not found." } });
+      return;
+    }
+    res.status(200).json({
+      timerPerMoveSeconds: row.timer_per_move_seconds,
+      status: row.status,
+    });
+  });
+
   // GET /api/duels/:id — duel info (for polling / debugging)
   router.get("/:id", (req, res): void => {
     const row = getDuel(db, req.params["id"]!);

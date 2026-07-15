@@ -17,6 +17,8 @@ export interface DuelEngine {
   step(): EngineStepResult;
   respond(response: EngineResponse): void;
   redactMessageForSeat(msg: RawEngineMessage, seat: Seat): RedactedEngineMessage | null;
+  /** Decision message(s) currently awaiting a response; empty once ended. */
+  getPendingMessages(): RawEngineMessage[];
   getStateForSeat(seat: Seat): DuelStateSnapshot;
   isEnded(): boolean;
   getResult(): { winner: Seat | null; reason: string } | null;

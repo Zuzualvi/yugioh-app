@@ -49,6 +49,7 @@ export class FakeEdisonDuel implements DuelEngine {
   private _ended = false;
   private _winner: Seat | null = null;
   private _destroyed = false;
+  private lastPendingMessages: RawEngineMessage[] = [];
 
   constructor(steps: FakeStep[]) {
     this.steps = steps;
@@ -56,10 +57,16 @@ export class FakeEdisonDuel implements DuelEngine {
 
   step(): EngineStepResult {
     const s = this.steps[this.stepIndex];
-    if (!s) return { status: "ended", messages: [], events: [] };
+    if (!s) {
+      this.lastPendingMessages = [];
+      return { status: "ended", messages: [], events: [] };
+    }
     this.stepIndex++;
     if (s.status === "ended") {
       this._ended = true;
+      this.lastPendingMessages = [];
+    } else if (s.status === "waiting") {
+      this.lastPendingMessages = s.messages;
     }
     return { ...s, events: s.events ?? [] };
   }
@@ -77,6 +84,10 @@ export class FakeEdisonDuel implements DuelEngine {
 
   getStateForSeat(seat: Seat): DuelStateSnapshot {
     return { ...EMPTY_STATE, seat };
+  }
+
+  getPendingMessages(): RawEngineMessage[] {
+    return [...this.lastPendingMessages];
   }
 
   isEnded(): boolean {

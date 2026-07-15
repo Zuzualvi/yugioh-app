@@ -92,6 +92,8 @@ export class EdisonDuel {
   private ended = false;
   private destroyed = false;
   private winner: Seat | null = null;
+  /** Decision messages from the most recent WAITING step (what the on-clock seat must answer). */
+  private lastPendingMessages: RawEngineMessage[] = [];
   private phaseInfo: DuelPhaseInfo = {
     currentTurn: 0,
     currentPhase: 0,
@@ -166,12 +168,15 @@ export class EdisonDuel {
       if (result === OcgProcessResult.END) {
         this.ended = true;
         this.phaseInfo = { ...this.phaseInfo, duelEnded: true };
+        this.lastPendingMessages = [];
         return { status: "ended", messages, events };
       }
 
       if (result === OcgProcessResult.WAITING) {
         // Determine which seat is on the clock (has the awaiting decision)
         const awaitingSeat = this.findAwaitingSeat(messages);
+        // Remember the decision so a (re)connecting seat can be re-sent it.
+        this.lastPendingMessages = messages;
         return {
           status: "waiting",
           messages,
@@ -197,6 +202,15 @@ export class EdisonDuel {
   /** Redact a raw message for the given seat (null = not entitled). */
   redactMessageForSeat(msg: RawEngineMessage, seat: Seat): RedactedEngineMessage | null {
     return redactMessageForSeat(msg, seat);
+  }
+
+  /**
+   * The decision message(s) the engine is currently awaiting a response to.
+   * Empty once the duel has ended. Used by the WS relay to (re)deliver the
+   * pending decision to a seat that connects or reconnects mid-turn.
+   */
+  getPendingMessages(): RawEngineMessage[] {
+    return [...this.lastPendingMessages];
   }
 
   /** Build a per-seat DuelStateSnapshot with hidden codes zeroed. */

@@ -46,6 +46,18 @@ export const JoinDuelResultSchema = z.object({
 });
 export type JoinDuelResult = z.infer<typeof JoinDuelResultSchema>;
 
+export const DuelStatusSchema = z.enum(["waiting_for_opponent", "active", "ended"]);
+export type DuelStatus = z.infer<typeof DuelStatusSchema>;
+
+// Safe, pre-join public view of a duel, looked up by its shareable joinToken.
+// Exposes ONLY what an invitee needs before accepting (informed consent, REQ-TIMER-11).
+// NEVER includes seat tokens, decks, or the seed.
+export const PreJoinDuelInfoSchema = z.object({
+  timerPerMoveSeconds: z.number().int().positive(),
+  status: DuelStatusSchema,
+});
+export type PreJoinDuelInfo = z.infer<typeof PreJoinDuelInfoSchema>;
+
 // ── EngineResponse ────────────────────────────────────────────────────────────
 
 export const EngineResponseSchema = z.object({

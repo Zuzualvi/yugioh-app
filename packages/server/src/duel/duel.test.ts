@@ -358,6 +358,38 @@ describe("POST /api/duels/join", () => {
   });
 });
 
+describe("GET /api/duels/join/:joinToken — pre-join lookup (INVITE-02)", () => {
+  it("returns timer + status, and NO secrets, for a valid joinToken", async () => {
+    const setup = await createDuelAsAlice();
+    const res = await request(app)
+      .get(`/api/duels/join/${setup.joinToken}`)
+      .set("Cookie", `sid=${setup.bobSid}`);
+    expect(res.status).toBe(200);
+    expect(res.body.timerPerMoveSeconds).toBe(60);
+    expect(res.body.status).toBe("waiting_for_opponent");
+    // Must not leak seat tokens, decks, or seed.
+    expect(res.body.seat0_token).toBeUndefined();
+    expect(res.body.seat1_token).toBeUndefined();
+    expect(res.body.creatorSeatToken).toBeUndefined();
+    expect(res.body.deck0_json).toBeUndefined();
+    expect(res.body.seed_json).toBeUndefined();
+  });
+
+  it("returns 404 for an unknown joinToken", async () => {
+    const { sid } = await seedAndLogin("Carol_" + randomUUID().slice(0, 4), "pass789");
+    const res = await request(app)
+      .get(`/api/duels/join/${randomUUID()}`)
+      .set("Cookie", `sid=${sid}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("requires a session", async () => {
+    const setup = await createDuelAsAlice();
+    const res = await request(app).get(`/api/duels/join/${setup.joinToken}`);
+    expect(res.status).toBe(401);
+  });
+});
+
 // ── WebSocket relay tests ──────────────────────────────────────────────────
 
 describe("WebSocket relay", () => {
@@ -447,6 +479,54 @@ describe("WebSocket relay", () => {
       // After RESPONSE, step returns "ended" → only DUEL_END (no MSG).
       const seat1Msgs = s1.messages.filter((m) => m.type === "MSG");
       expect(seat1Msgs.length).toBe(0); // seat 1 never gets the player:0 decision MSG
+
+      s0.close();
+      s1.close();
+    });
+  });
+
+  it("re-delivers the pending decision to the on-clock seat on connect (Fix #2)", async () => {
+    // The engine steps to the first WAITING boundary at join time (before any
+    // socket connects), so the decision was never broadcast. On connect the
+    // relay must re-send it to the entitled seat — else the on-clock player
+    // sees the board + a running clock but has nothing to act on and times out.
+    const customDuel = new FakeEdisonDuel([
+      {
+        status: "waiting",
+        messages: [{ type: 11, name: "SELECT_IDLECMD", player: 0 as 0 | 1 }],
+        awaiting: { seat: 0 },
+      },
+      { status: "ended", messages: [] },
+    ]);
+    manager = new DuelManager(async () => {
+      _capturedEngine = customDuel;
+      return customDuel as DuelEngine;
+    }, fakeReplay);
+    app = createApp(db, catalog, manager);
+
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+
+      // Seat 0 (on the clock) receives the pending decision MSG on connect…
+      const decision = await waitForMessage(
+        s0,
+        (m) => m.type === "MSG" && m.msg.name === "SELECT_IDLECMD",
+      );
+      expect(decision.type).toBe("MSG");
+
+      // …and it arrives AFTER STATE (the client's STATE handler clears the
+      // pending decision, so the MSG must come last to survive).
+      const s0Types = s0.messages.map((m) => m.type);
+      expect(s0Types.indexOf("STATE")).toBeLessThan(s0Types.lastIndexOf("MSG"));
+
+      // Seat 1 is NOT entitled to a player:0 decision → must not receive it.
+      await waitForMessage(s1, (m) => m.type === "CLOCK");
+      const s1Decisions = s1.messages.filter(
+        (m) => m.type === "MSG" && m.msg.name === "SELECT_IDLECMD",
+      );
+      expect(s1Decisions.length).toBe(0);
 
       s0.close();
       s1.close();
