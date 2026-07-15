@@ -31,12 +31,19 @@ const MOCK_JOIN_RESULT = {
   seatToken: "seat-token-999",
 };
 
-function setupMocks(joinFn = vi.fn().mockResolvedValue(MOCK_JOIN_RESULT)) {
+function setupMocks(
+  joinFn = vi.fn().mockResolvedValue(MOCK_JOIN_RESULT),
+  joinInfo: { timerPerMoveSeconds: number; status: string } = {
+    timerPerMoveSeconds: 900,
+    status: "waiting_for_opponent",
+  },
+) {
   vi.doMock("../api/decks", () => ({
     listDecks: vi.fn().mockResolvedValue(MOCK_DECKS),
   }));
   vi.doMock("../api/duel", () => ({
     joinDuel: joinFn,
+    getDuelJoinInfo: vi.fn().mockResolvedValue(joinInfo),
   }));
   vi.doMock("../context/ToastContext", () => ({
     useToast: () => ({ addToast: vi.fn() }),
@@ -103,6 +110,57 @@ describe("JoinDuelScreen — join via link", () => {
       joinToken: "join-tok-123",
       deckId: "deck-a",
     });
+  });
+
+  it("shows the per-move timer before accepting (INVITE-02)", async () => {
+    setupMocks(); // default joinInfo: 900s = 15 min, waiting_for_opponent
+    const { JoinDuelScreen } = await import("./JoinDuelScreen");
+
+    render(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/duel/join/tok"] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/duel/join/:joinToken",
+            element: React.createElement(JoinDuelScreen),
+          }),
+        ),
+      ),
+    );
+
+    const timer = await screen.findByTestId("join-timer");
+    expect(timer.textContent).toContain("15 min");
+  });
+
+  it("disables accept + warns when the duel already started (INVITE-02)", async () => {
+    setupMocks(vi.fn().mockResolvedValue(MOCK_JOIN_RESULT), {
+      timerPerMoveSeconds: 300,
+      status: "active",
+    });
+    const { JoinDuelScreen } = await import("./JoinDuelScreen");
+
+    render(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/duel/join/tok"] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/duel/join/:joinToken",
+            element: React.createElement(JoinDuelScreen),
+          }),
+        ),
+      ),
+    );
+
+    await screen.findByTestId("join-already-started");
+    fireEvent.click(screen.getByText("Blackwings"));
+    const btn = screen.getByRole("button", { name: /accept/i }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
   });
 
   it("disables accept button when no deck selected", async () => {

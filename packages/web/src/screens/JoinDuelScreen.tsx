@@ -5,10 +5,18 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { joinDuel } from "../api/duel";
+import { getDuelJoinInfo, joinDuel } from "../api/duel";
 import { listDecks } from "../api/decks";
 import { useToast } from "../context/ToastContext";
-import type { DeckSummary } from "../types/contracts";
+import type { DeckSummary, PreJoinDuelInfo } from "../types/contracts";
+
+/** Human-readable per-move timer label (mirrors CreateDuelScreen). */
+function timerLabel(seconds: number): string {
+  if (seconds < 3600) return `${seconds / 60} min`;
+  if (seconds < 86400) return `${seconds / 3600} hr`;
+  const days = seconds / 86400;
+  return `${days} day${days > 1 ? "s" : ""}`;
+}
 
 export function JoinDuelScreen() {
   const { joinToken } = useParams<{ joinToken: string }>();
@@ -19,6 +27,7 @@ export function JoinDuelScreen() {
   const [decksLoading, setDecksLoading] = useState(true);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [joinInfo, setJoinInfo] = useState<PreJoinDuelInfo | null>(null);
 
   useEffect(() => {
     void listDecks()
@@ -31,6 +40,18 @@ export function JoinDuelScreen() {
         setDecksLoading(false);
       });
   }, [addToast]);
+
+  // Fetch the per-move timer + status BEFORE accepting (INVITE-02, REQ-TIMER-11).
+  useEffect(() => {
+    if (!joinToken) return;
+    void getDuelJoinInfo(joinToken)
+      .then(setJoinInfo)
+      .catch(() => {
+        addToast("This duel link is invalid or has expired", "error");
+      });
+  }, [joinToken, addToast]);
+
+  const alreadyStarted = joinInfo !== null && joinInfo.status !== "waiting_for_opponent";
 
   async function handleJoin() {
     if (!joinToken) {
@@ -98,9 +119,28 @@ export function JoinDuelScreen() {
           <h2 style={{ marginBottom: 8, fontSize: "1.125rem", fontWeight: 600 }}>
             You've been challenged!
           </h2>
-          <p style={{ color: "var(--text-1)", marginBottom: 24, fontSize: "0.9375rem" }}>
+          <p style={{ color: "var(--text-1)", marginBottom: 16, fontSize: "0.9375rem" }}>
             Pick a deck to accept and enter the duel.
           </p>
+
+          {joinInfo && (
+            <p
+              data-testid="join-timer"
+              style={{ color: "var(--accent-light)", marginBottom: 16, fontSize: "0.875rem" }}
+            >
+              ⏱ Each player gets {timerLabel(joinInfo.timerPerMoveSeconds)} to make each move.
+            </p>
+          )}
+
+          {alreadyStarted && (
+            <p
+              data-testid="join-already-started"
+              role="alert"
+              style={{ color: "var(--invalid)", marginBottom: 16, fontSize: "0.875rem" }}
+            >
+              This duel has already started or ended — the link can no longer be used.
+            </p>
+          )}
 
           {decksLoading ? (
             <p style={{ color: "var(--text-1)" }}>Loading decks…</p>
@@ -158,7 +198,7 @@ export function JoinDuelScreen() {
           <button
             className="btn btn-primary"
             onClick={handleJoin}
-            disabled={joining || !selectedDeckId || decksLoading}
+            disabled={joining || !selectedDeckId || decksLoading || alreadyStarted}
             style={{ minHeight: 44, padding: "12px 32px", width: "100%" }}
           >
             {joining ? "Joining…" : "Accept & enter duel ▸"}

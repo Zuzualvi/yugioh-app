@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { login, redeemInvite } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -9,7 +9,12 @@ export function LoginScreen() {
   const { setUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+
+  // Where to go after a successful sign-in — the path the user was heading to
+  // before the auth redirect (INVITE-01), falling back to Home.
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
 
   const inviteCode = searchParams.get("invite") ?? "";
   const isInviteFlow = !!inviteCode;
@@ -39,7 +44,7 @@ export function LoginScreen() {
       }
       setUser(res.user);
       addToast(`Welcome, ${res.user.displayName}!`, "success");
-      navigate("/", { replace: true });
+      navigate(from, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong — please try again";
       setError(

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { DeckBuilderScreen } from "./screens/DeckBuilderScreen";
 import { HomeScreen } from "./screens/HomeScreen";
@@ -15,12 +15,15 @@ import "./styles/builder.css";
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate("/login", { replace: true });
+      // Capture the intended path so login can resume here (INVITE-01: a
+      // logged-out user opening /duel/join/:token lands back on that link).
+      navigate("/login", { replace: true, state: { from: location.pathname + location.search } });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, location]);
 
   if (loading) {
     return (

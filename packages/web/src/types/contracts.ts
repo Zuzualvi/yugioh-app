@@ -14,6 +14,7 @@ export type {
   DeckImportResult,
   DeckSummary,
   DeckValidation,
+  PreJoinDuelInfo,
   User,
   Violation,
 } from "@yugioh-app/contracts";
