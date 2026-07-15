@@ -1,0 +1,91 @@
+name: E2E
+
+# Proves the live 2-player duel BACKBONE end-to-end (Playwright) on a same-origin
+# localhost stack that boots the real WASM engine + duel WS + SPA (see
+# e2e/harness/server.ts). Its own workflow so it gives an independent green/red
+# signal without entangling the deploy path. "Verified" = this job green.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: e2e (live duel backbone · Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+
+      # ── Engine WASM + card assets (same cache keys as deploy.yml `accuracy`
+      #    job → warm reuse; build only on a cache miss). ──────────────────────
+      - name: Restore WASM build cache
+        id: cache-wasm
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/engine/vendor/emsdk
+            packages/engine/vendor/ocgcore-wasm-src
+            packages/engine/vendor/ocgcore-custom.sync.mjs
+            packages/engine/vendor/ocgcore-custom.sync.wasm
+          key: wasm-v1-${{ hashFiles('packages/engine/scripts/build-wasm.sh') }}
+      - name: Restore assets cache
+        id: cache-assets
+        uses: actions/cache@v4
+        with:
+          path: packages/engine/assets
+          key: assets-v1-${{ hashFiles('packages/engine/scripts/fetch-assets.sh') }}
+      - name: Build WASM (skipped on cache hit)
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/build-wasm.sh
+      - name: Fetch assets (skipped on cache hit)
+        if: steps.cache-assets.outputs.cache-hit != 'true'
+        run: bash packages/engine/scripts/fetch-assets.sh
+
+      # ── Playwright chromium (cache keyed by installed Playwright version). ───
+      - name: Resolve Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: cache-pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.pw.outputs.version }}
+      - name: Install Playwright chromium (+ OS deps)
+        run: npx playwright install --with-deps chromium
+
+      - name: Build web SPA
+        run: npm run build:web
+
+      - name: Run live duel E2E
+        run: npx playwright test e2e/playwright/duel.spec.ts
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Notify Discord on E2E failure
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **E2E FAILED** on `master`
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
