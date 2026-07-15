@@ -50,6 +50,17 @@ since no real duels have been played to completion, we can reset/ignore old logs
   (export from index). Redaction rules baked in (hidden info never in the contract).
 - Write the ADR + review with CEO/CTO. **Gate:** contracts typecheck + schema unit tests.
 
+### Phase 0.5 — Mobile UX engineering spec (do in parallel with Phase 0)
+- `docs/working/2026-07-13-v1-ux-flows.md` §15 already specs the mobile 2-player board in depth
+  (portrait "your-field-first" stack, tap→action-sheet→pulse, inspect-vs-act separation, response bottom
+  sheets, responsive continuity, async resume). This phase turns §15 into an ENGINEERING-ready spec: responsive
+  breakpoints (phone-portrait → tablet → desktop as ONE reflowed component system, per §15(f)), a component
+  inventory, and the tap→sheet→pulse state machine mapped onto the `DuelDecision` protocol from Phase 0.
+- **Roster note:** there is no dedicated product/UI-UX-designer agent on this team (roster = Backend, Frontend,
+  Infra, QA, Technical Writer, Task Manager). §15 IS the design of record; this spec is an authoring task —
+  assign the **Technical Writer** (owns the doc) working with a **Frontend Engineer** (feasibility). If the CEO
+  wants dedicated product-design input beyond §15, that's a role we don't currently have — flag for decision.
+
 ### Phase 1 — Engine adapter (ocgcore ⇄ contract) + relay/persistence swap
 - Engine: `getDecisionForSeat(seat): DuelDecision | null` (typed, redacted; replaces raw decision passthrough
   for decisions) and `applyDecisionResponse(resp: DuelDecisionResponse): void` (validates against the pending
@@ -59,38 +70,46 @@ since no real duels have been played to completion, we can reset/ignore old logs
 - **Gate:** per-decision-kind engine unit tests (real WASM produces each decision → assert the mapping; apply a
   response → assert the engine advances). Server relay tests. Full `verify` green.
 
-### Phase 2 — Web: render + respond against the contract, to §6/§7 fidelity
-- Replace `decisionOptions.ts` + ActionPanel encode with a **decision dispatcher** keyed on the `DuelDecision`
-  discriminant; one component per decision kind (one-operation-per-file):
-  - §6 board: phase rail + End Turn, whose-turn/phase ribbon, actionable markers, card-click → legal-actions
-    menu (from `IdleCommand`/`BattleCommand`), animated LP.
-  - §7: priority prompt + "respond with (legal only)" picker (`ChainPrompt`), chain stack + top-down resolution.
-  - §8: targeting/selection mode (`SelectCard`/`SelectZone`/`SelectTribute`/`SelectSum`) — pulse valid,
-    confirm/cancel, running count.
-  - `SelectPosition`, `YesNo`, `SelectOption`, `Announce*` components.
-- Delete the mock duel session's now-divergent decision shapes (or realign the mock to the contract so unit
-  tests stay meaningful).
-- **Gate:** component tests driving each decision variant from fixture contract objects.
+### Phase 2 — Web: render + respond against the contract — RESPONSIVE (desktop §6/§7 AND mobile §15)
+Mobile is FIRST-CLASS, not a follow-on (most of the club plays on the go). Build ONE responsive component
+system reflowed across phone-portrait → tablet → desktop (§15(f)); the interaction grammar (tap → action sheet
+→ pulsing destination; tap-art-to-inspect) is identical everywhere.
+- Decision **dispatcher** keyed on the `DuelDecision` discriminant; one component per decision kind
+  (one-operation-per-file), each rendering its desktop AND mobile presentation:
+  - Board: desktop §6 (phase rail, whose-turn ribbon, actionable markers, card-click→legal-actions, animated LP)
+    AND mobile §15 (portrait your-field-first stack, opponent status strip that expands on tap, compact phase
+    rail, ≥44px targets, swipeable hand fan).
+  - §7 priority/chain: desktop right-docked chain stack + "respond with (legal only)" picker; mobile as bottom
+    sheets ([Respond]/[Pass] under the thumb) + peekable chain panel.
+  - §8 targeting/selection: pulse valid, confirm/cancel, running count (both form factors).
+  - `SelectPosition`, `YesNo`, `SelectOption`, `Announce*`, inspect-vs-act gesture separation (§15c).
+- Accessibility (§16) is in-scope for this build, not deferred: ≥44px tap targets, ≥16px body text, no
+  meaning-by-color-alone, reduced-motion, WCAG-AA contrast + light/dark, keyboard on desktop.
+- Realign/remove the mock duel session so unit tests track the real contract.
+- **Gate:** component tests driving each decision variant from fixture contract objects, at phone + desktop widths.
 
-### Phase 3 — E2E upgrade: PLAY a real turn (the real proof)
+### Phase 3 — E2E upgrade: PLAY a real turn, on BOTH form factors (the real proof)
 - Extend `e2e/playwright/duel.spec.ts`: seat 0 normal-summons a monster + advances phases; assert the monster
   appears in a monster zone and the turn/phase ribbon advances; seat 1 takes its turn; ideally reach a battle +
-  LP change or a win. This turns the CI proof from "backbone" into "a real duel is playable end-to-end."
-
-### Phase 4 (follow-on slice) — Mobile board (§15) + accessibility (§16)
-- The mobile 2-player board (flagged as *the* central V1 UX risk) + a11y (tap targets, no-color-alone,
-  reduced-motion, contrast/dark mode, keyboard). Desktop-playable is the MVP gate; this is the next slice.
+  LP change or a win. Run the play-through in a **mobile viewport (Pixel-class, portrait) AND a desktop
+  viewport** so both layouts are proven in CI, not just one.
 
 ## Delegation shape (once subagent spawn is restored)
 - Phase 0: CTO + 1 Backend (contract design + empirical catalog).
+- Phase 0.5: Technical Writer + 1 Frontend (mobile engineering spec from §15). Runs parallel to Phase 0.
 - Phase 1: 1–2 Backend Engineers (engine adapter + relay), disjoint by decision-kind groups.
-- Phase 2: 2–3 Frontend Engineers, disjoint files (board / prompts+chain / targeting+selects).
-- Phase 3: QA. Everything gated by CI + a separate QA agent.
+- Phase 2: 2–3 Frontend Engineers, disjoint files, each owning a decision kind's desktop+mobile presentation
+  (board / prompts+chain / targeting+selects); one shares the responsive layout shell.
+- Phase 3: QA (mobile + desktop viewport play-throughs). Everything gated by CI + a separate QA agent.
 
 ## Risks / decisions to make
-- **Scope of "playable V1":** which decision kinds are in-scope (all that arise in the Edison meta; some
-  ocgcore messages — SORT_CARD, ROCK_PAPER_SCISSORS — are rare/absent and can be minimally handled).
-- **Mobile+a11y in this slice vs a follow-on** (recommend follow-on; desktop-playable first).
+- **Playable V1 = desktop AND mobile-portrait** (CEO call 2026-07-15: the club plays on the go, so mobile is
+  first-class, built alongside desktop as one responsive system — not a follow-on). Accessibility (§16) is in
+  the core build.
+- **Scope of decision kinds:** all that arise in the Edison meta; rare ocgcore messages (SORT_CARD,
+  ROCK_PAPER_SCISSORS) get minimal handling.
+- **No product/UI-UX-designer agent exists** on the team; §15 is the design of record and the Technical Writer
+  authors the engineering spec from it. If the CEO wants dedicated product-design work, that's a new role.
 - **Log migration:** confirm no in-progress real duels before changing the response-log shape.
-- This is a substantial build spanning contracts + engine + web (Phases 0–3 to reach desktop-playable); it is
-  NOT a close-out papercut.
+- This is a substantial build spanning contracts + engine + web (Phases 0–3 to reach desktop+mobile playable);
+  it is NOT a close-out papercut.
