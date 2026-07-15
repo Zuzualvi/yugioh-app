@@ -1,12 +1,13 @@
 name: Deploy
 
-# merge=deploy for the BACKEND only. The Vercel frontend (app.zuhayr.io) is deployed
-# by Vercel's own Git integration on push (it uses the project's VITE_* env vars), so
-# there is deliberately no frontend job here — a second CLI deployer fought with it.
-#
-# Every push to master runs the verify gate, then (only if green) deploys the Fly
-# backend (api.zuhayr.io) and seeds card images onto the volume.
-# Secrets FLY_API_TOKEN + BOOTSTRAP_ADMIN_* are set in the repo (provision + CEO).
+# Every push to master runs the verify gate, then (only if green) deploys:
+#   • Fly backend  (api.zuhayr.io)  — flyctl remote build from Dockerfile
+#   • Vercel frontend (app.zuhayr.io) — token-based `vercel deploy` (authorship-independent,
+#     same model as the Fly backend). Vercel's Git integration is NOT used: it rejects
+#     bot-authored commits (TEAM_ACCESS_REQUIRED), so the CLI + VERCEL_TOKEN is the
+#     sole deployer.
+# Secrets: FLY_API_TOKEN + BOOTSTRAP_ADMIN_* (backend), VERCEL_TOKEN + VERCEL_ORG_ID +
+# VERCEL_PROJECT_ID (frontend). All set in repo Settings → Secrets (provision + CEO).
 
 on:
   push:
@@ -219,5 +220,47 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           content: |
             ❌ **Backend deploy FAILED** on `master`
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  deploy-frontend:
+    name: deploy frontend (Vercel)
+    needs: [verify, accuracy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: true
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Pull Vercel project settings (preview)
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Deploy to Vercel (preview — remote build)
+        id: deploy
+        run: |
+          set -o pipefail
+          url=$(vercel deploy --token="$VERCEL_TOKEN" --yes | tail -n1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Vercel preview deployment"
+            echo "$url"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Notify Discord on failure
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **Frontend deploy FAILED** on `master`
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
