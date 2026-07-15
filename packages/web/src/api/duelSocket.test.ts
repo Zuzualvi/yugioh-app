@@ -234,3 +234,30 @@ describe("openDuelSocket — reconnect", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("openDuelSocket — connection URL", () => {
+  // Regression guard for the client/server WS path mismatch: the client MUST
+  // connect to the server's real path `/api/duels/:id/ws`, NOT `/ws/duels/:id`
+  // (the server closes any other path with code 4000). The old tests never
+  // asserted the URL — that is exactly how the mismatch shipped.
+  it("connects to /api/duels/:id/ws with the token (never /ws/duels/)", async () => {
+    const { openDuelSocket } = await import("./duelSocket");
+    const socket = openDuelSocket("d1", "t1", { onMessage: () => {} });
+    const wsMock = globalThis.WebSocket as unknown as { mock: { calls: unknown[][] } };
+    const url = wsMock.mock.calls[0]?.[0] as string;
+    expect(url).toContain("/api/duels/d1/ws?token=t1");
+    expect(url).not.toContain("/ws/duels/");
+    socket.close();
+  });
+
+  it("derives the WS base from VITE_API_BASE_URL (http→ws)", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    const { openDuelSocket } = await import("./duelSocket");
+    const socket = openDuelSocket("d9", "tok", { onMessage: () => {} });
+    const wsMock = globalThis.WebSocket as unknown as { mock: { calls: unknown[][] } };
+    const url = wsMock.mock.calls[wsMock.mock.calls.length - 1]?.[0] as string;
+    expect(url).toBe("wss://api.example.com/api/duels/d9/ws?token=tok");
+    socket.close();
+    vi.unstubAllEnvs();
+  });
+});

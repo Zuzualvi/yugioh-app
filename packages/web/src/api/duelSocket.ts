@@ -24,18 +24,21 @@ export interface DuelSocket {
   close: () => void;
 }
 
-const WS_BASE =
-  (typeof import.meta !== "undefined" &&
-    (import.meta.env as Record<string, string> | undefined)?.VITE_WS_BASE_URL) ??
-  "";
+// WS base is derived from the SAME var the REST client uses (VITE_API_BASE_URL),
+// converted http→ws. This keeps REST and WS pointed at the same origin: in prod
+// that's wss://api.zuhayr.io; on a same-origin localhost stack it's the window
+// origin. The server's WS path is /api/duels/:id/ws (see packages/server duelSocket).
+// Read at call time so a freshly-set env is always honoured.
+function apiBase(): string {
+  if (typeof import.meta === "undefined") return "";
+  return (import.meta.env as Record<string, string> | undefined)?.VITE_API_BASE_URL ?? "";
+}
 
 function buildWsUrl(duelId: string, token: string): string {
-  const base =
-    WS_BASE ||
-    (typeof window !== "undefined"
-      ? window.location.origin.replace(/^http/, "ws")
-      : "ws://localhost");
-  return `${base}/ws/duels/${duelId}?token=${encodeURIComponent(token)}`;
+  const httpBase =
+    apiBase() || (typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const wsBase = httpBase.replace(/^http/, "ws"); // http→ws, https→wss
+  return `${wsBase}/api/duels/${duelId}/ws?token=${encodeURIComponent(token)}`;
 }
 
 /**
