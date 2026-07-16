@@ -1,0 +1,583 @@
+{
+  "captured": {
+    "DRAW": {
+      "type": 90,
+      "player": 0,
+      "drawn": [
+        {
+          "code": 2118022,
+          "position": 10
+        },
+        {
+          "code": 1784619,
+          "position": 10
+        },
+        {
+          "code": 1761063,
+          "position": 10
+        },
+        {
+          "code": 1184620,
+          "position": 10
+        },
+        {
+          "code": 32864,
+          "position": 10
+        }
+      ]
+    },
+    "NEW_TURN": {
+      "type": 40,
+      "player": 0
+    },
+    "NEW_PHASE": {
+      "type": 41,
+      "phase": 1
+    },
+    "HINT": {
+      "type": 2,
+      "hint_type": 1,
+      "player": 0,
+      "hint": "27n"
+    },
+    "SELECT_CHAIN": {
+      "type": 16,
+      "player": 0,
+      "spe_count": 0,
+      "forced": false,
+      "hint_timing": 2162688,
+      "hint_timing_other": 2162688,
+      "selects": []
+    },
+    "SELECT_IDLECMD": {
+      "type": 11,
+      "player": 0,
+      "summons": [
+        {
+          "code": 2118022,
+          "controller": 0,
+          "location": 2,
+          "sequence": 0
+        },
+        {
+          "code": 1784619,
+          "controller": 0,
+          "location": 2,
+          "sequence": 1
+        },
+        {
+          "code": 1761063,
+          "controller": 0,
+          "location": 2,
+          "sequence": 2
+        },
+        {
+          "code": 1184620,
+          "controller": 0,
+          "location": 2,
+          "sequence": 3
+        },
+        {
+          "code": 32864,
+          "controller": 0,
+          "location": 2,
+          "sequence": 4
+        },
+        {
+          "code": 2118022,
+          "controller": 0,
+          "location": 2,
+          "sequence": 5
+        }
+      ],
+      "special_summons": [],
+      "pos_changes": [],
+      "monster_sets": [
+        {
+          "code": 2118022,
+          "controller": 0,
+          "location": 2,
+          "sequence": 0
+        },
+        {
+          "code": 1784619,
+          "controller": 0,
+          "location": 2,
+          "sequence": 1
+        },
+        {
+          "code": 1761063,
+          "controller": 0,
+          "location": 2,
+          "sequence": 2
+        },
+        {
+          "code": 1184620,
+          "controller": 0,
+          "location": 2,
+          "sequence": 3
+        },
+        {
+          "code": 32864,
+          "controller": 0,
+          "location": 2,
+          "sequence": 4
+        },
+        {
+          "code": 2118022,
+          "controller": 0,
+          "location": 2,
+          "sequence": 5
+        }
+      ],
+      "spell_sets": [],
+      "activates": [],
+      "to_bp": false,
+      "to_ep": true,
+      "shuffle": true
+    },
+    "SELECT_BATTLECMD": {
+      "type": 10,
+      "player": 1,
+      "chains": [],
+      "attacks": [
+        {
+          "code": 1184620,
+          "controller": 1,
+          "location": 4,
+          "sequence": 0,
+          "can_direct": false
+        }
+      ],
+      "to_m2": true,
+      "to_ep": true
+    },
+    "SELECT_CARD": {
+      "type": 15,
+      "player": 1,
+      "can_cancel": true,
+      "min": 1,
+      "max": 1,
+      "selects": [
+        {
+          "code": 32864,
+          "controller": 0,
+          "location": 4,
+          "sequence": 0,
+          "position": 5
+        }
+      ]
+    },
+    "ATTACK": {
+      "type": 110,
+      "card": {
+        "controller": 1,
+        "location": 4,
+        "sequence": 0,
+        "position": 5
+      },
+      "target": {
+        "controller": 0,
+        "location": 4,
+        "sequence": 0,
+        "position": 5
+      }
+    },
+    "DAMAGE_STEP_START": {
+      "type": 113
+    },
+    "DAMAGE_STEP_END": {
+      "type": 114
+    },
+    "MOVE": {
+      "type": 50,
+      "card": 2118022,
+      "from": {
+        "controller": 0,
+        "location": 2,
+        "sequence": 0,
+        "position": 10
+      },
+      "to": {
+        "controller": 0,
+        "location": 16,
+        "sequence": 0,
+        "position": 5
+      }
+    },
+    "SELECT_PLACE": {
+      "type": 18,
+      "player": 0,
+      "count": 1,
+      "field_mask": 4294967264
+    },
+    "SUMMONING": {
+      "type": 60,
+      "code": 2118022,
+      "controller": 0,
+      "location": 4,
+      "sequence": 0,
+      "position": 1
+    },
+    "SUMMONED": {
+      "type": 61
+    },
+    "BATTLE": {
+      "type": 111,
+      "card": {
+        "controller": 0,
+        "location": 4,
+        "sequence": 0,
+        "position": 1,
+        "attack": 1500,
+        "defense": 900,
+        "destroyed": false
+      },
+      "target": {
+        "controller": 0,
+        "location": 0,
+        "sequence": 0,
+        "position": 0,
+        "attack": 0,
+        "defense": 0,
+        "destroyed": false
+      }
+    },
+    "SHUFFLE_HAND": {
+      "type": 33,
+      "player": 0,
+      "cards": [
+        9748752,
+        2118022,
+        1784619,
+        1761063,
+        1184620,
+        32864
+      ]
+    },
+    "SELECT_TRIBUTE": {
+      "type": 20,
+      "player": 0,
+      "can_cancel": true,
+      "min": 1,
+      "max": 1,
+      "selects": [
+        {
+          "code": 32864,
+          "controller": 0,
+          "location": 4,
+          "sequence": 0,
+          "release_param": 1
+        }
+      ]
+    },
+    "CHAINING": {
+      "type": 70,
+      "code": 9748752,
+      "controller": 0,
+      "location": 4,
+      "sequence": 0,
+      "position": 1,
+      "triggering_controller": 0,
+      "triggering_location": 4,
+      "triggering_sequence": 0,
+      "description": "10222307377152n",
+      "chain_size": 1
+    },
+    "BECOME_TARGET": {
+      "type": 83,
+      "cards": [
+        {
+          "controller": 0,
+          "location": 4,
+          "sequence": 0,
+          "position": 1
+        }
+      ]
+    },
+    "CHAINED": {
+      "type": 71,
+      "chain_size": 1
+    },
+    "CHAIN_SOLVING": {
+      "type": 72,
+      "chain_size": 1
+    },
+    "DAMAGE": {
+      "type": 91,
+      "player": 1,
+      "amount": 1000
+    },
+    "CHAIN_SOLVED": {
+      "type": 73,
+      "chain_size": 1
+    },
+    "CHAIN_END": {
+      "type": 74
+    },
+    "SELECT_UNSELECT_CARD": {
+      "type": 26,
+      "player": 0,
+      "can_finish": false,
+      "can_cancel": true,
+      "min": 1,
+      "max": 1,
+      "select_cards": [
+        {
+          "code": 63977008,
+          "controller": 0,
+          "location": 4,
+          "sequence": 0,
+          "position": 5
+        }
+      ],
+      "unselect_cards": []
+    },
+    "SELECT_POSITION": {
+      "type": 19,
+      "player": 0,
+      "code": 60800381,
+      "positions": 5
+    },
+    "SPSUMMONING": {
+      "type": 62,
+      "code": 60800381,
+      "controller": 0,
+      "location": 4,
+      "sequence": 0,
+      "position": 1
+    },
+    "SPSUMMONED": {
+      "type": 63
+    },
+    "SELECT_EFFECTYN": {
+      "type": 12,
+      "player": 0,
+      "code": 12538374,
+      "controller": 0,
+      "location": 16,
+      "sequence": 0,
+      "position": 5,
+      "description": "0n"
+    },
+    "FLIPSUMMONING": {
+      "type": 64,
+      "code": 33508719,
+      "controller": 0,
+      "location": 4,
+      "sequence": 0,
+      "position": 1
+    },
+    "FLIPSUMMONED": {
+      "type": 65
+    },
+    "SELECT_YESNO": {
+      "type": 13,
+      "player": 0,
+      "description": "22547315818497n"
+    },
+    "CARD_SELECTED": {
+      "type": 80,
+      "cards": [
+        {
+          "controller": 0,
+          "location": 4,
+          "sequence": 0,
+          "position": 1
+        }
+      ]
+    },
+    "SELECT_OPTION": {
+      "type": 14,
+      "player": 0,
+      "options": [
+        "102807698931713n",
+        "102807698931714n"
+      ]
+    },
+    "POS_CHANGE": {
+      "type": 53,
+      "code": 1184620,
+      "controller": 1,
+      "location": 4,
+      "sequence": 0,
+      "prev_position": 5,
+      "position": 0
+    },
+    "ANNOUNCE_CARD": {
+      "type": 142,
+      "player": 0,
+      "opcodes": [
+        "75505728n",
+        "4611687126528950272n",
+        "4611686048492158976n"
+      ]
+    },
+    "CONFIRM_CARDS": {
+      "type": 31,
+      "player": 0,
+      "cards": [
+        {
+          "code": 32864,
+          "controller": 1,
+          "location": 2,
+          "sequence": 0
+        },
+        {
+          "code": 32864,
+          "controller": 1,
+          "location": 2,
+          "sequence": 5
+        },
+        {
+          "code": 1184620,
+          "controller": 1,
+          "location": 2,
+          "sequence": 4
+        },
+        {
+          "code": 1761063,
+          "controller": 1,
+          "location": 2,
+          "sequence": 3
+        },
+        {
+          "code": 1784619,
+          "controller": 1,
+          "location": 2,
+          "sequence": 2
+        },
+        {
+          "code": 2118022,
+          "controller": 1,
+          "location": 2,
+          "sequence": 1
+        }
+      ]
+    },
+    "SET": {
+      "type": 54,
+      "code": 74701381,
+      "controller": 0,
+      "location": 8,
+      "sequence": 0,
+      "position": 10
+    },
+    "PAY_LPCOST": {
+      "type": 100,
+      "player": 0,
+      "amount": 1000
+    },
+    "ANNOUNCE_ATTRIB": {
+      "type": 141,
+      "player": 0,
+      "count": 1,
+      "available": 127
+    },
+    "ANNOUNCE_RACE": {
+      "type": 140,
+      "player": 0,
+      "count": 1,
+      "available": "67108863n"
+    },
+    "SHUFFLE_DECK": {
+      "type": 32,
+      "player": 1
+    },
+    "ANNOUNCE_NUMBER": {
+      "type": 143,
+      "player": 0,
+      "options": [
+        "1000n",
+        "2000n",
+        "3000n",
+        "4000n",
+        "5000n",
+        "6000n",
+        "7000n",
+        "8000n"
+      ]
+    }
+  },
+  "capturedResponses": {
+    "SELECT_CHAIN": {
+      "type": 8,
+      "index": null
+    },
+    "SELECT_IDLECMD": {
+      "type": 1,
+      "action": 7
+    },
+    "SELECT_BATTLECMD": {
+      "type": 0,
+      "action": 1,
+      "index": 0
+    },
+    "SELECT_CARD": {
+      "type": 5,
+      "indicies": [
+        0
+      ]
+    },
+    "SELECT_PLACE": {
+      "type": 10,
+      "places": [
+        {
+          "player": 0,
+          "location": 4,
+          "sequence": 0
+        }
+      ]
+    },
+    "SELECT_TRIBUTE": {
+      "type": 12,
+      "indicies": [
+        0
+      ]
+    },
+    "SELECT_UNSELECT_CARD": {
+      "type": 7,
+      "index": 0
+    },
+    "SELECT_POSITION": {
+      "type": 11,
+      "position": 1
+    },
+    "SELECT_EFFECTYN": {
+      "type": 2,
+      "yes": false
+    },
+    "SELECT_YESNO": {
+      "type": 3,
+      "yes": true
+    },
+    "SELECT_OPTION": {
+      "type": 4,
+      "index": 0
+    },
+    "ANNOUNCE_CARD": {
+      "type": 18,
+      "card": 32864
+    },
+    "ANNOUNCE_ATTRIB": {
+      "type": 17,
+      "attributes": [
+        1
+      ]
+    },
+    "ANNOUNCE_RACE": {
+      "type": 16,
+      "races": [
+        "1n"
+      ]
+    }
+  },
+  "notReproducible": [
+    "ROCK_PAPER_SCISSORS",
+    "SELECT_SUM",
+    "SELECT_DISFIELD",
+    "SELECT_COUNTER",
+    "SORT_CARD",
+    "SORT_CHAIN"
+  ]
+}
