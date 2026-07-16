@@ -362,7 +362,8 @@ export class EdisonDuel {
     const { type } = msg;
     if (type === 91 /* DAMAGE */ || type === 92 /* RECOVER */) {
       const player = msg["player"] as 0 | 1 | undefined;
-      const val = msg["val"] as number | undefined;
+      // ocgcore-wasm emits "amount" for DAMAGE/RECOVER, not "val".
+      const val = (msg["amount"] as number | undefined) ?? (msg["val"] as number | undefined);
       if (player !== undefined && val !== undefined) {
         const lp = [...this.phaseInfo.lp] as [number, number];
         if (type === 91) lp[player] = Math.max(0, lp[player]! - val);

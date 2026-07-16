@@ -94,14 +94,19 @@ function ZoneRow({
   cards,
   isOwn,
   size = "md",
+  testId,
 }: {
   label: string;
   cards: ZoneCard[];
   isOwn: boolean;
   size?: "sm" | "md";
+  testId?: string;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}
+      data-testid={testId}
+    >
       <span
         style={{
           fontSize: "0.6875rem",
@@ -468,7 +473,7 @@ export function DuelBoard({ state, mySeat }: Props) {
           padding: "8px 0",
         }}
       >
-        <ZoneRow label="Mon" cards={myZones.mzone} isOwn />
+        <ZoneRow label="Mon" cards={myZones.mzone} isOwn testId="my-mzone" />
         <ZoneRow label="S/T" cards={myZones.szone} isOwn />
         <ZoneRow label="GY" cards={myZones.grave} isOwn />
         <ZoneRow label="Ban" cards={myZones.removed} isOwn />

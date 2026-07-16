@@ -20,7 +20,21 @@ export default defineConfig({
     trace: "retain-on-failure",
     launchOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage"] },
   },
-  projects: [{ name: "chromium", use: { browserName: "chromium" } }],
+  projects: [
+    {
+      name: "desktop",
+      use: { browserName: "chromium", viewport: { width: 1280, height: 800 } },
+    },
+    {
+      name: "mobile",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 393, height: 851 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+  ],
   webServer: {
     command: "npx tsx e2e/harness/server.ts",
     url: `${BASE_URL}/`,
