@@ -17,7 +17,7 @@ import type {
   DuelDecisionResponse,
 } from "@yugioh-app/contracts";
 import type { OcgCoreSync, OcgDuelHandle } from "ocgcore-wasm";
-import { OcgProcessResult, OcgResponseType } from "ocgcore-wasm";
+import { OcgProcessResult, OcgResponseType, OcgMessageType } from "ocgcore-wasm";
 import type { RawEngineMessage } from "./types.js";
 import { redactMessageForSeat } from "./redactMessage.js";
 import { buildStateForSeat, type DuelPhaseInfo } from "./buildStateForSeat.js";
@@ -94,6 +94,22 @@ const MSG_NAMES: Record<number, string> = {
 const DECISION_MSG_TYPES = new Set([
   10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 140, 141, 142, 143,
 ]);
+
+/**
+ * Map an OcgPhase value to the web DuelBoard phase encoding.
+ *
+ * Web expects: 1=Draw, 2=Standby, 4=Main1, 8=Battle, 16=Main2, 32=End.
+ * OcgPhase: DRAW=1, STANDBY=2, MAIN1=4, BATTLE_START=8, BATTLE_STEP=16,
+ *           DAMAGE=32, DAMAGE_CAL=64, BATTLE=128, MAIN2=256, END=512.
+ * All battle sub-phases (8–128) collapse to web 8 (Battle).
+ */
+function mapOcgPhaseToWeb(ocgPhase: number): number {
+  if (ocgPhase <= 4) return ocgPhase; // DRAW=1, STANDBY=2, MAIN1=4 — identity
+  if (ocgPhase <= 128) return 8; // BATTLE_START through BATTLE → Battle
+  if (ocgPhase === 256) return 16; // MAIN2
+  if (ocgPhase === 512) return 32; // END
+  return ocgPhase; // unknown — pass through
+}
 
 export class EdisonDuel {
   private lib: OcgCoreSync | null;
@@ -360,20 +376,32 @@ export class EdisonDuel {
 
   private updatePhaseFromMessage(msg: RawEngineMessage): void {
     const { type } = msg;
-    if (type === 91 /* DAMAGE */ || type === 92 /* RECOVER */) {
+    if (type === OcgMessageType.DAMAGE || type === OcgMessageType.RECOVER) {
       const player = msg["player"] as 0 | 1 | undefined;
       // ocgcore-wasm emits "amount" for DAMAGE/RECOVER, not "val".
       const val = (msg["amount"] as number | undefined) ?? (msg["val"] as number | undefined);
       if (player !== undefined && val !== undefined) {
         const lp = [...this.phaseInfo.lp] as [number, number];
-        if (type === 91) lp[player] = Math.max(0, lp[player]! - val);
+        if (type === OcgMessageType.DAMAGE) lp[player] = Math.max(0, lp[player]! - val);
         else lp[player] = lp[player]! + val;
         this.phaseInfo = { ...this.phaseInfo, lp };
       }
     }
-    if (type === 100 /* WIN */) {
+    if (type === OcgMessageType.WIN) {
       const player = msg["player"] as 0 | 1 | undefined;
       this.winner = player ?? null;
+    }
+    if (type === OcgMessageType.NEW_TURN) {
+      const player = msg["player"] as 0 | 1 | undefined;
+      if (player !== undefined) {
+        this.phaseInfo = { ...this.phaseInfo, currentTurn: player };
+      }
+    }
+    if (type === OcgMessageType.NEW_PHASE) {
+      const ocgPhase = msg["phase"] as number | undefined;
+      if (ocgPhase !== undefined) {
+        this.phaseInfo = { ...this.phaseInfo, currentPhase: mapOcgPhaseToWeb(ocgPhase) };
+      }
     }
   }
 

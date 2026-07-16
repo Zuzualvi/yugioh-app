@@ -19,10 +19,14 @@ function isFaceDown(position: number | undefined): boolean {
   return (position & FD_MASK) !== 0;
 }
 
+// Note: OcgQueryFlags.TYPE (flag=8) is intentionally excluded. The installed
+// ocgcore-wasm JS wrapper's readQuery() does not handle TYPE entries: it reads
+// the flag but does not consume the data bytes, causing byte-level misalignment
+// that corrupts all subsequent fields (including CODE and POSITION) in the
+// binary response. TYPE is not surfaced in ZoneCard, so excluding it is safe.
 const QUERY_FLAGS = (OcgQueryFlagsConst.CODE |
   OcgQueryFlagsConst.POSITION |
   OcgQueryFlagsConst.IS_PUBLIC |
-  OcgQueryFlagsConst.TYPE |
   OcgQueryFlagsConst.ATTACK |
   OcgQueryFlagsConst.DEFENSE |
   OcgQueryFlagsConst.LEVEL) as OcgQueryFlags;
@@ -90,11 +94,10 @@ export function buildStateForSeat(
           isOpponentZone && (alwaysHidden || isFaceDown(position) || card["isPublic"] === false);
 
         const base: ZoneCard = {
+          ...card,
           code: needsRedact ? 0 : ((card["code"] as number) ?? 0),
           position: position ?? 0,
-          ...card,
         };
-        if (needsRedact) base.code = 0;
         return base;
       });
   }
