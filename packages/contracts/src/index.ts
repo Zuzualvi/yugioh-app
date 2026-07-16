@@ -77,3 +77,38 @@ export {
   DeckExportBodySchema,
   DeckImportResultSchema,
 } from "./deck.js";
+
+export type {
+  PositionCode,
+  Attribute,
+  Race,
+  LocationCode,
+  CardEntry,
+  ActiveCardEntry,
+  AttackEntry,
+  ZoneEntry,
+  SumEntry,
+  CounterEntry,
+  AnnounceFilter,
+  DuelDecision,
+  DuelDecisionResponse,
+  IdleCommandActionType,
+  BattleCommandActionType,
+} from "./duelDecision.js";
+export {
+  PositionCodeSchema,
+  AttributeSchema,
+  RaceSchema,
+  LocationCodeSchema,
+  CardEntrySchema,
+  ActiveCardEntrySchema,
+  AttackEntrySchema,
+  ZoneEntrySchema,
+  SumEntrySchema,
+  CounterEntrySchema,
+  AnnounceFilterSchema,
+  DuelDecisionSchema,
+  DuelDecisionResponseSchema,
+  IdleCommandAction,
+  BattleCommandAction,
+} from "./duelDecision.js";
