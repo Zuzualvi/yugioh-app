@@ -24,3 +24,8 @@ export { isCustomWasmAvailable } from "./coreFactory.js";
 
 // Redaction utility (server may call this directly on each outgoing message)
 export { redactMessageForSeat } from "./redactMessage.js";
+
+// Phase 1 decision adapter (exported for testing and potential server use)
+export { messageToDecision } from "./decision/messageToDecision.js";
+export { responseToOcgResponse } from "./decision/responseToOcgResponse.js";
+export { validateDecisionResponse } from "./decision/validateDecisionResponse.js";

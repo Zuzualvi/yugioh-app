@@ -13,12 +13,17 @@ import type {
   DuelStateSnapshot,
   EngineResponse,
   RedactedEngineMessage,
+  DuelDecision,
+  DuelDecisionResponse,
 } from "@yugioh-app/contracts";
 import type { OcgCoreSync, OcgDuelHandle } from "ocgcore-wasm";
-import { OcgProcessResult } from "ocgcore-wasm";
+import { OcgProcessResult, OcgResponseType } from "ocgcore-wasm";
 import type { RawEngineMessage } from "./types.js";
 import { redactMessageForSeat } from "./redactMessage.js";
 import { buildStateForSeat, type DuelPhaseInfo } from "./buildStateForSeat.js";
+import { messageToDecision } from "./decision/messageToDecision.js";
+import { responseToOcgResponse } from "./decision/responseToOcgResponse.js";
+import { validateDecisionResponse } from "./decision/validateDecisionResponse.js";
 
 export interface DeckLists {
   main: number[];
@@ -61,39 +66,49 @@ const MSG_NAMES: Record<number, string> = {
   24: "SELECT_DISFIELD",
   25: "SORT_CARD",
   26: "SELECT_UNSELECT_CARD",
-  30: "ROCK_PAPER_SCISSORS",
-  31: "ANNOUNCE_RACE",
-  32: "ANNOUNCE_ATTRIB",
-  33: "ANNOUNCE_CARD",
-  34: "ANNOUNCE_NUMBER",
-  40: "SUMMONED",
-  41: "SPSUMMONED",
-  42: "FLIPSUMMONED",
-  43: "FLIPSUMMONING",
+  30: "CONFIRM_DECKTOP",
+  40: "NEW_TURN",
+  41: "NEW_PHASE",
   50: "MOVE",
   54: "SET",
   60: "SHUFFLE_HAND",
   67: "SHUFFLE_SET_CARD",
-  80: "SHOW_HINT",
-  81: "CONFIRM_DECKTOP",
-  83: "CONFIRM_CARDS",
+  80: "CARD_SELECTED",
+  81: "RANDOM_SELECTED",
+  83: "BECOME_TARGET",
   85: "DECK_TOP",
   86: "CONFIRM_EXTRATOP",
   90: "DRAW",
   91: "DAMAGE",
   92: "RECOVER",
   100: "WIN",
+  132: "ROCK_PAPER_SCISSORS",
+  133: "HAND_RES",
+  140: "ANNOUNCE_RACE",
+  141: "ANNOUNCE_ATTRIB",
+  142: "ANNOUNCE_CARD",
+  143: "ANNOUNCE_NUMBER",
 };
+
+/** Decision message types that require an OcgResponse. */
+const DECISION_MSG_TYPES = new Set([
+  10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 140, 141, 142, 143,
+]);
 
 export class EdisonDuel {
   private lib: OcgCoreSync | null;
   private readonly handle: OcgDuelHandle;
-  private readonly responseLog: EngineResponse[] = [];
+  /** Phase 1: typed DuelDecisionResponse log (replaces old EngineResponse log). */
+  private readonly decisionResponseLog: DuelDecisionResponse[] = [];
+  /** @deprecated dormant in Phase 1; kept for old respond() call compat. */
+  private readonly legacyResponseLog: EngineResponse[] = [];
   private ended = false;
   private destroyed = false;
   private winner: Seat | null = null;
-  /** Decision messages from the most recent WAITING step (what the on-clock seat must answer). */
+  /** Decision messages from the most recent WAITING step. */
   private lastPendingMessages: RawEngineMessage[] = [];
+  /** The typed pending decision computed from lastPendingMessages, with the on-clock seat. */
+  private pendingDecision: { seat: Seat; decision: DuelDecision } | null = null;
   private phaseInfo: DuelPhaseInfo = {
     currentTurn: 0,
     currentPhase: 0,
@@ -128,6 +143,10 @@ export class EdisonDuel {
   /**
    * Advance the engine until the next WAITING decision or END.
    *
+   * Auto-behaviors (transparent to callers):
+   *   • SELECT_CHAIN with empty selects AND not forced → auto-pass (never surfaced).
+   *   • RockPaperScissors (132) → auto-respond with value=1 (never surfaced).
+   *
    * - `messages`: decision/routing messages from the terminal process step
    *   (SELECT_CHAIN, SELECT_IDLECMD, etc.). These are player-targeted and are
    *   null for the non-targeted seat via redactMessageForSeat().
@@ -157,7 +176,6 @@ export class EdisonDuel {
           ...raw,
         };
         this.updatePhaseFromMessage(rawMsg);
-        // Decision/terminal messages go into messages; broadcast goes into events
         if (isFinal) {
           messages.push(rawMsg);
         } else {
@@ -169,14 +187,53 @@ export class EdisonDuel {
         this.ended = true;
         this.phaseInfo = { ...this.phaseInfo, duelEnded: true };
         this.lastPendingMessages = [];
+        this.pendingDecision = null;
         return { status: "ended", messages, events };
       }
 
       if (result === OcgProcessResult.WAITING) {
-        // Determine which seat is on the clock (has the awaiting decision)
+        // ── Auto-resolve RockPaperScissors ─────────────────────────────
+        const rpsMsg = messages.find((m) => m.type === 132);
+        if (rpsMsg) {
+          lib.duelSetResponse(this.handle, {
+            type: OcgResponseType.ROCK_PAPER_SCISSORS,
+            value: 1,
+          });
+          messages.length = 0; // clear — continue stepping
+          continue;
+        }
+
+        // ── Auto-pass empty optional chain window ───────────────────────
+        const chainMsg = messages.find((m) => m.type === 16);
+        if (
+          chainMsg &&
+          !(chainMsg["forced"] as boolean) &&
+          ((chainMsg["selects"] as unknown[]) ?? []).length === 0
+        ) {
+          lib.duelSetResponse(this.handle, {
+            type: OcgResponseType.SELECT_CHAIN,
+            index: null,
+          });
+          messages.length = 0;
+          continue;
+        }
+
+        // ── Real WAITING decision — compute typed DuelDecision ──────────
         const awaitingSeat = this.findAwaitingSeat(messages);
-        // Remember the decision so a (re)connecting seat can be re-sent it.
         this.lastPendingMessages = messages;
+
+        if (awaitingSeat !== null) {
+          try {
+            const decision = messageToDecision(messages, awaitingSeat);
+            this.pendingDecision = { seat: awaitingSeat, decision };
+          } catch {
+            // messageToDecision threw (e.g., unknown type) — clear pending
+            this.pendingDecision = null;
+          }
+        } else {
+          this.pendingDecision = null;
+        }
+
         return {
           status: "waiting",
           messages,
@@ -189,10 +246,83 @@ export class EdisonDuel {
     }
   }
 
-  /** Feed the on-clock seat's response to the engine. */
+  // ── Phase 1 typed decision API ───────────────────────────────────────────
+
+  /**
+   * Returns the pending typed DuelDecision for the given seat, or null if that
+   * seat is not on the clock or there is no pending decision.
+   */
+  getDecisionForSeat(seat: Seat): DuelDecision | null {
+    if (this.destroyed) throw new Error("EdisonDuel.getDecisionForSeat() called after destroy()");
+    if (!this.pendingDecision || this.pendingDecision.seat !== seat) return null;
+    return this.pendingDecision.decision;
+  }
+
+  /**
+   * Validate and apply the player's response to the current pending decision.
+   * Does NOT advance the engine — caller must call step() after ok:true.
+   *
+   * On ok: converts to OcgResponse, feeds ocgcore, records in response log.
+   * On !ok: returns a human error string and does NOT mutate the engine.
+   */
+  applyDecisionResponse(resp: DuelDecisionResponse): { ok: true } | { ok: false; error: string } {
+    if (this.destroyed)
+      throw new Error("EdisonDuel.applyDecisionResponse() called after destroy()");
+
+    if (!this.pendingDecision) {
+      return { ok: false, error: "No pending decision to respond to" };
+    }
+
+    const validation = validateDecisionResponse(resp, this.pendingDecision.decision);
+    if (!validation.ok) return validation;
+
+    let ocgResp;
+    try {
+      ocgResp = responseToOcgResponse(resp, this.pendingDecision.decision);
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Response conversion failed",
+      };
+    }
+
+    this.getLib().duelSetResponse(this.handle, ocgResp);
+    this.decisionResponseLog.push(resp);
+    this.pendingDecision = null;
+    return { ok: true };
+  }
+
+  /**
+   * Returns the persisted typed response log (DuelDecisionResponse[]).
+   * Used for persistence and replay.
+   */
+  getResponseLog(): DuelDecisionResponse[] {
+    return [...this.decisionResponseLog];
+  }
+
+  /**
+   * Replay a persisted response log to restore engine state after restart.
+   * Steps to each WAITING, then applies the stored response; deterministic.
+   */
+  applyLog(log: DuelDecisionResponse[]): void {
+    for (const resp of log) {
+      const result = this.step();
+      if (result.status !== "waiting") break;
+      const applyResult = this.applyDecisionResponse(resp);
+      if (!applyResult.ok) break; // corrupt log — stop
+    }
+  }
+
+  // ── Legacy API (dormant in Phase 1) ─────────────────────────────────────
+
+  /**
+   * @deprecated Phase 1: use applyDecisionResponse() instead.
+   * Kept for backward compat with old RESPONSE frame path (dormant).
+   * Feed the on-clock seat's response to the engine.
+   */
   respond(response: EngineResponse): void {
     if (this.destroyed) throw new Error("EdisonDuel.respond() called after destroy()");
-    this.responseLog.push(response);
+    this.legacyResponseLog.push(response);
     this.getLib().duelSetResponse(
       this.handle,
       response as Parameters<OcgCoreSync["duelSetResponse"]>[1],
@@ -205,9 +335,8 @@ export class EdisonDuel {
   }
 
   /**
+   * @deprecated Phase 1: use getDecisionForSeat() instead.
    * The decision message(s) the engine is currently awaiting a response to.
-   * Empty once the duel has ended. Used by the WS relay to (re)deliver the
-   * pending decision to a seat that connects or reconnects mid-turn.
    */
   getPendingMessages(): RawEngineMessage[] {
     return [...this.lastPendingMessages];
@@ -227,15 +356,10 @@ export class EdisonDuel {
     return { winner: this.winner, reason: "normal" };
   }
 
-  getResponseLog(): EngineResponse[] {
-    return [...this.responseLog];
-  }
-
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private updatePhaseFromMessage(msg: RawEngineMessage): void {
     const { type } = msg;
-    // Track LP changes
     if (type === 91 /* DAMAGE */ || type === 92 /* RECOVER */) {
       const player = msg["player"] as 0 | 1 | undefined;
       const val = msg["val"] as number | undefined;
@@ -246,7 +370,6 @@ export class EdisonDuel {
         this.phaseInfo = { ...this.phaseInfo, lp };
       }
     }
-    // Track WIN
     if (type === 100 /* WIN */) {
       const player = msg["player"] as 0 | 1 | undefined;
       this.winner = player ?? null;
@@ -254,27 +377,18 @@ export class EdisonDuel {
   }
 
   private findAwaitingSeat(messages: RawEngineMessage[]): Seat | null {
-    // Last decision message determines which seat is awaiting
+    // Scan from the end to find the last decision message with a player field.
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]!;
+      if (DECISION_MSG_TYPES.has(m.type) && (m.player === 0 || m.player === 1)) {
+        return m.player;
+      }
+    }
+    // Fallback: any message with player field
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i]!;
       if (m.player === 0 || m.player === 1) return m.player;
     }
     return null;
-  }
-
-  /**
-   * Apply a response log to this duel (for resume after restart).
-   * Steps until each WAITING, then feeds the stored response.
-   */
-  async applyLog(log: EngineResponse[]): Promise<void> {
-    for (const response of log) {
-      const result = this.step();
-      if (result.status !== "waiting") break;
-      this.respond(response);
-    }
-    // Step to stable boundary after last response
-    if (!this.ended) {
-      this.step();
-    }
   }
 }
