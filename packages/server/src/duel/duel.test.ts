@@ -447,13 +447,14 @@ describe("WebSocket relay", () => {
     });
   });
 
-  it("routes player:N decision messages only to seat N", async () => {
-    // Engine emits a player:0 SELECT_IDLECMD on step
+  it("routes DECISION frame only to the on-clock seat (Phase 1)", async () => {
+    // Engine is waiting for seat 0; has a typed decision for seat 0 only.
     const customDuel = new FakeEdisonDuel([
       {
         status: "waiting",
-        messages: [{ type: 11, name: "SELECT_IDLECMD", player: 0 as 0 | 1 }],
+        messages: [],
         awaiting: { seat: 0 },
+        decision: { kind: "SelectYesNo", player: 0, description: "Test?" },
       },
       { status: "ended", messages: [] },
     ]);
@@ -469,32 +470,40 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Send RESPONSE from seat 0 → triggers engine.respond + step (ended)
-      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 1 } }));
+      // Seat 0 (on the clock) must receive the DECISION frame on connect.
+      const decisionMsg = await waitForMessage(s0, (m) => m.type === "DECISION");
+      expect(decisionMsg.type).toBe("DECISION");
+      if (decisionMsg.type === "DECISION") {
+        expect(decisionMsg.decision.kind).toBe("SelectYesNo");
+      }
 
+      // Seat 1 is NOT on the clock → must NOT receive a DECISION frame.
+      await waitForMessage(s1, (m) => m.type === "CLOCK");
+      const s1Decisions = s1.messages.filter((m) => m.type === "DECISION");
+      expect(s1Decisions.length).toBe(0);
+
+      // Send DECISION_RESPONSE from seat 0 → engine advances and ends.
+      s0.ws.send(
+        JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
+      );
       await waitForMessage(s0, (m) => m.type === "DUEL_END");
-
-      // The initial step (createAndStart) broadcast the player:0 MSG only to seat 0.
-      // But since WS clients weren't connected yet at join time, no MSG was sent.
-      // After RESPONSE, step returns "ended" → only DUEL_END (no MSG).
-      const seat1Msgs = s1.messages.filter((m) => m.type === "MSG");
-      expect(seat1Msgs.length).toBe(0); // seat 1 never gets the player:0 decision MSG
 
       s0.close();
       s1.close();
     });
   });
 
-  it("re-delivers the pending decision to the on-clock seat on connect (Fix #2)", async () => {
+  it("re-delivers the pending DECISION to the on-clock seat on connect (Fix #2)", async () => {
     // The engine steps to the first WAITING boundary at join time (before any
     // socket connects), so the decision was never broadcast. On connect the
-    // relay must re-send it to the entitled seat — else the on-clock player
-    // sees the board + a running clock but has nothing to act on and times out.
+    // relay must re-send it via DECISION frame to the entitled seat — else the
+    // on-clock player sees the board + a running clock but has nothing to act on.
     const customDuel = new FakeEdisonDuel([
       {
         status: "waiting",
-        messages: [{ type: 11, name: "SELECT_IDLECMD", player: 0 as 0 | 1 }],
+        messages: [],
         awaiting: { seat: 0 },
+        decision: { kind: "SelectYesNo", player: 0, description: "Attack?" },
       },
       { status: "ended", messages: [] },
     ]);
@@ -509,23 +518,20 @@ describe("WebSocket relay", () => {
       const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
 
-      // Seat 0 (on the clock) receives the pending decision MSG on connect…
-      const decision = await waitForMessage(
-        s0,
-        (m) => m.type === "MSG" && m.msg.name === "SELECT_IDLECMD",
-      );
-      expect(decision.type).toBe("MSG");
+      // Seat 0 (on the clock) receives the pending DECISION frame on connect…
+      const decision = await waitForMessage(s0, (m) => m.type === "DECISION");
+      expect(decision.type).toBe("DECISION");
+      if (decision.type === "DECISION") {
+        expect(decision.decision.kind).toBe("SelectYesNo");
+      }
 
-      // …and it arrives AFTER STATE (the client's STATE handler clears the
-      // pending decision, so the MSG must come last to survive).
+      // …and it arrives AFTER STATE (the client's STATE handler runs first).
       const s0Types = s0.messages.map((m) => m.type);
-      expect(s0Types.indexOf("STATE")).toBeLessThan(s0Types.lastIndexOf("MSG"));
+      expect(s0Types.indexOf("STATE")).toBeLessThan(s0Types.lastIndexOf("DECISION"));
 
-      // Seat 1 is NOT entitled to a player:0 decision → must not receive it.
+      // Seat 1 is NOT on the clock → must not receive a DECISION frame.
       await waitForMessage(s1, (m) => m.type === "CLOCK");
-      const s1Decisions = s1.messages.filter(
-        (m) => m.type === "MSG" && m.msg.name === "SELECT_IDLECMD",
-      );
+      const s1Decisions = s1.messages.filter((m) => m.type === "DECISION");
       expect(s1Decisions.length).toBe(0);
 
       s0.close();
@@ -563,8 +569,10 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Seat 0 responds → engine steps to "ended" emitting events
-      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 1 } }));
+      // Seat 0 responds via DECISION_RESPONSE → engine steps to "ended" emitting events
+      s0.ws.send(
+        JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
+      );
 
       await waitForMessage(s0, (m) => m.type === "DUEL_END");
       await waitForMessage(s1, (m) => m.type === "DUEL_END");
@@ -598,6 +606,108 @@ describe("WebSocket relay", () => {
 
       const err = await waitForMessage(s1, (m) => m.type === "ERROR");
       expect(err.type).toBe("ERROR");
+
+      s0.close();
+      s1.close();
+    });
+  });
+
+  // ── Phase 1: DECISION_RESPONSE relay tests ─────────────────────────────────
+
+  it("DECISION_RESPONSE from wrong seat (not on clock) returns ERROR", async () => {
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+      await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+      // Seat 1 sends DECISION_RESPONSE when seat 0 is on clock
+      s1.ws.send(
+        JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
+      );
+
+      const err = await waitForMessage(s1, (m) => m.type === "ERROR");
+      expect(err.type).toBe("ERROR");
+      if (err.type === "ERROR") expect(err.message).toBe("not your turn");
+
+      s0.close();
+      s1.close();
+    });
+  });
+
+  it("invalid DECISION_RESPONSE yields ERROR frame and no state change", async () => {
+    // Script the engine to reject the next applyDecisionResponse call
+    const customDuel = new FakeEdisonDuel([
+      { status: "waiting", messages: [], awaiting: { seat: 0 } },
+      { status: "ended", messages: [] },
+    ]);
+    customDuel.setNextDecisionResponseResult({ ok: false, error: "kind mismatch" });
+    manager = new DuelManager(async () => {
+      _capturedEngine = customDuel;
+      return customDuel as DuelEngine;
+    }, fakeReplay);
+    app = createApp(db, catalog, manager);
+
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+      await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+      s0.ws.send(
+        JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
+      );
+
+      const err = await waitForMessage(s0, (m) => m.type === "ERROR");
+      expect(err.type).toBe("ERROR");
+      if (err.type === "ERROR") expect(err.message).toBe("kind mismatch");
+
+      // No state change: engine must not have advanced (no DUEL_END sent)
+      await new Promise<void>((r) => setTimeout(r, 50));
+      const duelEnds = s0.messages.filter((m) => m.type === "DUEL_END");
+      expect(duelEnds.length).toBe(0);
+
+      // Nothing persisted in DB
+      const rows = db
+        .prepare("SELECT COUNT(*) as c FROM response_log WHERE duel_id = ?")
+        .get(setup.duelId) as { c: number };
+      expect(rows.c).toBe(0);
+
+      s0.close();
+      s1.close();
+    });
+  });
+
+  it("valid DECISION_RESPONSE advances engine and persists response", async () => {
+    const customDuel = new FakeEdisonDuel([
+      { status: "waiting", messages: [], awaiting: { seat: 0 } },
+      { status: "ended", messages: [] },
+    ]);
+    manager = new DuelManager(async () => {
+      _capturedEngine = customDuel;
+      return customDuel as DuelEngine;
+    }, fakeReplay);
+    app = createApp(db, catalog, manager);
+
+    const setup = await joinDuel(await createDuelAsAlice());
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+      await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+      const resp = { kind: "SelectYesNo", yes: true };
+      s0.ws.send(JSON.stringify({ type: "DECISION_RESPONSE", response: resp }));
+
+      // Engine advances → DUEL_END broadcast to both seats
+      await waitForMessage(s0, (m) => m.type === "DUEL_END");
+      await waitForMessage(s1, (m) => m.type === "DUEL_END");
+
+      // Response is persisted in DB
+      const rows = db
+        .prepare("SELECT response_json FROM response_log WHERE duel_id = ? ORDER BY seq")
+        .all(setup.duelId) as { response_json: string }[];
+      expect(rows.length).toBe(1);
+      expect(JSON.parse(rows[0]?.response_json ?? "{}")).toEqual(resp);
 
       s0.close();
       s1.close();
@@ -709,7 +819,7 @@ describe("WebSocket relay", () => {
 // ── Persistence tests ──────────────────────────────────────────────────────
 
 describe("Persistence: response_log ordering and rehydrate", () => {
-  it("persists responses in sequence order to response_log", async () => {
+  it("persists DuelDecisionResponse in sequence order to response_log", async () => {
     // Engine needs two WAITING states to collect two responses
     const customDuel = new FakeEdisonDuel([
       { status: "waiting", messages: [], awaiting: { seat: 0 } },
@@ -728,13 +838,15 @@ describe("Persistence: response_log ordering and rehydrate", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 7, value: null } }));
+      const resp1 = { kind: "SelectYesNo", yes: true };
+      s0.ws.send(JSON.stringify({ type: "DECISION_RESPONSE", response: resp1 }));
       await waitForMessage(s0, (_m) => {
         const clocks = s0.messages.filter((m2) => m2.type === "CLOCK");
         return clocks.length >= 2;
       });
 
-      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 3, value: false } }));
+      const resp2 = { kind: "SelectYesNo", yes: false };
+      s0.ws.send(JSON.stringify({ type: "DECISION_RESPONSE", response: resp2 }));
       await new Promise<void>((r) => setTimeout(r, 50));
 
       const rows = db
@@ -743,8 +855,8 @@ describe("Persistence: response_log ordering and rehydrate", () => {
       expect(rows.length).toBe(2);
       expect(rows[0]?.seq).toBe(0);
       expect(rows[1]?.seq).toBe(1);
-      expect(JSON.parse(rows[0]?.response_json ?? "{}")).toEqual({ type: 7, value: null });
-      expect(JSON.parse(rows[1]?.response_json ?? "{}")).toEqual({ type: 3, value: false });
+      expect(JSON.parse(rows[0]?.response_json ?? "{}")).toEqual(resp1);
+      expect(JSON.parse(rows[1]?.response_json ?? "{}")).toEqual(resp2);
 
       s0.close();
       s1.close();
@@ -772,6 +884,41 @@ describe("Persistence: response_log ordering and rehydrate", () => {
       expect(rehydrateCalled).toBe(true);
       session.close();
     });
+  });
+
+  it("restart → replay receives persisted DuelDecisionResponse[] log", async () => {
+    // The customDuel allows one response before ending.
+    const customDuel = new FakeEdisonDuel([
+      { status: "waiting", messages: [], awaiting: { seat: 0 } },
+      { status: "ended", messages: [] },
+    ]);
+    manager = new DuelManager(async () => {
+      _capturedEngine = customDuel;
+      return customDuel as DuelEngine;
+    }, fakeReplay);
+    app = createApp(db, catalog, manager);
+
+    const setup = await joinDuel(await createDuelAsAlice());
+
+    // Connect, submit a response, wait for duel to end (response persisted).
+    await withServer(async (port) => {
+      const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+      await waitForMessage(s0, (m) => m.type === "CLOCK");
+      const resp = { kind: "SelectYesNo", yes: true };
+      s0.ws.send(JSON.stringify({ type: "DECISION_RESPONSE", response: resp }));
+      await waitForMessage(s0, (m) => m.type === "DUEL_END");
+      s0.close();
+    });
+
+    // Verify the persisted log is DuelDecisionResponse[] format.
+    const rows = db
+      .prepare("SELECT response_json FROM response_log WHERE duel_id = ? ORDER BY seq")
+      .all(setup.duelId) as { response_json: string }[];
+    expect(rows.length).toBe(1);
+    const persisted = JSON.parse(rows[0]?.response_json ?? "{}") as unknown;
+    // Must have `kind` discriminant (DuelDecisionResponse), not `type` (EngineResponse).
+    expect((persisted as Record<string, unknown>)["kind"]).toBe("SelectYesNo");
+    expect((persisted as Record<string, unknown>)["type"]).toBeUndefined();
   });
 });
 
@@ -843,7 +990,7 @@ describe("Timer: deadline + timeout", () => {
     { timeout: 10_000 },
   );
 
-  it("enforces timeout lazily when deadline_at is past on RESPONSE", async () => {
+  it("enforces timeout lazily when deadline_at is past on DECISION_RESPONSE", async () => {
     const setup = await joinDuel(await createDuelAsAlice());
 
     await withServer(async (port) => {
@@ -857,8 +1004,10 @@ describe("Timer: deadline + timeout", () => {
         setup.duelId,
       );
 
-      // Send RESPONSE from seat 0 — lazy enforcement should trigger timeout loss
-      s0.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 1 } }));
+      // Send DECISION_RESPONSE from seat 0 — lazy enforcement should trigger timeout loss
+      s0.ws.send(
+        JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
+      );
 
       const end0 = await waitForMessage(s0, (m) => m.type === "DUEL_END", 1000);
       expect(end0.type).toBe("DUEL_END");

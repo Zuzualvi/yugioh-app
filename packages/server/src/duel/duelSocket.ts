@@ -90,16 +90,9 @@ function stepAndBroadcast(
     }
   }
 
-  // Broadcast per-seat redacted decision/routing messages
-  for (const msg of result.messages) {
-    for (const [seat, ws] of relay.seats) {
-      if (!ws) continue;
-      const redacted = engine.redactMessageForSeat(msg as RawEngineMessage, seat);
-      if (redacted) {
-        send(ws, { type: "MSG", msg: redacted });
-      }
-    }
-  }
+  // Phase 1: decisions are delivered via DECISION frame (not MSG).
+  // Events (result.events above) still go via MSG.
+  // The result.messages loop is intentionally omitted — decisions no longer go via MSG.
 
   if (result.status === "ended") {
     const gameResult = engine.getResult();
@@ -126,6 +119,13 @@ function stepAndBroadcast(
         if (ws) send(ws, { type: "STATE", state: engine.getStateForSeat(seat) });
       }
       broadcast(relay, { type: "CLOCK", onClockSeat: awaitingSeat, deadlineAt });
+
+      // Send typed DECISION frame only to the on-clock seat (Phase 1)
+      const decision = engine.getDecisionForSeat(awaitingSeat);
+      if (decision !== null) {
+        const ws = relay.seats.get(awaitingSeat);
+        if (ws) send(ws, { type: "DECISION", decision });
+      }
     }
   }
 }
@@ -193,7 +193,19 @@ function handleClientMessage(
     return;
   }
 
+  // @deprecated — RESPONSE path is dormant in Phase 1 (removed in Phase 2).
+  // Still validates turn ownership so misrouted clients get a clear error.
   if (parsed.type === "RESPONSE") {
+    const row = getDuel(db, duelId);
+    if (!row) return;
+    if (row.on_clock_seat !== conn.seat) {
+      send(conn.ws, { type: "ERROR", message: "not your turn" });
+    }
+    // On-clock RESPONSE is silently dropped — use DECISION_RESPONSE instead.
+    return;
+  }
+
+  if (parsed.type === "DECISION_RESPONSE") {
     // Lazy timeout enforcement
     const row = getDuel(db, duelId);
     if (!row) return;
@@ -213,9 +225,17 @@ function handleClientMessage(
       return;
     }
 
+    // Server-side validation — never trust the client
+    const validationResult = engine.applyDecisionResponse(parsed.response);
+    if (!validationResult.ok) {
+      send(conn.ws, { type: "ERROR", message: validationResult.error });
+      return;
+    }
+
+    // Persist after successful validation
     const seq = getNextSeq(db, duelId);
     appendResponseLog(db, duelId, seq, conn.seat, parsed.response);
-    engine.respond(parsed.response);
+
     stepAndBroadcast(relay, engine, db, duelId, manager);
   }
 }
@@ -318,15 +338,14 @@ async function onConnection(
     }
   }
 
-  // Re-deliver the pending decision to this seat. createAndStart() steps the
-  // engine to the first WAITING boundary before any socket connects, so that
-  // decision was never broadcast; the same applies on reconnect mid-turn.
-  // Sent AFTER STATE (the client's STATE handler clears the pending decision,
-  // so this MSG must arrive last) and only reaches the entitled seat
-  // (redactMessageForSeat returns null for a decision targeted at the other seat).
-  for (const raw of engine.getPendingMessages()) {
-    const redacted = engine.redactMessageForSeat(raw, seat);
-    if (redacted) send(ws, { type: "MSG", msg: redacted });
+  // Re-deliver the pending typed decision to this seat (Phase 1).
+  // createAndStart() steps the engine to the first WAITING boundary before any
+  // socket connects, so that decision was never broadcast; same on reconnect.
+  // Sent AFTER STATE so the client's STATE handler runs first.
+  // Only the on-clock seat has a non-null decision returned for their seat.
+  const pendingDecision = engine.getDecisionForSeat(seat);
+  if (pendingDecision !== null) {
+    send(ws, { type: "DECISION", decision: pendingDecision });
   }
 
   ws.on("close", () => {

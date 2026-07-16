@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DuelDecisionSchema, DuelDecisionResponseSchema } from "./duelDecision.js";
 
 // ---------------------------------------------------------------------------
 // Duel wire contracts — Stream 2 / Slice 00
@@ -60,10 +61,14 @@ export type PreJoinDuelInfo = z.infer<typeof PreJoinDuelInfoSchema>;
 
 // ── EngineResponse ────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated — removed in Phase 2. Use DuelDecisionResponse instead.
+ */
 export const EngineResponseSchema = z.object({
   type: z.number().int(),
   value: z.unknown().optional(),
 });
+/** @deprecated — removed in Phase 2. Use DuelDecisionResponse instead. */
 export type EngineResponse = z.infer<typeof EngineResponseSchema>;
 
 // ── RedactedEngineMessage ─────────────────────────────────────────────────────
@@ -151,13 +156,20 @@ export const DuelServerMessageSchema = z.discriminatedUnion("type", [
     reason: DuelEndReasonSchema,
   }),
   z.object({ type: z.literal("ERROR"), message: z.string() }),
+  /** Phase 1: typed decision frame — sent only to the on-clock seat. */
+  z.object({ type: z.literal("DECISION"), decision: DuelDecisionSchema }),
 ]);
 export type DuelServerMessage = z.infer<typeof DuelServerMessageSchema>;
 
 // ── WebSocket — client → server ───────────────────────────────────────────────
 
 export const DuelClientMessageSchema = z.discriminatedUnion("type", [
+  /**
+   * @deprecated — removed in Phase 2. Use DECISION_RESPONSE instead.
+   */
   z.object({ type: z.literal("RESPONSE"), response: EngineResponseSchema }),
   z.object({ type: z.literal("RESIGN") }),
+  /** Phase 1: typed decision response — sent by the on-clock seat. */
+  z.object({ type: z.literal("DECISION_RESPONSE"), response: DuelDecisionResponseSchema }),
 ]);
 export type DuelClientMessage = z.infer<typeof DuelClientMessageSchema>;

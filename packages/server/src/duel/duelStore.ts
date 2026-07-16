@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import Database from "better-sqlite3";
-import type { Seat, EngineResponse } from "@yugioh-app/contracts";
+import type { Seat, DuelDecisionResponse } from "@yugioh-app/contracts";
 import type { DeckLists } from "./engineInterface.js";
 
 export type DuelStatus = "waiting_for_opponent" | "active" | "ended";
@@ -112,7 +112,7 @@ export function appendResponseLog(
   duelId: string,
   seq: number,
   seat: Seat,
-  response: EngineResponse,
+  response: DuelDecisionResponse,
 ): void {
   db.prepare(
     `INSERT INTO response_log (duel_id, seq, seat, response_json, received_at)
@@ -123,11 +123,11 @@ export function appendResponseLog(
 export function getResponseLog(
   db: InstanceType<typeof Database>,
   duelId: string,
-): EngineResponse[] {
+): DuelDecisionResponse[] {
   const rows = db
     .prepare("SELECT response_json FROM response_log WHERE duel_id = ? ORDER BY seq")
     .all(duelId) as Pick<ResponseLogRow, "response_json">[];
-  return rows.map((r) => JSON.parse(r.response_json) as EngineResponse);
+  return rows.map((r) => JSON.parse(r.response_json) as DuelDecisionResponse);
 }
 
 export function getNextSeq(db: InstanceType<typeof Database>, duelId: string): number {
