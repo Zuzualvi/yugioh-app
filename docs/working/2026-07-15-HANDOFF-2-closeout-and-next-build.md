@@ -5,8 +5,18 @@
 `docs/working/2026-07-15-interactive-duel-ui-plan.md` (your main build brief). Confirm live state with
 `read_ci_status` + the Vercel MCP before trusting anything.
 
-**First actions:** (1) verify subagents spawn (spawn a throwaway QA "connectivity check"); if that fails, stop
-and tell the CEO before doing solo work. (2) `read_ci_status` → confirm master green + `E2E` workflow green.
+> ⚠️ **CORRECTION (2026-07-16, CEO-side investigation):** the "subagent outage" this handoff
+> works around **never existed**. `Look up subagent config failed (NotFound)` means the
+> `agent_name` string didn't exactly match a roster name. Spawns work when `agent_name` is the
+> EXACT roster name **including the bracketed suffix** (e.g. `QA Engineer [yugioh-app]`, copied
+> verbatim from the create_agent tool's "Agents available in this session" list) — proven 4/4
+> deterministic. Do NOT treat NotFound as an outage; re-check the name and retry. Full story:
+> `docs/working/2026-07-16-SUBAGENT-OUTAGE-CORRECTION.md`. All "outage / once spawning is
+> restored" framing below and in the 07-15 closeout report / residual-gap list is superseded.
+
+**First actions:** (1) verify subagents spawn — spawn a throwaway QA "connectivity check" using the
+EXACT roster name `QA Engineer [yugioh-app]`; on NotFound, fix the name string (see CORRECTION above)
+rather than stopping. (2) `read_ci_status` → confirm master green + `E2E` workflow green.
 (3) `git log origin/master` HEAD should be at least `e7d003e` (see SHAs below).
 
 ---
