@@ -39,7 +39,11 @@
  *   by the parent (ActionPanel / DuelBoard).
  */
 
+import React from "react";
 import type { DuelDecision, DuelDecisionResponse } from "@yugioh-app/contracts";
+import { CommandDecisionPanels } from "./decisions/CommandDecisionPanels";
+import { SelectionDecisionPanels } from "./decisions/SelectionDecisionPanels";
+import { PromptDecisionPanels } from "./decisions/PromptDecisionPanels";
 import { GenericDecisionPanel } from "./decisions/GenericDecisionPanel";
 
 interface Props {
@@ -50,17 +54,78 @@ interface Props {
 }
 
 export function DecisionDispatcher({ decision, respond, layoutTier, disabled }: Props) {
-  // All kinds route to GenericDecisionPanel in 2A.
-  // 2B/2C/2D will add per-kind cases above this fallback.
-  // Pattern for each new case:
-  //   case "IdleCommand":
-  //     return <IdleCommandPanel decision={decision} respond={respond as ...} layoutTier={layoutTier} disabled={disabled} />;
-  return (
-    <GenericDecisionPanel
-      decision={decision}
-      respond={respond}
-      layoutTier={layoutTier}
-      disabled={disabled}
-    />
-  );
+  switch (decision.kind) {
+    // Command group — three separate cases so TypeScript narrows decision to
+    // exactly one kind per branch, matching CommandDecisionPanelsProps union.
+    // respond is passed directly: (r: DuelDecisionResponse)=>void is contravariantly
+    // assignable to (r: IdleCommandResponse|BattleCommandResponse|ChainPromptResponse)=>void.
+    case "IdleCommand":
+      return (
+        <CommandDecisionPanels
+          decision={decision}
+          respond={respond}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+    case "BattleCommand":
+      return (
+        <CommandDecisionPanels
+          decision={decision}
+          respond={respond}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+    case "ChainPrompt":
+      return (
+        <CommandDecisionPanels
+          decision={decision}
+          respond={respond}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+
+    case "SelectCard":
+    case "SelectUnselectCard":
+    case "SelectTribute":
+    case "SelectZone":
+    case "SelectPosition":
+      return (
+        <SelectionDecisionPanels
+          decision={decision}
+          respond={(r) => respond(r)}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+
+    case "SelectEffectYN":
+    case "SelectYesNo":
+    case "SelectOption":
+    case "AnnounceRace":
+    case "AnnounceAttrib":
+    case "AnnounceCard":
+    case "AnnounceNumber":
+      return (
+        <PromptDecisionPanels
+          decision={decision}
+          respond={(r) => respond(r)}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+
+    default:
+      // SelectSum, SelectCounter, SelectDisfield, SortCard, SortChain
+      return (
+        <GenericDecisionPanel
+          decision={decision}
+          respond={respond}
+          layoutTier={layoutTier}
+          disabled={disabled}
+        />
+      );
+  }
 }
