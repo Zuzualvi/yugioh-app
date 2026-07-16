@@ -1,22 +1,35 @@
 /**
- * Mock duel session — emits a scripted DuelServerMessage stream.
+ * Mock duel session — emits a scripted DuelServerMessage stream using
+ * the Phase 2 typed DECISION / DECISION_RESPONSE wire contract.
  *
- * Models the real per-seat redacted message stream documented in the spike-c
- * relay README.  This drives end-to-end testing of the duel board + action
- * panel without a real server.
+ * Exercises a representative sequence:
+ *   1. IdleCommand (main phase — summon or end)
+ *   2. ChainPrompt (opponent priority window)
+ *   3. BattleCommand (battle phase — attack or end)
+ *   4. SelectEffectYN (opponent asks yes/no)
+ *   5. SelectYesNo (player)
+ *   6. SelectOption (player)
+ *   7. State update with LP damage
+ *   8. SelectCard (opponent)
+ *   9. DUEL_END
  *
- * Usage (in DuelScreen dev mode / tests):
+ * Usage (DuelScreen dev mode / tests):
  *   const session = createMockDuelSession(seat, onMessage);
- *   session.start();       // begins emitting messages
- *   session.respond(r);    // simulate sending a RESPONSE
- *   session.stop();        // clean up
+ *   session.start();
+ *   session.respond(r);   // DuelDecisionResponse — advances script
+ *   session.stop();
  */
 
-import type { DuelServerMessage, DuelStateSnapshot, Seat } from "@yugioh-app/contracts";
+import type {
+  DuelDecisionResponse,
+  DuelServerMessage,
+  DuelStateSnapshot,
+  Seat,
+} from "@yugioh-app/contracts";
 
 export interface MockDuelSession {
   start: () => void;
-  respond: (value: number | string | null) => void;
+  respond: (response: DuelDecisionResponse) => void;
   stop: () => void;
 }
 
@@ -38,7 +51,7 @@ function makeSnapshot(overrides?: Partial<DuelStateSnapshot>): DuelStateSnapshot
         { code: 14558127, position: 0 }, // Stardust
       ],
       p1_hand: [
-        { code: 0, position: 0 }, // hidden (face-down to us)
+        { code: 0, position: 0 },
         { code: 0, position: 0 },
         { code: 0, position: 0 },
         { code: 0, position: 0 },
@@ -51,9 +64,7 @@ function makeSnapshot(overrides?: Partial<DuelStateSnapshot>): DuelStateSnapshot
       p1_grave: [],
       p0_removed: [],
       p1_removed: [],
-      p0_extra: [
-        { code: 14558127, position: 0 }, // Stardust Dragon (extra deck)
-      ],
+      p0_extra: [{ code: 14558127, position: 0 }],
       p1_extra: [],
     },
     ...overrides,
@@ -64,17 +75,11 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Creates a mock duel session for the given seat.
- * Emits a scripted stream of DuelServerMessages that exercises every decision
- * type the action panel must render.
- */
 export function createMockDuelSession(
   seat: Seat,
   onMessage: (msg: DuelServerMessage) => void,
 ): MockDuelSession {
   let stopped = false;
-  // step index advances when respond() is called
   let stepResolve: (() => void) | null = null;
 
   function waitForResponse(): Promise<void> {
@@ -84,7 +89,7 @@ export function createMockDuelSession(
   }
 
   async function runScript() {
-    // ── Initial state snapshot ──────────────────────────────────────────────
+    // ── Initial state ────────────────────────────────────────────────────────
     onMessage({ type: "SEAT_ASSIGNED", seat, seatToken: "mock-seat-token" });
     await delay(50);
 
@@ -92,37 +97,58 @@ export function createMockDuelSession(
     onMessage({ type: "STATE", state: snap });
     await delay(100);
 
-    // ── Clock: seat 0 is on the clock, 90s deadline ─────────────────────────
-    const deadline = Date.now() + 90_000;
-    onMessage({ type: "CLOCK", onClockSeat: 0, deadlineAt: deadline });
+    onMessage({ type: "CLOCK", onClockSeat: 0, deadlineAt: Date.now() + 90_000 });
     await delay(200);
 
     if (stopped) return;
 
-    // ── Decision 1: SELECT_IDLECMD (Main Phase 1 — seat 0's turn) ───────────
+    // ── Decision 1: IdleCommand (seat 0 — Main Phase 1) ─────────────────────
     if (seat === 0) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_IDLECMD",
-          engineType: 11,
+        type: "DECISION",
+        decision: {
+          kind: "IdleCommand",
           player: 0,
-          options: [
-            { label: "Normal Summon Dark Magician", index: 0 },
-            { label: "Set Blue-Eyes White Dragon", index: 1 },
-            { label: "Activate — (no spell in hand)", index: 2 },
-            { label: "End Phase", index: 3 },
+          summons: [
+            {
+              code: 46986414,
+              name: "Dark Magician",
+              controller: 0,
+              location: "HAND",
+              sequence: 0,
+            },
+            {
+              code: 89631139,
+              name: "Blue-Eyes White Dragon",
+              controller: 0,
+              location: "HAND",
+              sequence: 1,
+            },
           ],
+          specialSummons: [],
+          posChanges: [],
+          monsterSets: [
+            {
+              code: 89631139,
+              name: "Blue-Eyes White Dragon",
+              controller: 0,
+              location: "HAND",
+              sequence: 1,
+            },
+          ],
+          spellSets: [],
+          activates: [],
+          toBattlePhase: false,
+          toEndPhase: true,
         },
       });
       await waitForResponse();
       if (stopped) return;
     } else {
-      // opponent's turn — seat 1 just waits
       await delay(500);
     }
 
-    // ── State update: Dark Magician normal summoned ──────────────────────────
+    // ── State: Dark Magician summoned ────────────────────────────────────────
     const snap2 = makeSnapshot({
       seat,
       currentPhase: PHASE_MAIN1,
@@ -133,7 +159,7 @@ export function createMockDuelSession(
           { code: 89631139, position: 0 },
           { code: 14558127, position: 0 },
         ],
-        p0_mzone: [{ code: 46986414, position: 0x2 }], // ATK position
+        p0_mzone: [{ code: 46986414, position: 0x2 }],
       },
     });
     onMessage({ type: "STATE", state: snap2 });
@@ -141,19 +167,31 @@ export function createMockDuelSession(
 
     if (stopped) return;
 
-    // ── Decision 2: SELECT_CHAIN (priority window for opponent) ─────────────
+    // ── Decision 2: ChainPrompt (seat 1 — priority window) ──────────────────
     if (seat === 1) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_CHAIN",
-          engineType: 22,
+        type: "DECISION",
+        decision: {
+          kind: "ChainPrompt",
           player: 1,
-          question: "Respond to the Normal Summon of Dark Magician?",
-          canPass: true,
-          options: [
-            { label: "Activate Bottomless Trap Hole", index: 0 },
-            { label: "Activate Torrential Tribute", index: 1 },
+          forced: false,
+          selects: [
+            {
+              code: 29401950,
+              name: "Bottomless Trap Hole",
+              controller: 1,
+              location: "SZONE",
+              sequence: 0,
+              description: "Activate to destroy the summoned monster",
+            },
+            {
+              code: 53582587,
+              name: "Torrential Tribute",
+              controller: 1,
+              location: "SZONE",
+              sequence: 1,
+              description: "Activate to destroy all monsters",
+            },
           ],
         },
       });
@@ -163,11 +201,9 @@ export function createMockDuelSession(
       await delay(300);
     }
 
-    // ── Clock resets for seat 0: Battle Phase ────────────────────────────────
-    const deadline2 = Date.now() + 90_000;
-    onMessage({ type: "CLOCK", onClockSeat: 0, deadlineAt: deadline2 });
+    // ── Clock resets + advance to Battle Phase ───────────────────────────────
+    onMessage({ type: "CLOCK", onClockSeat: 0, deadlineAt: Date.now() + 90_000 });
 
-    // Advance to Battle Phase
     const snap3 = makeSnapshot({
       seat,
       currentTurn: 0,
@@ -180,18 +216,26 @@ export function createMockDuelSession(
 
     if (stopped) return;
 
-    // ── Decision 3: SELECT_BATTLECMD ─────────────────────────────────────────
+    // ── Decision 3: BattleCommand (seat 0) ───────────────────────────────────
     if (seat === 0) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_BATTLECMD",
-          engineType: 12,
+        type: "DECISION",
+        decision: {
+          kind: "BattleCommand",
           player: 0,
-          options: [
-            { label: "Attack with Dark Magician (2500 ATK)", index: 0 },
-            { label: "End Battle Phase", index: 1 },
+          chains: [],
+          attacks: [
+            {
+              code: 46986414,
+              name: "Dark Magician",
+              controller: 0,
+              location: "MZONE",
+              sequence: 0,
+              canDirectAttack: true,
+            },
           ],
+          toMainPhase2: true,
+          toEndPhase: false,
         },
       });
       await waitForResponse();
@@ -200,15 +244,21 @@ export function createMockDuelSession(
       await delay(300);
     }
 
-    // ── Decision 4: SELECT_EFFECTYN (opponent prompt on opponent's turn) ──────
+    // ── Decision 4: SelectEffectYN (seat 1) ──────────────────────────────────
     if (seat === 1) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_EFFECTYN",
-          engineType: 24,
+        type: "DECISION",
+        decision: {
+          kind: "SelectEffectYN",
           player: 1,
-          question: "Activate Mirror Force?",
+          card: {
+            code: 77414722,
+            name: "Mirror Force",
+            controller: 1,
+            location: "SZONE",
+            sequence: 0,
+          },
+          description: "Activate Mirror Force to destroy all attacking monsters?",
         },
       });
       await waitForResponse();
@@ -217,74 +267,35 @@ export function createMockDuelSession(
       await delay(300);
     }
 
-    // ── Decision 5: SELECT_YESNO ──────────────────────────────────────────────
+    // ── Decision 5: SelectYesNo (seat 0) ─────────────────────────────────────
     if (seat === 0) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_YESNO",
-          engineType: 25,
+        type: "DECISION",
+        decision: {
+          kind: "SelectYesNo",
           player: 0,
-          question: "Send Stardust Dragon from Extra Deck for Synchro Summon?",
+          description: "Chain Solemn Judgment to negate Mirror Force?",
         },
       });
       await waitForResponse();
       if (stopped) return;
     }
 
-    // ── Decision 6: SELECT_OPTION ─────────────────────────────────────────────
+    // ── Decision 6: SelectOption (seat 0) ────────────────────────────────────
     if (seat === 0) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_OPTION",
-          engineType: 30,
+        type: "DECISION",
+        decision: {
+          kind: "SelectOption",
           player: 0,
-          hint: "Select an effect to activate:",
-          options: [
-            { label: "Effect (1): Add to hand", index: 0 },
-            { label: "Effect (2): Special Summon", index: 1 },
-          ],
+          options: ["Effect (1): Draw 2 cards", "Effect (2): Special Summon from GY"],
         },
       });
       await waitForResponse();
       if (stopped) return;
     }
 
-    // ── Decision 7: SELECT_POSITION ───────────────────────────────────────────
-    if (seat === 0) {
-      onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_POSITION",
-          engineType: 26,
-          player: 0,
-          positions: [
-            { label: "Attack Position", value: 0x2 },
-            { label: "Defense Position (face-up)", value: 0x4 },
-            { label: "Defense Position (face-down)", value: 0x8 },
-          ],
-        },
-      });
-      await waitForResponse();
-      if (stopped) return;
-    }
-
-    // ── Decision 8: ANNOUNCE_ATTRIB ───────────────────────────────────────────
-    if (seat === 0) {
-      onMessage({
-        type: "MSG",
-        msg: {
-          name: "ANNOUNCE_ATTRIB",
-          engineType: 40,
-          player: 0,
-        },
-      });
-      await waitForResponse();
-      if (stopped) return;
-    }
-
-    // ── LP damage and state ───────────────────────────────────────────────────
+    // ── LP damage + state ─────────────────────────────────────────────────────
     const snap4 = makeSnapshot({
       seat,
       currentTurn: 1,
@@ -300,19 +311,32 @@ export function createMockDuelSession(
 
     if (stopped) return;
 
-    // ── SELECT_CARD example ───────────────────────────────────────────────────
+    // ── Decision 7: SelectCard (seat 1) ──────────────────────────────────────
     if (seat === 1) {
       onMessage({
-        type: "MSG",
-        msg: {
-          name: "SELECT_CARD",
-          engineType: 15,
+        type: "DECISION",
+        decision: {
+          kind: "SelectCard",
           player: 1,
-          hint: "Select a card to discard:",
           cards: [
-            { name: "Bottomless Trap Hole", code: 29401950, index: 0 },
-            { name: "Torrential Tribute", code: 53582587, index: 1 },
+            {
+              code: 29401950,
+              name: "Bottomless Trap Hole",
+              controller: 1,
+              location: "HAND",
+              sequence: 0,
+            },
+            {
+              code: 53582587,
+              name: "Torrential Tribute",
+              controller: 1,
+              location: "HAND",
+              sequence: 1,
+            },
           ],
+          min: 1,
+          max: 1,
+          cancelable: false,
         },
       });
       await waitForResponse();
@@ -322,11 +346,7 @@ export function createMockDuelSession(
     // ── DUEL_END ──────────────────────────────────────────────────────────────
     await delay(400);
     if (!stopped) {
-      onMessage({
-        type: "DUEL_END",
-        winner: 0,
-        reason: "normal",
-      });
+      onMessage({ type: "DUEL_END", winner: 0, reason: "normal" });
     }
   }
 
@@ -335,7 +355,7 @@ export function createMockDuelSession(
       stopped = false;
       void runScript();
     },
-    respond(_value: number | string | null) {
+    respond(_response: DuelDecisionResponse) {
       if (stepResolve) {
         const resolve = stepResolve;
         stepResolve = null;

@@ -8,16 +8,22 @@
  * Renders:
  *   - DuelBoard (zone/LP/phase snapshot)
  *   - DuelTimer (server-authoritative countdown)
- *   - ActionPanel (interactive decision responses + RESIGN)
+ *   - ActionPanel (typed DECISION response + RESIGN)
+ *
+ * Wire contract (Phase 2):
+ *   - Consumes: DECISION frame { type:"DECISION", decision: DuelDecision }
+ *   - Sends:    DECISION_RESPONSE frame { type:"DECISION_RESPONSE", response: DuelDecisionResponse }
+ *   - RESPONSE / MSG paths removed.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type {
   DuelClientMessage,
+  DuelDecision,
+  DuelDecisionResponse,
   DuelServerMessage,
   DuelStateSnapshot,
-  RedactedEngineMessage,
   Seat,
 } from "@yugioh-app/contracts";
 import { ActionPanel } from "../components/ActionPanel";
@@ -41,13 +47,11 @@ export function DuelScreen() {
   const locationState = (location.state as LocationState | null) ?? {};
   const { seatToken, seat: seatFromState } = locationState;
 
-  // Seat assigned from SEAT_ASSIGNED or from navigation state
   const [mySeat, setMySeat] = useState<Seat | null>(seatFromState ?? null);
   const [state, setState] = useState<DuelStateSnapshot | null>(null);
   const [clock, setClock] = useState<{ onClockSeat: Seat; deadlineAt: number } | null>(null);
-  const [pendingDecision, setPendingDecision] = useState<RedactedEngineMessage | null>(null);
-  // Phase 1: typed DECISION frame received (full UI is Phase 2).
-  const [hasPendingDecision, setHasPendingDecision] = useState(false);
+  /** Typed pending decision — null when no decision is awaiting this seat */
+  const [pendingDecision, setPendingDecision] = useState<DuelDecision | null>(null);
   const [duelEnded, setDuelEnded] = useState<{
     winner: Seat | null;
     reason: string;
@@ -58,12 +62,20 @@ export function DuelScreen() {
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
 
+  /** Send a typed DuelDecisionResponse to the server (or mock). */
+  const respond = useCallback((r: DuelDecisionResponse) => {
+    const msg: DuelClientMessage = { type: "DECISION_RESPONSE", response: r };
+    if (mockSessionRef.current) {
+      mockSessionRef.current.respond(r);
+    } else if (socketRef.current) {
+      socketRef.current.send(msg);
+    }
+  }, []);
+
   const sendMsg = useCallback(
     (msg: DuelClientMessage) => {
       if (mockSessionRef.current) {
-        if (msg.type === "RESPONSE") {
-          mockSessionRef.current.respond(msg.response.value as number | string | null);
-        } else if (msg.type === "RESIGN") {
+        if (msg.type === "RESIGN") {
           mockSessionRef.current.stop();
           setDuelEnded({ winner: mySeat === 0 ? 1 : 0, reason: "resign" });
         }
@@ -74,62 +86,47 @@ export function DuelScreen() {
     [mySeat],
   );
 
-  const handleServerMessage = useCallback(
-    (msg: DuelServerMessage) => {
-      switch (msg.type) {
-        case "SEAT_ASSIGNED":
-          setMySeat(msg.seat);
-          setConnected(true);
-          break;
+  const handleServerMessage = useCallback((msg: DuelServerMessage) => {
+    switch (msg.type) {
+      case "SEAT_ASSIGNED":
+        setMySeat(msg.seat);
+        setConnected(true);
+        break;
 
-        case "STATE":
-          setState(msg.state);
-          // A state update after a decision message clears the pending decision
-          setPendingDecision(null);
-          setHasPendingDecision(false);
-          break;
+      case "STATE":
+        setState(msg.state);
+        // A state update after a decision clears the pending decision
+        setPendingDecision(null);
+        break;
 
-        case "MSG": {
-          const { msg: engineMsg } = msg;
-          // Only route decision messages that target our seat (or have no player)
-          const targetsSeat =
-            engineMsg.player === undefined ||
-            engineMsg.player === null ||
-            engineMsg.player === mySeat;
-          if (targetsSeat) {
-            setPendingDecision(engineMsg);
-          }
-          break;
-        }
+      case "DECISION":
+        // Typed decision from Phase 1 server: render via DecisionDispatcher
+        setPendingDecision(msg.decision);
+        break;
 
-        case "CLOCK":
-          setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
-          break;
+      case "CLOCK":
+        setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
+        break;
 
-        case "DUEL_END":
-          setDuelEnded({ winner: msg.winner, reason: msg.reason });
-          setPendingDecision(null);
-          setHasPendingDecision(false);
-          break;
+      case "DUEL_END":
+        setDuelEnded({ winner: msg.winner, reason: msg.reason });
+        setPendingDecision(null);
+        break;
 
-        case "DECISION":
-          // Phase 1: typed decision delivered — hide "Waiting for engine…" placeholder.
-          // Full decision response UI is Phase 2.
-          setHasPendingDecision(true);
-          break;
+      case "ERROR":
+        setError(msg.message);
+        break;
 
-        case "ERROR":
-          setError(msg.message);
-          break;
-      }
-    },
-    [mySeat],
-  );
+      // MSG frame: legacy redacted engine message — no longer processed here.
+      // The typed DECISION frame supersedes MSG for player decisions.
+      case "MSG":
+        break;
+    }
+  }, []);
 
   useEffect(() => {
     if (!duelId) return;
 
-    // Use mock session if no seatToken (dev mode) or explicitly requested
     const useMock = !seatToken || locationState.useMock;
 
     if (useMock) {
@@ -165,7 +162,6 @@ export function DuelScreen() {
     };
   }, [duelId, seatToken]);
 
-  // DUEL_END after timeout: clear pending decision
   const effectiveSeat: Seat = mySeat ?? 0;
 
   if (!duelId) {
@@ -196,7 +192,7 @@ export function DuelScreen() {
         <button
           className="btn"
           onClick={() => navigate("/")}
-          style={{ minHeight: 40, padding: "6px 14px", fontSize: "0.875rem" }}
+          style={{ minHeight: 44, padding: "6px 14px", fontSize: "1rem" }}
         >
           ← Home
         </button>
@@ -207,7 +203,7 @@ export function DuelScreen() {
               style={{
                 color: "var(--text-2)",
                 fontWeight: 400,
-                fontSize: "0.8125rem",
+                fontSize: "1rem",
                 marginLeft: 8,
               }}
             >
@@ -233,7 +229,7 @@ export function DuelScreen() {
             border: "1px solid var(--invalid)",
             color: "var(--invalid)",
             padding: "10px 20px",
-            fontSize: "0.875rem",
+            fontSize: "1rem",
           }}
         >
           ⚠ {error}
@@ -258,7 +254,7 @@ export function DuelScreen() {
           flexDirection: "column",
           gap: 16,
           padding: 16,
-          maxWidth: 900,
+          maxWidth: 1024,
           margin: "0 auto",
           width: "100%",
         }}
@@ -268,7 +264,7 @@ export function DuelScreen() {
             <DuelBoard state={state} mySeat={effectiveSeat} />
             <ActionPanel
               decision={pendingDecision}
-              hasPendingDecision={hasPendingDecision}
+              respond={respond}
               onSend={sendMsg}
               disabled={!!duelEnded}
             />
@@ -281,7 +277,7 @@ export function DuelScreen() {
               justifyContent: "center",
               flex: 1,
               color: "var(--text-2)",
-              fontSize: "0.9375rem",
+              fontSize: "1rem",
             }}
           >
             {connected ? "Waiting for duel to start…" : "Connecting…"}
@@ -346,19 +342,14 @@ function DuelEndBanner({ winner, reason, mySeat, onHome }: DuelEndBannerProps) {
           width: "90%",
         }}
       >
-        <div
-          style={{
-            fontSize: "2.5rem",
-            marginBottom: 12,
-          }}
-        >
+        <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>
           {isDraw ? "🤝" : iWon ? "🏆" : "💀"}
         </div>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>{resultText}</h2>
         <p
           style={{
             color: "var(--text-1)",
-            fontSize: "0.9375rem",
+            fontSize: "1rem",
             marginBottom: 28,
           }}
           data-testid="duel-end-reason"
