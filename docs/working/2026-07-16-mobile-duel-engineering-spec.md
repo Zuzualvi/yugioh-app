@@ -6,9 +6,10 @@
 **Audience:** Frontend Engineers implementing Phase 2 of the interactive duel UI.
 
 > **Scope of this document.** This spec engineers the §15 mobile board design into implementation
-> requirements. It does NOT invent new UX flows — where §15 is silent or ambiguous, the gap is
-> recorded at the end as an **Open Question for the CTO** rather than decided here. Decision-kind
-> field names reference the taxonomy from the build brief; exact field schemas lock in Phase 0.
+> requirements. It does NOT invent new UX flows. All eight implementation questions raised on
+> initial delivery were resolved by the CTO on 2026-07-16 — their rulings are recorded in §7 and
+> folded into the relevant body sections. Decision-kind field names reference the taxonomy from
+> the build brief; exact field schemas lock in Phase 0.
 
 ---
 
@@ -20,7 +21,7 @@
 4. [DuelDecision → UI mapping](#4-dueldecision--ui-mapping)
 5. [Accessibility requirements](#5-accessibility-requirements)
 6. [Async resume behavior](#6-async-resume-behavior)
-7. [Open questions for the CTO](#7-open-questions-for-the-cto)
+7. [Resolved decisions (CTO, 2026-07-16)](#7-resolved-decisions-cto-2026-07-16)
 
 ---
 
@@ -34,12 +35,15 @@ identical at every width. A friend on a couch phone and a friend at a desk are e
 
 | Tier | Viewport width | Canonical device | Board layout |
 |---|---|---|---|
-| **Phone-portrait** | ≤ 599 px | ~375–430 px phone | Your-field-first vertical stack (§15a) |
-| **Tablet / small-laptop** | 600 px – 1023 px | ~768–1024 px tablet, landscape phone | Both fields, condensed side-by-side or stacked |
+| **Phone-portrait** | ≤ 599 px | ~375–430 px phone | Your-field-first vertical stack (§15a); opponent field collapsed behind strip |
+| **Tablet / small-laptop** | 600 px – 1023 px | ~768–1024 px tablet, landscape phone | Desktop dual-field layout, scaled down; opponent field always visible, no collapse (CTO, OQ-1) |
 | **Desktop** | ≥ 1024 px | Laptop / monitor | Full board (§6) |
 
-> **OQ-1** — The tablet tier (600–1023 px) layout is not specified in §15 beyond "both fields,
-> condensed." See §7 open questions.
+The **collapse/expand opponent strip is phone-portrait only** (≤ 599 px). At tablet and desktop
+widths both fields fit, so `OpponentStatusStrip` (with its expand toggle) is not rendered; instead
+the full `OpponentField` and `OpponentStatusBar` are always shown. A landscape-oriented phone
+(landscape width ≈ 600–800 px) therefore gets the tablet-tier dual-field reflow — this is
+acceptable since Phase 2 does not target a bespoke landscape layout (see §7, OQ-7).
 
 Use CSS custom properties for breakpoint values so a single source-of-truth feeds both media queries
 and any JS that needs to check layout tier at runtime:
@@ -79,7 +83,21 @@ The §15a "your-field-first vertical stack" in implementation order, top → bot
 - When a `DuelDecision` prompt is active, the **DecisionBottomSheet** slides up from the bottom
   edge; the rest of the board remains visible above it.
 
-### 1.3 Desktop layout (≥ 1024 px)
+### 1.3 Tablet layout (600–1023 px)
+
+The tablet tier uses the **same dual-field layout as desktop**, scaled down to fit the smaller
+viewport. Key differences from phone-portrait:
+
+- Both `OpponentField` and `YourField` are always visible — no collapse strip.
+- `OpponentStatusBar` (LP, hand count) is a compact bar above `OpponentField`, as on desktop.
+- `DuelLogRail` may be hidden behind a slide-in toggle at tablet widths (same as mobile log access,
+  see §2.7) to recover horizontal space — preferred over forcing a horizontal scroll.
+- `DecisionBottomSheet` and `TargetingOverlay` behave identically to mobile.
+- Tap targets remain ≥ 44 px (tablet users may be touch-only).
+
+A landscape-oriented phone landing in this tier gets a functional board without special handling.
+
+### 1.4 Desktop layout (≥ 1024 px)
 
 Mirrors §6 exactly:
 
@@ -102,7 +120,7 @@ Mirrors §6 exactly:
 - Drag is offered as an optional accelerator but never required (the tap grammar always works).
 - Right-docked `ChainPanel` for chain-stack visualization; appears when a chain is building.
 
-### 1.4 Component reflow contract
+### 1.5 Component reflow contract
 
 Each component must implement both presentations internally and switch via CSS breakpoints or a
 `layoutTier` prop — the caller never renders two separate component trees. Pattern:
@@ -188,17 +206,23 @@ as face-down if their code is `0`; tapping opponent zones during selection steps
 #### `HandFan` — `src/components/duel/HandFan.tsx`
 
 **Responsibility:** Render the local player's hand as a horizontally scrollable fan. Each card:
-- Tap card **art region** → launch `CardInspector` (inspect, no action risk).
-- Tap card **action region** (e.g., a distinct lower-half hit target, or a small "▸ Act" button
-  on the card) → dispatch `onCardAct(cardIndex)` → parent opens `DecisionBottomSheet`.
+- Tap (anywhere on the card) → launch `CardInspector`. The Inspector then surfaces that card's
+  **legal actions as buttons** within the overlay (e.g., "Normal Summon," "Set," "Activate").
+  Tapping an action button inside the Inspector dispatches `onCardAct(cardIndex, action)` to the
+  parent, which opens the full decision flow. This is the **inspect-first** model for the hand fan.
 - Actionable cards have `CardStateMarker` glow/dot; idle cards have none.
+- If no `DuelDecision` is currently pending for this seat (opponent's turn, or between decisions),
+  tapping any hand card opens the Inspector with read-only info and no action buttons.
+
+**Engineering note (CTO ruling, OQ-2):** The §15c split-hit-region (art = inspect, action strip =
+act) applies to **field cards** (larger, non-overlapping zone area). Splitting a small fanned hand
+card into two ~44 px hit regions is not practical. The inspect-first model achieves the same safety
+guarantee — a tap cannot accidentally trigger a play — while fitting the hand fan's constrained
+geometry.
 
 **Mobile:** horizontal scroll, cards ~64–80 px wide, swipeable.  
-**Desktop:** fan spread in the hand tray; click → context menu.
-
-> **OQ-2** — §15c specifies two gestures (tap art → inspect; tap to act) but does not prescribe
-> exactly how the "act" tap target is visually separated from the "art" tap target on a small hand
-> card. See §7 open questions.
+**Desktop:** fan spread in the hand tray; click → `CardInspector` with action buttons (same
+inspect-first model), or right-click for context menu as optional shortcut.
 
 #### `OpponentHandCount` — `src/components/duel/OpponentHandCount.tsx`
 
@@ -210,13 +234,18 @@ desktop `OpponentStatusBar`.
 
 #### `OpponentStatusStrip` — `src/components/duel/OpponentStatusStrip.tsx`
 
-**Responsibility:** The compressed opponent view on mobile. Tapping the expand toggle (`▾/▴`) shows
-or hides the full `OpponentField` overlay. Contains: LP display, hand count, mini zone thumbnails,
-expand toggle.
+**Responsibility:** The compressed opponent view on mobile (phone-portrait tier only; not rendered
+at tablet or desktop widths). Tapping the expand toggle (`▾/▴`) shows or hides the full
+`OpponentField` overlay. Contains: LP display, hand count, mini zone thumbnails, expand toggle.
 
-- **Mobile only.** Collapsed by default; ≥ 44 px tap target for the expand toggle.
+- **Phone-portrait only** (≤ 599 px). Collapsed by default on fresh mount and on resume.
 - Expanded state slides the full opponent field into view (or overlays it) without leaving the
   screen or abandoning the local board context.
+- **Expanded state persists in component state across moves and engine decisions within a page
+  session** (CTO ruling, OQ-6). Do not reset to collapsed on each decision — that would be jarring
+  if a player expanded it to read the opponent's board mid-chain. It resets to collapsed only on
+  a fresh mount (new page load, or resume navigation from Home). Low-stakes, phone-only state;
+  does not need to survive across sessions.
 
 #### `OpponentStatusBar` — `src/components/duel/OpponentStatusBar.tsx`
 
@@ -280,14 +309,17 @@ button live here.
 #### `DuelLogRail` — `src/components/duel/DuelLogRail.tsx`
 
 **Responsibility:** Scrollable log of neutral duel events (turn #, actor, action — never a "why"
-judgment). Collapsible on desktop (right-docked). On mobile, accessible via a separate slide-in
-panel (not visible by default in the primary board view — see OQ-3).
+judgment). Collapsible on desktop (right-docked). On mobile and tablet, accessible via a
+**peekable slide-in panel** toggled by a small "log" button in the top bar or phase rail area
+(CTO ruling, OQ-3). The panel overlays the board without blocking it and can be dismissed by
+tapping outside or re-tapping the log button.
 
 - Entries use neutral language only: "Alex activated Bottomless Trap Hole," not evaluative prose.
-- Each entry is tappable to launch `CardInspector` for the card involved (also on mobile).
-
-> **OQ-3** — §15 does not specify how the duel log is accessed on mobile (it describes the log as
-> a desktop rail). See §7 open questions.
+- Each entry is tappable to launch `CardInspector` for the card involved (on all form factors).
+- The log is available **during the duel**, not post-duel only. It is also shown in the post-duel
+  `DuelSummary` screen.
+- The log toggle button (mobile/tablet) must be ≥ 44 px and must not conflict with the
+  `ChainPanel` peek strip when both are active simultaneously.
 
 ### 2.8 Chain and priority
 
@@ -326,8 +358,11 @@ remains visible above; the sheet's drag handle allows the player to resize it. [
 [Cancel] (where applicable) are thumb-reachable at the bottom of the sheet.
 
 - The `DecisionDispatcher` (see §3) renders the correct inner component into this shell.
-- Always includes a cancel path unless the decision is forced (engine signals `forced: true` or
-  equivalent in the Phase 0 schema — exact field TBD).
+- Renders a **Cancel** button unless `DuelDecision.cancelable === false` (CTO ruling, OQ-5). When
+  `cancelable` is false the Cancel affordance is suppressed entirely — the player must complete the
+  decision. The Phase 0 schema confirms that every `DuelDecision` variant carries `cancelable`.
+  Similarly, `canPass` (where a pass is legal in addition to acting) controls the [Pass] button in
+  `ChainPrompt` variants.
 - Contains the `MoveCountdown` for the current awaited player.
 
 #### `ActionContextMenu` — `src/components/duel/ActionContextMenu.tsx`
@@ -341,20 +376,23 @@ actions that originate from clicking a specific card or zone on desktop.
 
 #### `ActionSheet` — `src/components/duel/ActionSheet.tsx`
 
-**Responsibility:** The mobile action sheet shown after tapping a card's action region. Lists that
-card's currently-legal actions as tappable rows (e.g., "▸ Special Summon," "▸ Set," "✕ Cancel").
-No "why not" rows in V1. Launched by `HandFan` and `CardZone` on mobile.
+**Responsibility:** The mobile action sheet shown after tapping a field card's action region. Lists
+that card's currently-legal actions as tappable rows (e.g., "▸ Normal Summon," "▸ Set,"
+"✕ Cancel"). No "why not" rows in V1. Launched by `CardZone` on mobile (and by `CardInspector`
+action buttons for hand-fan cards — see §2.3).
 
-- This is a simpler, card-scoped cousin of `DecisionBottomSheet`. It appears before the engine
-  decision is formally issued (it is the player picking *which* action to attempt); the engine
-  decision then follows once the action is selected.
+**Population rule (CTO ruling, OQ-4):** The `ActionSheet` is populated **purely from the current
+`IdleCommand` or `BattleCommand` `DuelDecision` payload**. The engine already enumerates every
+legal action grouped by actionable card; the UI filters that list to the tapped card's index. The
+UI **never issues a separate per-card legality query** and **never computes legality itself**
+(server-authoritative; the engine owns legality). Consequence:
 
-> **OQ-4** — Exactly how the "available actions for this card" are known before the engine issues
-> a full `DuelDecision` needs clarification. On desktop, card-click → legal actions come from the
-> `IdleCommand`/`BattleCommand` decision the engine already issued. On mobile, the same applies: an
-> `ActionSheet` is populated from the current `IdleCommand` or `BattleCommand` decision's candidate
-> list, filtered to the tapped card. If no decision is pending (not the player's turn), tapping a
-> card only offers Inspect. See §7 open questions.
+- If an `IdleCommand` or `BattleCommand` decision is pending and the tapped field card appears in
+  its candidate list → show the `ActionSheet` with that card's actions.
+- If no decision is pending (not the player's turn, or between decisions) → tapping a field card
+  opens the Inspector only (no ActionSheet, no action buttons).
+- The Phase 0 `IdleCommand` / `BattleCommand` contract must group options per acting card so the
+  UI can perform this filter; the CTO has added this grouping requirement to the Phase 0 spec.
 
 ### 2.10 Targeting overlay
 
@@ -420,21 +458,21 @@ kind's rendering into its own file.
 
 ```
 DuelDecision.kind →
-  IdleCommand      → IdleCommandPanel
-  BattleCommand    → BattleCommandPanel
-  ChainPrompt      → ChainPromptPanel
-  SelectCard       → SelectCardPanel
+  IdleCommand        → IdleCommandPanel
+  BattleCommand      → BattleCommandPanel
+  ChainPrompt        → ChainPromptPanel
+  SelectCard         → SelectCardPanel
   SelectUnselectCard → SelectUnselectCardPanel
-  SelectSum        → SelectSumPanel
-  SelectTribute    → SelectTributePanel
-  SelectZone       → SelectZonePanel
-  SelectPosition   → SelectPositionPanel
-  YesNo            → YesNoPanel
-  SelectOption     → SelectOptionPanel
-  SelectCounter    → SelectCounterPanel
-  Announce*        → AnnouncePanel
-  SortCard         → SortCardPanel
-  RockPaperScissors → RockPaperScissorsPanel
+  SelectSum          → SelectSumPanel
+  SelectTribute      → SelectTributePanel
+  SelectZone         → SelectZonePanel
+  SelectPosition     → SelectPositionPanel
+  YesNo              → YesNoPanel
+  SelectOption       → SelectOptionPanel
+  SelectCounter      → SelectCounterPanel
+  Announce*          → AnnouncePanel
+  SortCard           → SortCardPanel
+  RockPaperScissors  → (engine-internal; no player-facing panel in Phase 2 — see §4.6)
 ```
 
 Each `*Panel` component lives in its own file under `src/components/duel/decisions/`. It receives
@@ -529,25 +567,37 @@ DUEL_OVER
 ### 3.3 Inspect-vs-act gesture separation (§15c)
 
 This separation is the core safety mechanism: a player can always read a card without risking
-triggering it.
+triggering it. The implementation differs between **field cards** and **hand-fan cards** (CTO
+ruling, OQ-2):
+
+**Field cards (CardZone) — split-hit-region model:**
 
 | Gesture | Target | Outcome |
 |---|---|---|
-| Tap **card art region** | Any visible card (hand, field, log) | Opens `CardInspector` — no game-state change |
-| Long-press | Any visible card | Opens `CardInspector` (alternate gesture) |
-| Tap **action region** (separate hit area) | Your card with legal actions, in AWAITING_PLAYER_DECISION | Opens `ActionSheet` → player picks action |
+| Tap **art region** (top ~70% of zone card) | Any visible field card | Opens `CardInspector` — no game-state change |
+| Long-press | Any visible field card | Opens `CardInspector` (alternate gesture) |
+| Tap **action region** (bottom ~30%, ≥ 44 px tall, shows "▸" when actionable) | Your field card with legal actions, in AWAITING_PLAYER_DECISION | Opens `ActionSheet` → player picks action |
 | Tap empty zone | A zone during SELECTING_TARGET | Selects that zone as a target |
 | Tap opponent face-down | Any state | Shows "Set card" notice — no card face, no Inspector |
 
-Implementing the two hit areas on a small card:
-- The card component renders two distinct, non-overlapping `<div>` or `<button>` elements: an
-  art hit region (top ~70% of the card visual) and an action hit region (bottom ~30%, with a subtle
-  "▸" cue when actionable).
-- Both regions are ≥ 44 px tall on phone-portrait (the card itself must be tall enough to
-  accommodate this — minimum card height in hand fan: ~88 px).
+The field card renders two distinct, non-overlapping `<div>` / `<button>` elements. The action
+region is ≥ 44 px tall. Minimum field-card zone height on phone-portrait: sufficient to fit both
+regions (≥ 88 px combined, or sized so neither region falls below 44 px).
 
-> **OQ-2 (restated)** — Exact proportions of art vs. action hit regions on hand-fan cards are not
-> specified in §15. See §7.
+**Hand-fan cards (HandFan) — inspect-first model:**
+
+Splitting a small fanned card into two ~44 px hit regions is impractical. Instead:
+
+| Gesture | Target | Outcome |
+|---|---|---|
+| Tap (anywhere on card) | Any hand card | Opens `CardInspector` |
+| Long-press | Any hand card | Opens `CardInspector` (alternate gesture) |
+| Tap action button **inside the Inspector** | Legal action listed in the Inspector overlay | Dispatches the action; Inspector closes → decision flow continues |
+
+The Inspector surfaces the tapped card's legal actions (from the current `IdleCommand` /
+`BattleCommand` payload) as large, thumb-reachable buttons within the overlay. If no decision is
+pending, the Inspector shows read-only info with no action buttons. This achieves the same
+"read without risk of triggering" guarantee as the split-hit model.
 
 ---
 
@@ -610,7 +660,7 @@ during resolution (or snap in reduced-motion).
 | Decision kind | Mobile + Desktop presentation | Response |
 |---|---|---|
 | `SortCard` | `SortCardPanel`: shows the cards to order as a draggable (mobile: tap to cycle positions; drag is an accelerator, not required) list. Confirm when ordered. | Ordered array of indices. |
-| `RockPaperScissors` | `RockPaperScissorsPanel`: three large buttons (Rock / Paper / Scissors) with icons + labels. First-turn determination. | Enum value. |
+| `RockPaperScissors` | **Engine-internal in Phase 2; no player-facing panel required.** First-turn determination is handled server-side (seat 0 goes first in the current setup), so the engine adapter resolves RPS automatically without prompting either player. The protocol retains the `RockPaperScissors` variant for full coverage and the Phase 0 catalog will confirm empirically whether the engine emits it under our duelFlags. If it does surface to the client in a later phase, add `RockPaperScissorsPanel` then. | N/A for Phase 2. |
 
 ### 4.7 Announce decisions: neutral prompt strings
 
@@ -787,67 +837,63 @@ reconnect after going offline mid-duel:
 
 ---
 
-## 7. Open questions for the CTO
+## 7. Resolved decisions (CTO, 2026-07-16)
 
-These gaps exist because §15 is silent or ambiguous on these points. They are recorded here rather
-than decided by the Technical Writer. Each blocks specific implementation choices.
+All eight implementation questions from the initial delivery were ruled on by the CTO on
+2026-07-16. Rulings are canonical; they have been folded into the relevant body sections above.
+This section records each ruling in one place for auditability.
 
-**OQ-1 — Tablet tier layout (600–1023 px).**
-§15 specifies phone-portrait (your-field-first stack) and desktop (full board) clearly, but
-describes the tablet tier only as "both fields, condensed." Engineers need to know: (a) does the
-tablet tier show both fields vertically stacked (opponent above yours, both full-width), or in a
-side-by-side grid? (b) Does the opponent field compress or is it full-detail? (c) Is the
-opponent status strip expand-toggle present at tablet widths, or does the strip expand automatically?
+**OQ-1 — Tablet tier layout.**
+_Ruling:_ Tablet (600–1023 px) follows the **desktop dual-field layout**, scaled down — not the
+phone stack. The collapsible opponent strip (`OpponentStatusStrip`) is **phone-portrait only**;
+at tablet and above, both fields are always visible with no collapse. This keeps collapse a
+phone-tier behavior and avoids a third distinct layout. See §1.1, §1.3, §2.4.
 
-**OQ-2 — Inspect vs. act hit regions on hand-fan cards.**
-§15c specifies tap-art-to-inspect and tap-to-act as separate gestures, but does not specify the
-visual or geometric boundary between the art region and the action region on a small hand-fan card.
-Engineers need: recommended proportions (e.g., top 70% = art/inspect, bottom 30% = act), and how
-the action affordance ("▸") is indicated when the card is actionable. This must also be decided
-before the min card height in the hand fan can be set (it affects the 44-px accessibility rule).
+**OQ-2 — Inspect vs. act on hand-fan cards.**
+_Ruling:_ The §15c split-hit-region (art = inspect, action strip = act) applies to **field cards**
+(larger zones). For the **hand fan**, use **inspect-first**: a tap opens the Inspector, which
+surfaces the card's legal actions as buttons inside the overlay. Do not split a fanned card into
+two tiny hit regions. Field-card action strip remains ≥ 44 px tall. This is an engineering
+refinement of §15c for the constrained hand-fan geometry. See §2.3, §3.3.
 
 **OQ-3 — Duel log access on mobile.**
-§6 shows the duel log as a right-docked collapsible rail on desktop. §15 does not describe a
-mobile access path for the log. Options: (a) a separate slide-in panel triggered by a log icon in
-the phase rail or ribbon; (b) the log is post-duel only (visible in DuelSummary, not mid-duel on
-mobile); (c) a peekable overlay similar to the chain panel. Without this decision, `DuelLogRail`
-cannot be properly integrated into the mobile layout.
+_Ruling:_ **Peekable slide-in panel**, available during the duel via a small "log" button in the
+top bar or phase rail. The panel overlays without blocking the board; toggled by a button. Also
+shown in the post-duel summary. Not post-duel only. See §2.7.
 
-**OQ-4 — ActionSheet population before a full DuelDecision.**
-The tap → ActionSheet → action grammar on mobile (§15b) suggests the ActionSheet appears when a
-player taps a card with legal actions. But the engine-issued `DuelDecision` (e.g., `IdleCommand`)
-covers all actionable cards simultaneously — it is not card-scoped. Engineers need clarity on
-whether: (a) the ActionSheet is populated by filtering the current `IdleCommand` or `BattleCommand`
-decision's candidate list to the tapped card's index, or (b) the card zone/hand tap fires a
-separate "what can I do with this card?" request to the engine before a decision is issued, or
-(c) the ActionSheet is only shown when a decision is already pending (i.e., tapping a card before
-your turn just inspects it). The answer shapes how `ActionSheet`, `CardZone`, and
-`DecisionDispatcher` interlock.
+**OQ-4 — ActionSheet population.**
+_Ruling:_ The `ActionSheet` is populated **purely from the current `IdleCommand` / `BattleCommand`
+`DuelDecision` payload**. The engine enumerates every legal action grouped per actionable card;
+the UI filters to the tapped card's index. The UI **never issues a separate per-card legality
+query** and **never computes legality itself** (server-authoritative). Tap a card with no actions
+in the current decision, or when no decision is pending → inspect only. The CTO has added the
+grouping-per-card requirement to the Phase 0 contract spec. See §2.9, §4.1.
 
-**OQ-5 — Forced decisions (no cancel).**
-Some engine decisions have no legal cancel (e.g., you must tribute exactly N monsters with no
-out). The `DecisionBottomSheet` must handle the forced case with no Cancel button. The Phase 0
-contract must signal forced decisions; without a field for this, `DecisionBottomSheet` cannot know
-when to suppress the Cancel affordance. Confirm that the `DuelDecision` schema includes a
-`forced` / `cancelable` boolean (or equivalent) per variant.
+**OQ-5 — Forced / cancelable decisions.**
+_Ruling:_ **Confirmed.** Every `DuelDecision` variant carries a `cancelable` boolean (and `canPass`
+where a pass is separately legal). `cancelable: false` → `DecisionBottomSheet` suppresses the
+Cancel affordance entirely. See §2.9.
 
-**OQ-6 — Opponent field expanded state persistence.**
-On mobile, the opponent status strip expands on tap. Should that expanded state persist across
-moves (so if you expand the opponent's field to read it, it stays expanded when the turn changes),
-or should it collapse on each engine decision, or be reset on resume? The answer affects whether
-`OpponentStatusStrip` holds its expanded state in component state or in some session-level store.
+**OQ-6 — Opponent strip expanded state.**
+_Ruling:_ **Persist within the page session** across moves and engine decisions; do not reset on
+each decision (jarring). **Default to collapsed** on fresh mount and on resume from Home. Component
+state is sufficient — no session-level store needed. See §2.4.
 
 **OQ-7 — Landscape mode.**
-§15e says "landscape offered, not required" and describes a scaled-down "tabletop" view for
-landscape. This spec treats landscape as out-of-scope for Phase 2 (portrait is primary). Confirm
-that landscape is indeed deferred, so engineers don't block Phase 2 on it.
+_Ruling:_ **Deferred from Phase 2.** Phase 2 targets phone-portrait + tablet + desktop. The
+responsive system must not visually break in landscape (a landscape phone landing in the tablet
+tier reflow is acceptable), but no bespoke landscape layout is designed or required. Landscape
+is deferred, not unsupported — §15e's "offered, not required" is preserved for a later phase. See §1.1.
 
-**OQ-8 — RockPaperScissors decision timing.**
-The `RockPaperScissors` decision kind is noted as rare in the build brief. Confirm when the engine
-issues it (first-turn determination? or something else?), as this shapes whether
-`RockPaperScissorsPanel` is needed in Phase 2 or is genuinely a V2/edge-case followup.
+**OQ-8 — RockPaperScissors.**
+_Ruling:_ **Not a Phase 2 player-facing panel.** First-turn determination is handled server-side
+(seat 0 goes first in the current setup); the engine adapter auto-resolves RPS without surfacing
+it to either player. The protocol retains the `RockPaperScissors` variant; the Phase 0 empirical
+catalog will confirm whether the engine emits it under the Edison duelFlags. No
+`RockPaperScissorsPanel` is needed for Phase 2. See §4.6.
 
 ---
 
-*End of Phase 0.5 mobile duel engineering spec. Components, breakpoints, and the decision-UI
-mapping are ready for Phase 2 Frontend implementation once the Phase 0 contract schema is locked.*
+*End of Phase 0.5 mobile duel engineering spec. All eight CTO rulings have been incorporated.
+Components, breakpoints, and the decision-UI mapping are ready for Phase 2 Frontend implementation
+once the Phase 0 contract schema is locked.*
