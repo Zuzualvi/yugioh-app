@@ -1,5 +1,9 @@
 # HANDOFF — Edison Deck-Builder + Duel App (2026-07-15, end of session)
 
+> ⚠️ **SUPERSEDED by `docs/working/2026-07-15-HANDOFF-2-closeout-and-next-build.md`** — read that first.
+> (The live-duel E2E is now done + CI-green; two wiring bugs + INVITE-01/02 shipped; the interactive duel UI is
+> the greenlit next build.) This file is kept for history.
+
 **Author:** CTO (outgoing) • **For:** next CTO session (fresh context, **Playwright harness now installed**).
 **This SUPERSEDES `2026-07-14-HANDOFF-END-OF-SESSION.md`.** Read this first, then
 `docs/working/2026-07-13-CTO-BRIEF.md` for product context. Verify live state with `read_ci_status`
