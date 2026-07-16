@@ -14,11 +14,18 @@ import { decisionPrompt, extractOptions } from "../api/decisionOptions";
 interface Props {
   /** The current decision message for this seat, or null if no pending decision */
   decision: RedactedEngineMessage | null;
+  /** Phase 1: typed DECISION frame received but not yet decoded for UI (Phase 2). */
+  hasPendingDecision?: boolean;
   onSend: (msg: DuelClientMessage) => void;
   disabled?: boolean;
 }
 
-export function ActionPanel({ decision, onSend, disabled = false }: Props) {
+export function ActionPanel({
+  decision,
+  hasPendingDecision = false,
+  onSend,
+  disabled = false,
+}: Props) {
   function handleOption(value: number | string | null) {
     const response: EngineResponse = { type: 1, value: value ?? undefined };
     onSend({ type: "RESPONSE", response });
@@ -102,6 +109,17 @@ export function ActionPanel({ decision, onSend, disabled = false }: Props) {
             ))}
           </div>
         </>
+      ) : hasPendingDecision ? (
+        <p
+          style={{
+            color: "var(--text-1)",
+            fontSize: "0.875rem",
+            fontStyle: "italic",
+          }}
+          data-testid="your-move"
+        >
+          Your move — make your decision.
+        </p>
       ) : (
         <p
           style={{

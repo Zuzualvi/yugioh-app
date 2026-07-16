@@ -46,6 +46,8 @@ export function DuelScreen() {
   const [state, setState] = useState<DuelStateSnapshot | null>(null);
   const [clock, setClock] = useState<{ onClockSeat: Seat; deadlineAt: number } | null>(null);
   const [pendingDecision, setPendingDecision] = useState<RedactedEngineMessage | null>(null);
+  // Phase 1: typed DECISION frame received (full UI is Phase 2).
+  const [hasPendingDecision, setHasPendingDecision] = useState(false);
   const [duelEnded, setDuelEnded] = useState<{
     winner: Seat | null;
     reason: string;
@@ -84,6 +86,7 @@ export function DuelScreen() {
           setState(msg.state);
           // A state update after a decision message clears the pending decision
           setPendingDecision(null);
+          setHasPendingDecision(false);
           break;
 
         case "MSG": {
@@ -106,6 +109,13 @@ export function DuelScreen() {
         case "DUEL_END":
           setDuelEnded({ winner: msg.winner, reason: msg.reason });
           setPendingDecision(null);
+          setHasPendingDecision(false);
+          break;
+
+        case "DECISION":
+          // Phase 1: typed decision delivered — hide "Waiting for engine…" placeholder.
+          // Full decision response UI is Phase 2.
+          setHasPendingDecision(true);
           break;
 
         case "ERROR":
@@ -256,7 +266,12 @@ export function DuelScreen() {
         {state ? (
           <>
             <DuelBoard state={state} mySeat={effectiveSeat} />
-            <ActionPanel decision={pendingDecision} onSend={sendMsg} disabled={!!duelEnded} />
+            <ActionPanel
+              decision={pendingDecision}
+              hasPendingDecision={hasPendingDecision}
+              onSend={sendMsg}
+              disabled={!!duelEnded}
+            />
           </>
         ) : (
           <div

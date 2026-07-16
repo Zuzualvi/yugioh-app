@@ -30,21 +30,11 @@ await bootstrapAdmin(db);
 
 const catalog = loadCatalog();
 
-// NOTE: EdisonDuel will gain getDecisionForSeat/applyDecisionResponse in the parallel
-// engine PR (Phase 1, Engineer #1). The casts below are temporary and will be
-// removed once those land. The interface mismatch is a compile-time artifact only;
-// the real engine has always satisfied the runtime contract.
-const factory: DuelEngineFactory = (opts) =>
-  createEdisonDuel(opts) as unknown as ReturnType<DuelEngineFactory>;
+const factory: DuelEngineFactory = (opts) => createEdisonDuel(opts);
 
 // Rehydrate by creating a fresh engine and replaying the persisted response log.
 const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
-  replayEdisonDuel(
-    seed,
-    deck0,
-    deck1,
-    log as unknown as Parameters<typeof replayEdisonDuel>[3],
-  ) as unknown as ReturnType<DuelEngineReplay>;
+  replayEdisonDuel(seed, deck0, deck1, log);
 
 const duelManager = new DuelManager(factory, replay);
 const app = createApp(db, catalog, duelManager);

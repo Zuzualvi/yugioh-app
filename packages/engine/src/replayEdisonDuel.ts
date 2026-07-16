@@ -13,6 +13,10 @@ import type { EdisonDuel, DeckLists } from "./EdisonDuel.js";
  * Rehydrate from a typed response log (server-restart resume). Creates a fresh
  * duel with the same seed+decks, replays all responses, and returns the duel
  * at the same logical state.
+ *
+ * After replaying the log, advances the engine one step to reach the current
+ * WAITING boundary — mirroring what createAndStart does — so that
+ * getDecisionForSeat() returns the pending decision on the rehydrated engine.
  */
 export async function replayEdisonDuel(
   seed: bigint | number,
@@ -22,5 +26,7 @@ export async function replayEdisonDuel(
 ): Promise<EdisonDuel> {
   const duel = await createEdisonDuel({ seed, deck0, deck1 });
   duel.applyLog(log);
+  // Advance to the next WAITING boundary (or END) so pendingDecision is set.
+  if (!duel.isEnded()) duel.step();
   return duel;
 }
