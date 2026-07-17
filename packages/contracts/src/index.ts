@@ -79,6 +79,16 @@ export {
 } from "./deck.js";
 
 export type {
+  DocsSection,
+  DocsGroup,
+  DocsFrontmatter,
+  DocsAnchor,
+  DocsManifestEntry,
+  DocsManifest,
+  QuickAnswer,
+} from "./docsManifest.js";
+
+export type {
   PositionCode,
   Attribute,
   Race,

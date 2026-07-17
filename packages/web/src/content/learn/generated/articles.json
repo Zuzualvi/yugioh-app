@@ -1,0 +1,120 @@
+{
+  "howto.build-deck": {
+    "meta": {
+      "id": "howto.build-deck",
+      "section": "howto",
+      "group": "howto",
+      "title": "Build & Manage Decks",
+      "slug": "build-a-deck",
+      "summary": "Search the Edison card pool, add cards to your Main/Extra/Side Deck, and save your deck.",
+      "keywords": [
+        "deck builder",
+        "search cards",
+        "banlist",
+        "legality",
+        "export",
+        "import",
+        "ydk"
+      ],
+      "prevId": "howto.getting-started",
+      "nextId": "howto.start-duel",
+      "aliases": []
+    },
+    "html": "<h1 id=\"top\"><a href=\"#top\" class=\"anchor-link\" aria-label=\"Link to Build &amp; Manage Decks\">🔗</a>Build &amp; Manage Decks</h1>\n<blockquote>\n<p><strong>PLACEHOLDER:</strong> This page will be authored by Track C with verified content once the in-app docs surface (Track B4) ships. The structure below demonstrates the shell.</p>\n</blockquote>\n<h2 id=\"finding-cards\"><a href=\"#finding-cards\" class=\"anchor-link\" aria-label=\"Link to Finding Cards\">🔗</a>Finding Cards</h2>\n<p>Use the search bar at the top of the Deck Builder to search by name. The results show only cards legal in the <strong>Edison format (March 2010 banlist)</strong>. Each card displays its banlist status (Forbidden / Limited / Semi-Limited / Unlimited).</p>\n<h2 id=\"adding-cards\"><a href=\"#adding-cards\" class=\"anchor-link\" aria-label=\"Link to Adding Cards\">🔗</a>Adding Cards</h2>\n<p>Tap or click a card to open its inspector, then use the <strong>+</strong> button to add it to your Main, Extra, or Side Deck. The builder enforces:</p>\n<ul class=\"docs-list\">\n<li><strong>Main Deck:</strong> 40–60 cards</li>\n<li><strong>Extra Deck:</strong> 0–15 cards (Fusion + Synchro only)</li>\n<li><strong>Side Deck:</strong> 0–15 cards</li>\n</ul>\n<h2 id=\"legality\"><a href=\"#legality\" class=\"anchor-link\" aria-label=\"Link to Legality Indicators\">🔗</a>Legality Indicators</h2>\n<p>A chip at the top of the editor shows whether your deck is <strong>Valid</strong> or lists <strong>violations</strong>. Fix all violations before you can start a duel with that deck.</p>\n<h2 id=\"saving\"><a href=\"#saving\" class=\"anchor-link\" aria-label=\"Link to Saving and Exporting\">🔗</a>Saving and Exporting</h2>\n<p>Your deck auto-saves as you edit. Use <strong>Export</strong> to download a <code>.ydk</code> file compatible with other simulators. Use <strong>Import</strong> to load a <code>.ydk</code> file.</p>"
+  },
+  "howto.getting-started": {
+    "meta": {
+      "id": "howto.getting-started",
+      "section": "howto",
+      "group": "howto",
+      "title": "Getting Started",
+      "slug": "getting-started",
+      "summary": "Create your account, accept an invite, and set up your profile to start playing Edison.",
+      "keywords": [
+        "invite",
+        "account",
+        "profile",
+        "login",
+        "setup"
+      ],
+      "nextId": "howto.build-deck",
+      "aliases": []
+    },
+    "html": "<h1 id=\"top\"><a href=\"#top\" class=\"anchor-link\" aria-label=\"Link to Getting Started\">🔗</a>Getting Started</h1>\n<blockquote>\n<p><strong>PLACEHOLDER:</strong> This page will be authored by Track C with verified content once the in-app docs surface (Track B4) ships. The structure below demonstrates the shell.</p>\n</blockquote>\n<h2 id=\"create-account\"><a href=\"#create-account\" class=\"anchor-link\" aria-label=\"Link to Creating Your Account\">🔗</a>Creating Your Account</h2>\n<p>You join the group via an invite link from an admin. Click the link, choose a display name, and set a password. Your account is ready immediately.</p>\n<h2 id=\"login\"><a href=\"#login\" class=\"anchor-link\" aria-label=\"Link to Logging In\">🔗</a>Logging In</h2>\n<p>Go to the app URL and enter your display name and password. The app keeps you logged in for 30 days.</p>\n<h2 id=\"what-you-can-do\"><a href=\"#what-you-can-do\" class=\"anchor-link\" aria-label=\"Link to What You Can Do\">🔗</a>What You Can Do</h2>\n<p>From <strong>Home</strong> you have three options:</p>\n<ul class=\"docs-list\">\n<li><strong>Duel a friend</strong> — challenge another group member to a real-time duel</li>\n<li><strong>Build a deck</strong> — create and save Edison-format decks</li>\n<li><strong>Rules &amp; Guides</strong> — this documentation section</li>\n</ul>"
+  },
+  "rules.diff.06": {
+    "meta": {
+      "id": "rules.diff.06",
+      "section": "rules",
+      "group": "difference",
+      "ruleNumber": 6,
+      "title": "Ignition Effect Priority",
+      "slug": "difference-06-ignition-effect-priority",
+      "summary": "After a Summon that did not start a chain, the turn player may activate an Ignition Effect as Chain Link 1 before the opponent can respond.",
+      "keywords": [
+        "priority",
+        "ignition effect",
+        "summon",
+        "chain link 1",
+        "bottomless trap hole",
+        "torrential tribute",
+        "dark hole",
+        "respond",
+        "before opponent"
+      ],
+      "prevId": "rules.diff.05",
+      "nextId": "rules.diff.07",
+      "aliases": []
+    },
+    "html": "<h1 id=\"top\"><a href=\"#top\" class=\"anchor-link\" aria-label=\"Link to Rule #6 — Ignition Effect Priority\">🔗</a>Rule #6 — Ignition Effect Priority</h1>\n<blockquote>\n<p><strong>PLACEHOLDER:</strong> This page will be authored by Track C with verified content sourced from edisonformat.com once the in-app docs surface (Track B4) ships. The structure below demonstrates the intended article format.</p>\n</blockquote>\n<p><strong>TL;DR:</strong> On your turn, after a Summon that didn't start a chain, YOU may activate an Ignition Effect as Chain Link 1 before your opponent can respond (e.g. before Bottomless Trap Hole or Torrential Tribute).</p>\n<h2 id=\"summon-no-chain\"><a href=\"#summon-no-chain\" class=\"anchor-link\" aria-label=\"Link to When the Summon Does NOT Start a Chain\">🔗</a>When the Summon Does NOT Start a Chain</h2>\n<p>Most Normal Summons and Special Summons do not start a chain by themselves. When this happens:</p>\n<ol class=\"docs-list\">\n<li>The turn player (you) gets <strong>priority</strong> — the right to activate an Ignition Effect as Chain Link 1.</li>\n<li>You may use this to activate a monster's Ignition Effect immediately after the summon.</li>\n<li>Only after you <strong>pass priority</strong> (or activate an effect) can your opponent respond with a Trap card like Bottomless Trap Hole.</li>\n</ul>\n<p><strong>Example:</strong> You Normal Summon Chaos Sorcerer. It does not start a chain. You invoke priority and banish a monster from your opponent's Graveyard with Chaos Sorcerer's Ignition Effect. Your opponent cannot activate Bottomless Trap Hole to respond to the Summon because the chain has already started.</p>\n<h2 id=\"summon-starts-a-chain\"><a href=\"#summon-starts-a-chain\" class=\"anchor-link\" aria-label=\"Link to When the Summon DOES Start a Chain\">🔗</a>When the Summon DOES Start a Chain</h2>\n<p>Some monsters have Continuous, Trigger, or Flip Effects that activate automatically when Summoned, putting them on the chain. In this case:</p>\n<ol class=\"docs-list\">\n<li>No priority window exists — the chain is already open.</li>\n<li>Your opponent may respond to that chain link normally.</li>\n<li>The turn player does not get a separate priority window for an Ignition Effect after the chain resolves.</li>\n</ul>\n<h2 id=\"related-cards\"><a href=\"#related-cards\" class=\"anchor-link\" aria-label=\"Link to Related Cards\">🔗</a>Related Cards</h2>\n<p>Cards frequently involved in priority questions: <strong>Chaos Sorcerer</strong>, <strong>Sangan</strong> (Trigger, not Ignition), <strong>Brionac, Dragon of the Ice Barrier</strong> (Ignition).</p>"
+  },
+  "rules.diff.07": {
+    "meta": {
+      "id": "rules.diff.07",
+      "section": "rules",
+      "group": "difference",
+      "ruleNumber": 7,
+      "title": "SEGOC — Simultaneous Effects Go on the Chain",
+      "slug": "difference-07-segoc",
+      "summary": "When multiple effects trigger at the same time, they go on the chain in a fixed order: turn player's mandatory first, then turn player's optional, then opponent's mandatory, then opponent's optional.",
+      "keywords": [
+        "SEGOC",
+        "simultaneous effects",
+        "chain order",
+        "mandatory",
+        "optional",
+        "trigger effect",
+        "synchronize",
+        "simultaneous"
+      ],
+      "prevId": "rules.diff.06",
+      "nextId": "rules.diff.08",
+      "aliases": []
+    },
+    "html": "<h1 id=\"top\"><a href=\"#top\" class=\"anchor-link\" aria-label=\"Link to Rule #7 — SEGOC\">🔗</a>Rule #7 — SEGOC</h1>\n<blockquote>\n<p><strong>PLACEHOLDER:</strong> This page will be authored by Track C with verified content sourced from edisonformat.com once the in-app docs surface (Track B4) ships.</p>\n</blockquote>\n<p><strong>TL;DR:</strong> When multiple effects trigger simultaneously, they stack on the chain in a fixed order: turn player's mandatory effects → turn player's optional effects → opponent's mandatory effects → opponent's optional effects.</p>\n<h2 id=\"four-step-order\"><a href=\"#four-step-order\" class=\"anchor-link\" aria-label=\"Link to The Four-Step SEGOC Order\">🔗</a>The Four-Step SEGOC Order</h2>\n<p>When two or more Trigger Effects activate at the same time (e.g. two monsters die in the same chain resolution), they go on the chain in this exact sequence:</p>\n<ol class=\"docs-list\">\n<li><strong>Turn Player's Mandatory Triggers</strong> (Chain Link 1)</li>\n<li><strong>Turn Player's Optional Triggers</strong> (Chain Link 2, if any)</li>\n<li><strong>Non-Turn Player's Mandatory Triggers</strong> (Chain Link 3, if any)</li>\n<li><strong>Non-Turn Player's Optional Triggers</strong> (Chain Link 4, if any)</li>\n</ul>\n<p>The chain then resolves in Last In, First Out (LIFO) order — the last effect added resolves first.</p>\n<h2 id=\"why-it-matters\"><a href=\"#why-it-matters\" class=\"anchor-link\" aria-label=\"Link to Why This Matters\">🔗</a>Why This Matters</h2>\n<p>SEGOC determines <strong>who benefits from timing.</strong> An optional effect that ends up as the last Chain Link resolves first and cannot be negated by effects added earlier in the chain.</p>\n<p><strong>Example:</strong> Your Sangan and your opponent's Sangan are both destroyed simultaneously. Your opponent is the turn player. The chain is: CL1 = opponent's Sangan (mandatory, turn player goes first even though it's optional — wait, Sangan is optional). See the full rule for how mandatory vs optional interacts.</p>\n<blockquote>\n<p><strong>Note:</strong> The full SEGOC rule is nuanced. Track C will provide worked examples for each case.</p>\n</blockquote>"
+  },
+  "rules.primer.turn": {
+    "meta": {
+      "id": "rules.primer.turn",
+      "section": "rules",
+      "group": "primer",
+      "title": "How a Turn Works",
+      "slug": "primer-how-a-turn-works",
+      "summary": "A turn has six phases: Draw, Standby, Main Phase 1, Battle Phase, Main Phase 2, End Phase. The first turn's player cannot attack.",
+      "keywords": [
+        "turn",
+        "phases",
+        "draw phase",
+        "standby phase",
+        "main phase",
+        "battle phase",
+        "end phase",
+        "turn order",
+        "who goes first"
+      ],
+      "nextId": "rules.diff.01",
+      "aliases": []
+    },
+    "html": "<h1 id=\"top\"><a href=\"#top\" class=\"anchor-link\" aria-label=\"Link to How a Turn Works\">🔗</a>How a Turn Works</h1>\n<blockquote>\n<p><strong>PLACEHOLDER:</strong> This page will be authored by Track C with verified content sourced from edisonformat.com once the in-app docs surface (Track B4) ships.</p>\n</blockquote>\n<h2 id=\"who-goes-first\"><a href=\"#who-goes-first\" class=\"anchor-link\" aria-label=\"Link to Who Goes First\">🔗</a>Who Goes First</h2>\n<p>Before the duel begins, both players roll a die (or flip a coin). The winner <strong>chooses</strong> whether to go first or second. Going first has the advantage of setting up your board; going second lets you see what you're up against.</p>\n<h2 id=\"no-turn-1-battle-phase\"><a href=\"#no-turn-1-battle-phase\" class=\"anchor-link\" aria-label=\"Link to Turn-1 Battle Phase Restriction\">🔗</a>Turn-1 Battle Phase Restriction</h2>\n<p>The player who goes <strong>first</strong> cannot conduct a Battle Phase on their first turn. This is a core Edison rule — you cannot attack on turn 1.</p>\n<h2 id=\"six-phases\"><a href=\"#six-phases\" class=\"anchor-link\" aria-label=\"Link to The Six Phases\">🔗</a>The Six Phases</h2>\n<p>Each turn proceeds through these phases in order:</p>\n<ol class=\"docs-list\">\n<li><strong>Draw Phase (DP)</strong> — Draw one card from your Deck.</li>\n<li><strong>Standby Phase (SP)</strong> — Mandatory effects that trigger &quot;during the Standby Phase&quot; activate here.</li>\n<li><strong>Main Phase 1 (MP1)</strong> — Normal Summon, Set, activate Spells/Traps, use effects.</li>\n<li><strong>Battle Phase (BP)</strong> — Declare attacks. Skipped on the first player's first turn.</li>\n<li><strong>Main Phase 2 (MP2)</strong> — Like MP1; you may Normal Summon again only if you didn't in MP1.</li>\n<li><strong>End Phase (EP)</strong> — Discard to the hand limit (6 cards) and resolve end-of-turn effects.</li>\n</ul>\n<h2 id=\"turn-player-priority\"><a href=\"#turn-player-priority\" class=\"anchor-link\" aria-label=\"Link to Priority and the Turn Player\">🔗</a>Priority and the Turn Player</h2>\n<p>The turn player acts first in each phase. See <strong>Rule #6 (Ignition Effect Priority)</strong> for the specific rules about when each player can activate effects.</p>"
+  }
+}

@@ -1,6 +1,26 @@
+import { execFileSync } from "child_process";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import react from "@vitejs/plugin-react";
 import type { Connect, ViteDevServer } from "vite";
 import { defineConfig } from "vite";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Docs manifest plugin — runs buildDocsManifest.mjs before every build/serve.
+ * Emits docs-manifest.json and articles.ts into src/content/learn/generated/.
+ * (B4-REQ-2)
+ */
+function docsManifestPlugin() {
+  return {
+    name: "docs-manifest",
+    buildStart() {
+      const script = resolve(__dirname, "scripts/buildDocsManifest.mjs");
+      execFileSync(process.execPath, [script], { stdio: "inherit" });
+    },
+  };
+}
 
 /**
  * Mock API middleware — stands in for the real Spec-10 backend during
@@ -31,5 +51,5 @@ function mockApiPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), mockApiPlugin()],
+  plugins: [docsManifestPlugin(), react(), mockApiPlugin()],
 });

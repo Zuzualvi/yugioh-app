@@ -1,0 +1,675 @@
+/* =========================================================
+   Edison Duel — /learn docs surface styles
+   Inherits all design tokens from global.css.
+   ========================================================= */
+
+/* ─── Docs layout ──────────────────────────────────────── */
+
+.docs-layout {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+}
+
+.docs-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.docs-header-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--text-0);
+}
+
+.docs-search-wrap {
+  flex: 1;
+  min-width: 180px;
+  max-width: 360px;
+  position: relative;
+}
+
+.docs-search-input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px 8px 36px;
+  color: var(--text-0);
+  font-size: 0.9375rem;
+  min-height: 40px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.docs-search-input:focus {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.docs-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-2);
+  pointer-events: none;
+  font-size: 1rem;
+}
+
+/* ─── Two-column layout (desktop) ──────────────────────── */
+
+.docs-body {
+  display: flex;
+  flex: 1;
+}
+
+.docs-nav {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  overflow-y: auto;
+  position: sticky;
+  top: 61px; /* header height */
+  max-height: calc(100dvh - 61px);
+}
+
+.docs-content {
+  flex: 1;
+  min-width: 0;
+  padding: 32px 40px;
+  max-width: 860px;
+}
+
+@media (max-width: 1023px) {
+  .docs-nav {
+    display: none;
+  }
+  .docs-content {
+    padding: 24px 20px;
+  }
+}
+
+/* ─── Nav tree ─────────────────────────────────────────── */
+
+.docs-nav-section {
+  margin-bottom: 8px;
+}
+
+.docs-nav-section-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  padding: 8px 16px 4px;
+}
+
+.docs-nav-link {
+  display: block;
+  padding: 5px 16px 5px 24px;
+  font-size: 0.875rem;
+  color: var(--text-1);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition:
+    color var(--duration-fast),
+    border-color var(--duration-fast);
+  line-height: 1.4;
+}
+
+.docs-nav-link:hover {
+  color: var(--text-0);
+  text-decoration: none;
+}
+
+.docs-nav-link.active {
+  color: var(--accent-light);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+
+/* ─── Quick Answers block ─────────────────────────────── */
+
+.docs-quick-answers {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 32px;
+}
+
+.docs-quick-answers-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+
+.docs-qa-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docs-qa-link {
+  display: block;
+  padding: 6px 0;
+  color: var(--accent-light);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.docs-qa-link::before {
+  content: "▸ ";
+  color: var(--text-2);
+}
+
+.docs-qa-link:hover {
+  color: var(--text-0);
+  text-decoration: none;
+}
+
+.docs-qa-see-all {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.docs-qa-see-all:hover {
+  color: var(--text-1);
+}
+
+/* ─── Section cards (landing) ─────────────────────────── */
+
+.docs-section-block {
+  margin-bottom: 40px;
+}
+
+.docs-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+
+.docs-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.docs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--duration-fast);
+  cursor: pointer;
+}
+
+.docs-card:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.docs-card-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-0);
+}
+
+.docs-card-summary {
+  font-size: 0.875rem;
+  color: var(--text-1);
+  line-height: 1.4;
+}
+
+/* ─── 13 Differences grid ─────────────────────────────── */
+
+.docs-diff-grid {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px;
+}
+
+.docs-diff-link {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-1);
+  font-size: 0.875rem;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.docs-diff-link:hover {
+  background: var(--bg-2);
+  color: var(--text-0);
+  text-decoration: none;
+}
+
+.docs-diff-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+  min-width: 20px;
+}
+
+/* ─── Article styles ──────────────────────────────────── */
+
+.docs-article {
+  max-width: 720px;
+}
+
+.docs-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.docs-breadcrumb a {
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.docs-breadcrumb a:hover {
+  color: var(--text-1);
+}
+
+.docs-rule-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.docs-article-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+
+.docs-tldr {
+  background: var(--bg-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 0.9375rem;
+  color: var(--text-0);
+  line-height: 1.5;
+}
+
+.docs-tldr strong {
+  color: var(--accent-light);
+}
+
+.docs-toc {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 28px;
+  font-size: 0.875rem;
+}
+
+.docs-toc-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.docs-toc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.docs-toc-link {
+  color: var(--text-1);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.docs-toc-link:hover {
+  color: var(--accent-light);
+}
+
+/* ─── Article body (rendered HTML) ───────────────────── */
+
+.docs-body-html h2,
+.docs-body-html h3,
+.docs-body-html h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 28px;
+  margin-bottom: 10px;
+  scroll-margin-top: 80px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docs-body-html h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.docs-body-html h3 {
+  font-size: 1.0625rem;
+}
+
+.docs-body-html h4 {
+  font-size: 1rem;
+}
+
+.docs-body-html p {
+  margin-bottom: 14px;
+  line-height: 1.65;
+  color: var(--text-0);
+}
+
+.docs-body-html blockquote {
+  border-left: 3px solid var(--border);
+  padding: 10px 16px;
+  margin: 16px 0;
+  color: var(--text-1);
+  background: var(--bg-1);
+  border-radius: 0 6px 6px 0;
+}
+
+.docs-body-html blockquote p {
+  margin-bottom: 0;
+}
+
+.docs-body-html ul.docs-list,
+.docs-body-html ol.docs-list {
+  padding-left: 24px;
+  margin-bottom: 14px;
+}
+
+.docs-body-html li {
+  margin-bottom: 4px;
+  line-height: 1.55;
+}
+
+.docs-body-html code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--bg-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.docs-body-html strong {
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.docs-body-html a {
+  color: var(--accent-light);
+}
+
+.docs-body-html .anchor-link {
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.docs-body-html h2:hover .anchor-link,
+.docs-body-html h3:hover .anchor-link,
+.docs-body-html h4:hover .anchor-link {
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .docs-body-html .anchor-link {
+    opacity: 0.6;
+  }
+}
+
+/* ─── Prev / Next navigation ──────────────────────────── */
+
+.docs-prevnext {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-prevnext-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  max-width: 48%;
+  transition: border-color var(--duration-fast);
+}
+
+.docs-prevnext-btn:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.docs-prevnext-label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.docs-prevnext-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--accent-light);
+}
+
+/* ─── Placeholder notice ──────────────────────────────── */
+
+.docs-placeholder-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(212, 135, 42, 0.12);
+  border: 1px solid rgba(212, 135, 42, 0.4);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+  color: var(--warning);
+}
+
+/* ─── Search results ──────────────────────────────────── */
+
+.docs-search-results {
+  margin-top: 24px;
+}
+
+.docs-search-group-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.docs-search-result {
+  display: block;
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 8px;
+  transition: border-color var(--duration-fast);
+}
+
+.docs-search-result:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.docs-search-result-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-0);
+  margin-bottom: 2px;
+}
+
+.docs-search-result-snippet {
+  font-size: 0.875rem;
+  color: var(--text-1);
+}
+
+/* ─── Docs slide-in (Duel "?") ────────────────────────── */
+
+.docs-slidein-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.docs-slidein-panel {
+  background: var(--bg-1);
+  border-left: 1px solid var(--border);
+  width: min(400px, 100vw);
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: slidein-in var(--duration-med) ease;
+}
+
+@keyframes slidein-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.docs-slidein-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-1);
+  z-index: 1;
+}
+
+.docs-slidein-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.docs-slidein-body {
+  padding: 20px;
+  flex: 1;
+}
+
+/* ─── Mobile accordion ─────────────────────────────────── */
+
+.docs-accordion-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-0);
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 8px;
+  transition: background var(--duration-fast);
+}
+
+.docs-accordion-btn:hover {
+  background: var(--bg-2);
+}
+
+.docs-accordion-content {
+  padding: 4px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

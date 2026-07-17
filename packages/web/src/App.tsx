@@ -8,6 +8,8 @@ import { MyDecksScreen } from "./screens/MyDecksScreen";
 import { CreateDuelScreen } from "./screens/CreateDuelScreen";
 import { JoinDuelScreen } from "./screens/JoinDuelScreen";
 import { DuelScreen } from "./screens/DuelScreen";
+import { DocsLandingScreen } from "./screens/learn/DocsLandingScreen";
+import { DocArticleScreen } from "./screens/learn/DocArticleScreen";
 import "./styles/global.css";
 import "./styles/builder.css";
 
@@ -125,6 +127,34 @@ export function App() {
           </RequireAuth>
         }
       />
+
+      {/* Docs — /learn and /rules alias (B4-REQ-1) */}
+      <Route
+        path="/learn"
+        element={
+          <RequireAuth>
+            <DocsLandingScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/learn/how-to/:slug"
+        element={
+          <RequireAuth>
+            <DocArticleScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/learn/rules/:slug"
+        element={
+          <RequireAuth>
+            <DocArticleScreen />
+          </RequireAuth>
+        }
+      />
+      {/* /rules → alias for /learn/rules (IA §2.1) */}
+      <Route path="/rules" element={<Navigate to="/learn" replace />} />
 
       {/* Catch-all → home */}
       <Route path="*" element={<Navigate to="/" replace />} />

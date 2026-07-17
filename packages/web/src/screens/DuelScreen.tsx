@@ -29,6 +29,7 @@ import type {
 import { ActionPanel } from "../components/ActionPanel";
 import { DuelBoard } from "../components/DuelBoard";
 import { DuelTimer } from "../components/DuelTimer";
+import { DocsSlideIn } from "../components/DocsSlideIn";
 import { openDuelSocket } from "../api/duelSocket";
 import type { MockDuelSession } from "../mock/duelSession";
 
@@ -58,6 +59,8 @@ export function DuelScreen() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  /** Docs slide-in — B4-REQ-5: generic "?" panel, no engine-event deep-links in V1. */
+  const [docsOpen, setDocsOpen] = useState(false);
 
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
@@ -218,7 +221,20 @@ export function DuelScreen() {
             mySeat={effectiveSeat}
           />
         )}
+        {/* Rules & Guides "?" button — opens generic docs slide-in (B4-REQ-5) */}
+        <button
+          className="btn btn-ghost"
+          onClick={() => setDocsOpen(true)}
+          aria-label="Open Rules & Guides"
+          style={{ padding: "6px 12px", minHeight: 44, marginLeft: "auto", fontSize: "1rem" }}
+          title="Rules & Guides"
+        >
+          ?
+        </button>
       </header>
+
+      {/* Docs slide-in — V1: generic; no engine-event deep-links */}
+      {docsOpen && <DocsSlideIn onClose={() => setDocsOpen(false)} />}
 
       {/* Error banner */}
       {error && (

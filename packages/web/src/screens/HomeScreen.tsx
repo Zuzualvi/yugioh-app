@@ -136,13 +136,12 @@ export function HomeScreen() {
             href="/decks"
           />
 
-          {/* Rules & rulings — stub */}
+          {/* Rules & Guides — live (B4-REQ-1) */}
           <ActionCard
             icon="📖"
-            title="Rules & rulings"
-            description="Edison format rules, ban list, and card rulings reference."
-            comingSoon
-            href="#"
+            title="Rules & Guides"
+            description="Learn Edison format and how to use the app — rules, the damage step, priority, and card references."
+            href="/learn"
           />
         </div>
 

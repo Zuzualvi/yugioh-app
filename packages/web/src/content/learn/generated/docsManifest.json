@@ -1,0 +1,200 @@
+[
+  {
+    "id": "howto.build-deck",
+    "url": "/learn/how-to/build-a-deck",
+    "section": "howto",
+    "group": "howto",
+    "title": "Build & Manage Decks",
+    "slug": "build-a-deck",
+    "summary": "Search the Edison card pool, add cards to your Main/Extra/Side Deck, and save your deck.",
+    "keywords": [
+      "deck builder",
+      "search cards",
+      "banlist",
+      "legality",
+      "export",
+      "import",
+      "ydk"
+    ],
+    "anchors": [
+      {
+        "id": "howto.build-deck#finding-cards",
+        "text": "Finding Cards",
+        "url": "/learn/how-to/build-a-deck#finding-cards"
+      },
+      {
+        "id": "howto.build-deck#adding-cards",
+        "text": "Adding Cards",
+        "url": "/learn/how-to/build-a-deck#adding-cards"
+      },
+      {
+        "id": "howto.build-deck#legality",
+        "text": "Legality Indicators",
+        "url": "/learn/how-to/build-a-deck#legality"
+      },
+      {
+        "id": "howto.build-deck#saving",
+        "text": "Saving and Exporting",
+        "url": "/learn/how-to/build-a-deck#saving"
+      }
+    ],
+    "aliases": [],
+    "prevId": "howto.getting-started",
+    "nextId": "howto.start-duel"
+  },
+  {
+    "id": "howto.getting-started",
+    "url": "/learn/how-to/getting-started",
+    "section": "howto",
+    "group": "howto",
+    "title": "Getting Started",
+    "slug": "getting-started",
+    "summary": "Create your account, accept an invite, and set up your profile to start playing Edison.",
+    "keywords": [
+      "invite",
+      "account",
+      "profile",
+      "login",
+      "setup"
+    ],
+    "anchors": [
+      {
+        "id": "howto.getting-started#create-account",
+        "text": "Creating Your Account",
+        "url": "/learn/how-to/getting-started#create-account"
+      },
+      {
+        "id": "howto.getting-started#login",
+        "text": "Logging In",
+        "url": "/learn/how-to/getting-started#login"
+      },
+      {
+        "id": "howto.getting-started#what-you-can-do",
+        "text": "What You Can Do",
+        "url": "/learn/how-to/getting-started#what-you-can-do"
+      }
+    ],
+    "aliases": [],
+    "nextId": "howto.build-deck"
+  },
+  {
+    "id": "rules.primer.turn",
+    "url": "/learn/rules/primer-how-a-turn-works",
+    "section": "rules",
+    "group": "primer",
+    "title": "How a Turn Works",
+    "slug": "primer-how-a-turn-works",
+    "summary": "A turn has six phases: Draw, Standby, Main Phase 1, Battle Phase, Main Phase 2, End Phase. The first turn's player cannot attack.",
+    "keywords": [
+      "turn",
+      "phases",
+      "draw phase",
+      "standby phase",
+      "main phase",
+      "battle phase",
+      "end phase",
+      "turn order",
+      "who goes first"
+    ],
+    "anchors": [
+      {
+        "id": "rules.primer.turn#who-goes-first",
+        "text": "Who Goes First",
+        "url": "/learn/rules/primer-how-a-turn-works#who-goes-first"
+      },
+      {
+        "id": "rules.primer.turn#no-turn-1-battle-phase",
+        "text": "Turn-1 Battle Phase Restriction",
+        "url": "/learn/rules/primer-how-a-turn-works#no-turn-1-battle-phase"
+      },
+      {
+        "id": "rules.primer.turn#six-phases",
+        "text": "The Six Phases",
+        "url": "/learn/rules/primer-how-a-turn-works#six-phases"
+      },
+      {
+        "id": "rules.primer.turn#turn-player-priority",
+        "text": "Priority and the Turn Player",
+        "url": "/learn/rules/primer-how-a-turn-works#turn-player-priority"
+      }
+    ],
+    "aliases": [],
+    "nextId": "rules.diff.01"
+  },
+  {
+    "id": "rules.diff.06",
+    "url": "/learn/rules/difference-06-ignition-effect-priority",
+    "section": "rules",
+    "group": "difference",
+    "title": "Ignition Effect Priority",
+    "slug": "difference-06-ignition-effect-priority",
+    "summary": "After a Summon that did not start a chain, the turn player may activate an Ignition Effect as Chain Link 1 before the opponent can respond.",
+    "keywords": [
+      "priority",
+      "ignition effect",
+      "summon",
+      "chain link 1",
+      "bottomless trap hole",
+      "torrential tribute",
+      "dark hole",
+      "respond",
+      "before opponent"
+    ],
+    "anchors": [
+      {
+        "id": "rules.diff.06#summon-no-chain",
+        "text": "When the Summon Does NOT Start a Chain",
+        "url": "/learn/rules/difference-06-ignition-effect-priority#summon-no-chain"
+      },
+      {
+        "id": "rules.diff.06#summon-starts-a-chain",
+        "text": "When the Summon DOES Start a Chain",
+        "url": "/learn/rules/difference-06-ignition-effect-priority#summon-starts-a-chain"
+      },
+      {
+        "id": "rules.diff.06#related-cards",
+        "text": "Related Cards",
+        "url": "/learn/rules/difference-06-ignition-effect-priority#related-cards"
+      }
+    ],
+    "aliases": [],
+    "ruleNumber": 6,
+    "prevId": "rules.diff.05",
+    "nextId": "rules.diff.07"
+  },
+  {
+    "id": "rules.diff.07",
+    "url": "/learn/rules/difference-07-segoc",
+    "section": "rules",
+    "group": "difference",
+    "title": "SEGOC — Simultaneous Effects Go on the Chain",
+    "slug": "difference-07-segoc",
+    "summary": "When multiple effects trigger at the same time, they go on the chain in a fixed order: turn player's mandatory first, then turn player's optional, then opponent's mandatory, then opponent's optional.",
+    "keywords": [
+      "SEGOC",
+      "simultaneous effects",
+      "chain order",
+      "mandatory",
+      "optional",
+      "trigger effect",
+      "synchronize",
+      "simultaneous"
+    ],
+    "anchors": [
+      {
+        "id": "rules.diff.07#four-step-order",
+        "text": "The Four-Step SEGOC Order",
+        "url": "/learn/rules/difference-07-segoc#four-step-order"
+      },
+      {
+        "id": "rules.diff.07#why-it-matters",
+        "text": "Why This Matters",
+        "url": "/learn/rules/difference-07-segoc#why-it-matters"
+      }
+    ],
+    "aliases": [],
+    "ruleNumber": 7,
+    "prevId": "rules.diff.06",
+    "nextId": "rules.diff.08"
+  }
+]
