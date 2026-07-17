@@ -33,5 +33,25 @@
     "base": 61740673,
     "name": "Imperial Order",
     "reason": "pre-errata"
+  },
+  "511000228": {
+    "base": 95727991,
+    "name": "Catapult Turtle",
+    "reason": "pre-errata"
+  },
+  "511003028": {
+    "base": 80168720,
+    "name": "Darkness Approaches",
+    "reason": "pre-errata"
+  },
+  "511002998": {
+    "base": 47355498,
+    "name": "Necrovalley",
+    "reason": "pre-errata"
+  },
+  "511003007": {
+    "base": 21502796,
+    "name": "Ryko, Lightsworn Hunter",
+    "reason": "pre-errata"
   }
 }
