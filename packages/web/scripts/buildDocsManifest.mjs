@@ -16,7 +16,7 @@
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "fs";
-import { join, relative, dirname } from "path";
+import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -146,10 +146,6 @@ function parseAnchors(body) {
   return anchors;
 }
 
-/** Strip the {#anchor} marker from heading text for display. */
-function stripAnchorMarker(text) {
-  return text.replace(/\s*\{#[\w-]+\}\s*$/, "").trim();
-}
 
 /** Escape HTML special characters. */
 function esc(s) {
