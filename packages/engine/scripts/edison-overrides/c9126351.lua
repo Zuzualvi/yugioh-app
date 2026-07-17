@@ -1,9 +1,11 @@
 --鬼ガエル
 --Swap Frog
--- Edison override (A12):
--- (1) s.estg: added c:GetCode()~=68999286 to exclude Frog the Jam from extra Normal Summon.
---     Edison text: "except 'Swap Frog' or 'Frog the Jam'."
--- (2) s.tgfilter: changed IsFaceup() to IsLocation(LOCATION_MZONE) — face-down field monsters allowed.
+-- Edison override:
+-- (1) e5 SetCountLimit(1): per-copy ignition limit (each copy can use once per turn).
+-- (2) FlagEffect(id) in exop: prevents >1 extra Normal Summon per turn regardless of copies used.
+-- (3) s.estg: removed c:GetCode()~=68999286 — pre-errata text only excludes 'Swap Frog' itself;
+--     Frog the Jam [68999286] is NOT excluded from the extra Normal Summon in Edison.
+-- (4) s.tgfilter: changed IsFaceup() to IsLocation(LOCATION_MZONE) — face-down field monsters allowed.
 --     Edison text: "from your Deck or your side of the field" (no face-up restriction).
 local s,id=GetID()
 function s.initial_effect(c)
@@ -106,7 +108,8 @@ function s.exop(e,tp,eg,ep,ev,re,r,rp)
 	Duel.RegisterEffect(e1,tp)
 	Duel.RegisterFlagEffect(tp,id,RESET_PHASE|PHASE_END,0,1)
 end
--- CHANGED: added c:GetCode()~=68999286 to exclude Frog the Jam (Edison text)
+-- Edison text only excludes 'Swap Frog' itself; Frog the Jam is NOT excluded.
+-- CHANGED: removed c:GetCode()~=68999286 — pre-errata text does not exclude Frog the Jam.
 function s.estg(e,c)
-	return c:IsSetCard(SET_FROG) and c:GetCode()~=id and c:GetCode()~=68999286
+	return c:IsSetCard(SET_FROG) and c:GetCode()~=id
 end
