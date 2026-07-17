@@ -5,7 +5,7 @@
 > Update at each epic close (and when accuracy status changes). Keep claims honest — if something is
 > unverified, say so.
 >
-> _Last updated: 2026-07-17 (Product Lead) — Edison Parity Audit + In-App Docs phase kicked off._
+> _Last updated: 2026-07-17 (Coordination) — R10 LP-cost closed; Track B + B4 in progress._
 
 ## What this product is
 
@@ -29,10 +29,11 @@ Core Edison rule-flags locked at `EDISON_FLAGS = 0x7f80d072c` (custom WASM). Emp
 tracked in the **parity matrix** — the single source of truth for accuracy.
 
 - **Parity matrix:** `docs/working/2026-07-17-parity-matrix.md` — 127 acceptance-gate rows.
-- **Rollup (2026-07-17):** 5 VERIFIED-PASS · 80 NEEDS-TEST · 4 KNOWN-GAP (R10 LP-cost — patch exists,
-  confirm CI) · 2 CARVE-OUT (R12 infinite loops) · 24 NEEDS-AUTHORING (errata) · 6 SUBSTITUTE-WIRED ·
-  6 RULES-LEVEL-RULING · + 17 Tier-3 fixtures + 2 engineering data items.
-- **Honest read:** the *framework* rules are configured and 5 are proven; the bulk (80 rules behaviors
+- **Rollup (2026-07-17):** 6 VERIFIED-PASS · 83 NEEDS-TEST · 0 KNOWN-GAP · 2 CARVE-OUT (R12 infinite
+  loops) · 24 NEEDS-AUTHORING (errata) · 6 SUBSTITUTE-WIRED · 6 RULES-LEVEL-RULING · + 17 Tier-3
+  fixtures + 2 engineering data items. **R10 LP-cost CLOSED** — patch live in the WASM, Brain Control
+  800/801 verified 2026-07-17.
+- **Honest read:** the *framework* rules are configured and 6 are proven; the bulk (83 rules behaviors
   + 24 errata cards) are **defined and testable but not yet empirically verified**. Closing this is the
   active phase.
 
@@ -44,8 +45,8 @@ no-engine-assist table play, gated on **verified engine ↔ authoritative-rules 
 | Track | Owner | Status |
 |-------|-------|--------|
 | A — Authoritative rules reference + parity matrix + doc IA | Product Lead's team | ✅ Done |
-| B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | ⬜ Handed off 2026-07-17 |
-| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ⬜ Handed off |
+| B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | 🟡 In progress (CTO, 2026-07-17) |
+| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | 🟡 In progress (CTO, 2026-07-17) |
 | Convergence — parity sign-off (joint) | Product Lead + CTO | ⬜ Pending B |
 | C — Write & ship the docs | Product Lead's team | ⬜ Gated on sign-off |
 

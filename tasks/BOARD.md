@@ -4,6 +4,30 @@ _Last updated: 2026-07-16 (Stream 3 — Interactive Duel UI epic COMPLETE; Phase
 
 ---
 
+## Edison Parity Audit + In-App Docs (Track B / B4)
+
+> Parity matrix: `docs/working/2026-07-17-parity-matrix.md`. Handoff: `docs/working/2026-07-17-HANDOFF-parity-audit-and-docs.md`. Spec: `/workspace/specs/edison-parity-track-b.md`.
+
+| Task                                                                                                                                    | Owner    | Status               |
+| --------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------- |
+| WASM baseline verified (7/7 engine accuracy tests green)                                                                                | Eng      | ✅ Done (2026-07-17) |
+| HARDEN-ASSETS — pin CardScripts checkout to commit `847f559`                                                                            | Infra    | 🟡 In progress       |
+| `/learn` docs shell (B4) — route + shell components                                                                                     | Frontend | 🟡 In progress       |
+| Rules R01–R04 tests — author acceptance tests for R01-B2, R02-B1/B3-B7, R03, R04                                                        | Eng      | 🟡 In progress       |
+| Errata "wire + confirm" bucket — wire + assert SUBSTITUTE-WIRED cards (Brionac, Sangan, Rescue Cat, Goyo, Brain Control, Future Fusion) | Eng      | 🟡 In progress       |
+| R05 (Trap Monster Zone) — 16 acceptance tests                                                                                           | Eng      | ⬜ Queued (Wave 2)   |
+| R06–R07 (Ignition Priority, SEGOC) — 9 acceptance tests                                                                                 | Eng      | ⬜ Queued (Wave 2)   |
+| R08 (Damage Step) — 16 acceptance tests                                                                                                 | Eng      | ⬜ Queued (Wave 2)   |
+| R09–R13 + base scaffolding (incl. R10-B2/B2a/B2b maintenance self-destruct) — remaining rule tests                                      | Eng      | ⬜ Queued (Wave 2)   |
+| Errata authoring buckets 2 & 3 — NEEDS-AUTHORING cards (author/edit/wire per curation verdicts)                                         | Eng      | ⬜ Queued (Wave 2)   |
+| Data/loader — Ultimate Offering passcode resolution (ENG-ULTIMATE-OFFERING)                                                             | Eng      | ⬜ Queued (Wave 2)   |
+| Tier-3 fixtures — validateDeck + engine load/step for 17 staple decklists                                                               | Eng      | ⬜ Queued (Wave 2)   |
+| R12 spike — validate infinite-loop enforcement scope (CARVE-OUT)                                                                        | CTO      | ⬜ Queued (Wave 2)   |
+| QA verification — full matrix review, VERIFIED-PASS sign-off                                                                            | QA       | ⬜ Queued (Wave 2)   |
+| CI accuracy-gate fix — ensure `accuracy` job gates on all new tests                                                                     | Infra    | ⬜ Queued (Wave 2)   |
+
+---
+
 ## ⚠ Blockers / Notes
 
 - **Live duel BACKBONE is now PROVEN in CI (2026-07-15)** — committed Playwright E2E (`e2e/playwright/duel.spec.ts`, workflow `.github/workflows/e2e.yml`) is green on master: 2 seats connect over the real WS, both boards render real engine STATE, the on-clock decision is delivered, RESIGN round-trips to both. Fixed two wiring bugs to get here (WS path + pending-decision-on-connect).

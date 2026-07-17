@@ -4,7 +4,7 @@ subtitle: The single tracker engineers fill in and the Product Lead signs off ag
 audience: engineers (fill Actual/Evidence + flip Status); Product Lead (sign-off); CTO (spikes/fixes)
 author: product-owner subagent (Track A / A2)
 date: 2026-07-17
-status: DRAFT v1 — "expected" side pre-filled; "actual/evidence" LEFT BLANK for engineering
+status: IN PROGRESS — R10 verified; test-authoring underway
 binding_authority: edisonformat.com (LOCKED). On conflict, edisonformat.com wins; conflicts are flagged, never silently resolved.
 inputs:
   - /workspace/product/research/edison-rules-reference.md          (PRIMARY — 78 behaviors, base rules, 36 errata, 17 decklists)
@@ -80,16 +80,16 @@ artifact is present.
 
 | Status | Count | Where |
 |--------|------:|-------|
-| VERIFIED-PASS | **5** | §1: R01-B1, R02-B2, R06-B2, R06-B3, R13-B1 |
-| NEEDS-TEST | **80** | §1 (67) + §2 base (13) |
-| KNOWN-GAP | **4** | §1 R10 LP-cost (B1, B2, B2a, B2b) |
+| VERIFIED-PASS | **6** | §1: R01-B1, R02-B2, R06-B2, R06-B3, R13-B1, R10-B1 |
+| NEEDS-TEST | **83** | §1 (70) + §2 base (13) |
+| KNOWN-GAP | **0** | |
 | CARVE-OUT | **2** | §1 R12 infinite loops (B1, B2) |
 | NEEDS-AUTHORING | **24** | §3 errata |
 | SUBSTITUTE-WIRED | **6** | §3 errata (Brionac, Sangan, Rescue Cat, Goyo, Brain Control, Future Fusion) |
 | RULES-LEVEL-RULING | **6** | §3 errata (Cyber Phoenix, D.D. Survivor, Jade Knight, Lumina, Machina Gearframe, Susa Soldier) |
 | **TOTAL** | **127** | |
 
-**Section breakdown.** §1 rules = 78 (5 VERIFIED-PASS · 67 NEEDS-TEST · 4 KNOWN-GAP · 2 CARVE-OUT) ·
+**Section breakdown.** §1 rules = 78 (6 VERIFIED-PASS · 70 NEEDS-TEST · 0 KNOWN-GAP · 2 CARVE-OUT) ·
 §2 base = 13 (all NEEDS-TEST) · §3 errata = 36 (24 NEEDS-AUTHORING · 6 SUBSTITUTE-WIRED ·
 6 RULES-LEVEL-RULING).
 
@@ -99,10 +99,9 @@ rows ERR-ULTIMATE-OFFERING and ERR-REDMD).
 
 **Grand total tracked rows = 127 + 17 = 144**, plus 2 engineering annotations.
 
-> **Coverage headline for the STATUS section:** 5 of 127 acceptance-gate behaviors are automated-verified
-> today (~4%). The dominant work item is **80 NEEDS-TEST** behaviors (rules + base) and **24
-> NEEDS-AUTHORING** errata scripts. LP-cost (4) may already be green pending CI confirmation of the
-> patched WASM (see R10 notes).
+> **Coverage headline for the STATUS section:** 6 of 127 acceptance-gate behaviors are automated-verified
+> today (~5%). The dominant work item is **83 NEEDS-TEST** behaviors (rules + base) and **24
+> NEEDS-AUTHORING** errata scripts.
 
 ---
 
@@ -237,10 +236,10 @@ rows ERR-ULTIMATE-OFFERING and ERR-REDMD).
 
 | ID | Rule / Category | Expected Edison behavior | Source | Acceptance test | Actual | Evidence | Status | Tier | Notes |
 |----|----|----|----|----|----|----|----|----|----|
-| **R10-B1** | R10 cost-to-0 illegal | Cannot pay an LP cost that would reduce LP to 0 (action illegal). | RD #10 | **EXISTS (require patched WASM)** — `edisonRules.accuracy.test.ts` › "Edison Rule 6 — LP-cost strict patch" › "Brain Control [87910978] absent from activates when LP=800 (exact cost — ILLEGAL)" + "...present when LP=801...". | · | · | KNOWN-GAP | 1 | Patch `patches/ocgcore-lp-cost-strict.patch` (`<=`→`<` in field.cpp/operations.cpp) per decision 2026-07-14. **If patched WASM is live in CI, flip to VERIFIED-PASS.** |
-| **R10-B2** | R10 maintenance self-destruct | A card with an LP maintenance cost that can't be paid self-destructs. | RD #10 | Board a maintenance-cost card at threshold LP; enter the maintenance timing; assert MOVE self→GRAVE (self-destruct). | · | · | KNOWN-GAP | 1 | Depends on same patch. |
-| **R10-B2a** | R10 Mirror Wall | LP ≤ 2000 → Mirror Wall's OPTIONAL maintenance can't be paid → it self-destructs. | RD #10 | Set P0 LP ≤ 2000 with Mirror Wall [22359980] active; at Standby assert Mirror Wall→GRAVE. | · | · | KNOWN-GAP | 1 | |
-| **R10-B2b** | R10 Degenerate Circuit | LP ≤ 500 → Degenerate Circuit's MANDATORY maintenance can't be paid → it self-destructs. | RD #10 | Set P0 LP ≤ 500 with Degenerate Circuit [39168895] active; at Standby assert it self-destructs. | · | · | KNOWN-GAP | 1 | Confirm card in pool. |
+| **R10-B1** | R10 cost-to-0 illegal | Cannot pay an LP cost that would reduce LP to 0 (action illegal). | RD #10 | **EXISTS (require patched WASM)** — `edisonRules.accuracy.test.ts` › "Edison Rule 6 — LP-cost strict patch" › "Brain Control [87910978] absent from activates when LP=800 (exact cost — ILLEGAL)" + "...present when LP=801...". | Brain Control absent from activatable set at LP=800 (exact cost, illegal) and present at LP=801 — enforced by the patched WASM. | `packages/engine/src/edisonRules.accuracy.test.ts` › 'Edison Rule 6 — LP-cost strict patch (Edison rule #10)' (both subtests); baseline verified 2026-07-17 against WASM built by build-wasm.sh with patches/ocgcore-lp-cost-strict.patch applied. | VERIFIED-PASS | 1 | Patch `patches/ocgcore-lp-cost-strict.patch` (`<=`→`<` in field.cpp/operations.cpp) per decision 2026-07-14. Verified 2026-07-17. |
+| **R10-B2** | R10 maintenance self-destruct | A card with an LP maintenance cost that can't be paid self-destructs. | RD #10 | Board a maintenance-cost card at threshold LP; enter the maintenance timing; assert MOVE self→GRAVE (self-destruct). | · | · | NEEDS-TEST | 1 | Depends on same patch. Patch is applied and proven for activation costs (R10-B1); the maintenance-cost self-destruct path still needs its own test. |
+| **R10-B2a** | R10 Mirror Wall | LP ≤ 2000 → Mirror Wall's OPTIONAL maintenance can't be paid → it self-destructs. | RD #10 | Set P0 LP ≤ 2000 with Mirror Wall [22359980] active; at Standby assert Mirror Wall→GRAVE. | · | · | NEEDS-TEST | 1 | Patch is applied and proven for activation costs (R10-B1); the maintenance-cost self-destruct path still needs its own test. |
+| **R10-B2b** | R10 Degenerate Circuit | LP ≤ 500 → Degenerate Circuit's MANDATORY maintenance can't be paid → it self-destructs. | RD #10 | Set P0 LP ≤ 500 with Degenerate Circuit [39168895] active; at Standby assert it self-destructs. | · | · | NEEDS-TEST | 1 | Confirm card in pool. Patch is applied and proven for activation costs (R10-B1); the maintenance-cost self-destruct path still needs its own test. |
 
 ## R11 — End-of-Turn Discard (hand size)
 
