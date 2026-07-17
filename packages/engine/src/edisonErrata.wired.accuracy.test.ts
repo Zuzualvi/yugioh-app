@@ -42,7 +42,6 @@ const RYKO_PE = 511003007; // Ryko, Lightsworn Hunter (pre-errata, WIRED)
 const KOUMORI = 67724379; // Koumori Dragon — level 4, DARK, 1500 ATK, non-Tuner, no script
 const PLAGUESPREADER = 33420078; // Plaguespreader Zombie — DARK Tuner, level 2 (script in official/)
 const OJAMA_GREEN = 12482652; // Ojama Green — level 2, 0 ATK, RACE_BEAST (0x4000), LIGHT attribute
-const TREEBORN_FROG = 12538374; // Treeborn Frog — level 1 effect, 100 ATK
 const DARK_PALADIN = 98502113; // Dark Paladin — Fusion, level 8 (script in official/)
 const DARK_MAGICIAN = 46986414; // Dark Magician — level 7, normal monster
 const BUSTER_BLADER = 78193831; // Buster Blader — level 7, effect monster
@@ -50,10 +49,8 @@ const BUSTER_BLADER = 78193831; // Buster Blader — level 7, effect monster
 // ── Message-type constants (OcgMessageType enum values) ─────────────────────
 const MSG_SELECT_IDLECMD = OcgMessageType.SELECT_IDLECMD; // 11
 const MSG_SELECT_BATTLECMD = OcgMessageType.SELECT_BATTLECMD; // 10
-const MSG_SELECT_CHAIN = OcgMessageType.SELECT_CHAIN; // 16
 const MSG_SELECT_CARD = OcgMessageType.SELECT_CARD; // 15
 const MSG_SELECT_YESNO = OcgMessageType.SELECT_YESNO; // 13
-const MSG_SELECT_TRIBUTE = OcgMessageType.SELECT_TRIBUTE; // 20
 const MSG_MOVE = OcgMessageType.MOVE; // 50
 const MSG_CHAIN_END = 74; // CHAIN_END (not exported but numeric value confirmed)
 
@@ -83,12 +80,6 @@ interface BattleCmdMsg {
   type: number;
   player: number;
   attacks?: Array<{ code: number }>;
-}
-
-interface SelectChainMsg {
-  type: number;
-  player: number;
-  selects?: Array<{ code: number }>;
 }
 
 interface SelectYesNoMsg {
