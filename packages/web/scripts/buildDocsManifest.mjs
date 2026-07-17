@@ -146,7 +146,6 @@ function parseAnchors(body) {
   return anchors;
 }
 
-
 /** Escape HTML special characters. */
 function esc(s) {
   return s
