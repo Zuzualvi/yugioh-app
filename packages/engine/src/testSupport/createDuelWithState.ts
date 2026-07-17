@@ -268,6 +268,7 @@ const T = {
   SELECT_TRIBUTE: 20,
   SORT_CHAIN: 21,
   SORT_CARD: 25,
+  SELECT_UNSELECT_CARD: 26,
   ROCK_PAPER_SCISSORS: 132,
 } as const;
 
@@ -348,6 +349,13 @@ export function defaultRespond(msgs: OcgMsg[]): AnyResponse {
       case T.SORT_CHAIN:
       case T.SORT_CARD:
         return { type: 15, order: null };
+      case T.SELECT_UNSELECT_CARD: {
+        const suMsg = m as unknown as { select_cards: unknown[]; can_finish: boolean };
+        if (suMsg.select_cards.length > 0) {
+          return { type: 7, index: 0 };
+        }
+        return { type: 7, index: null };
+      }
     }
   }
   return { type: 3, yes: false };
