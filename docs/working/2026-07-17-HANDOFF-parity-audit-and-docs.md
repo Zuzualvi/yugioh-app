@@ -8,6 +8,35 @@ _Date: 2026-07-17 · Author: Product Lead · Audience: CTO + engineering (Track 
 
 ---
 
+## Start here (read order + engineering context)
+
+Picking this up cold? Read in this order, then work from the parity matrix:
+
+1. **`AGENTS.md`** (repo root) — the durable engineering rulebook: dependency direction
+   (contracts ← engine ← server; web imports contracts only), one-operation-per-file, the
+   `npm run verify` gate, and the git/push protocol (`git pull --rebase --autostash origin master` →
+   `git push origin master` → verify `local HEAD == remote` → report the SHA) + the pre-commit prettier hook.
+2. **`docs/STATUS.md`** — product-wide state: what's live, the accuracy rollup, and a map of every tracker.
+3. **This handoff** — the phase (what / why / scope / requirements / acceptance / how to report back).
+4. **`docs/working/2026-07-17-parity-matrix.md`** — your working tracker. Its header documents the test
+   harness, `EDISON_FLAGS = 0x7f80d072c`, and where the accuracy tests live.
+5. **`packages/engine/README.md`** + **`packages/engine/scripts/build-wasm.sh`** — how the custom
+   ocgcore WASM is built.
+
+**Environment / gotchas that will bite otherwise:**
+- **The custom WASM is NOT committed** (gitignored `packages/engine/vendor/`). Build it with
+  `build-wasm.sh` (emsdk ~290 MB) or rely on CI. **The Edison accuracy tests auto-SKIP when the WASM is
+  absent** — a local "green" without the artifact is NOT a verified pass. The CI **`accuracy` job**
+  (`.github/workflows/ci.yml`) builds the WASM (cached) and runs `edisonRules.accuracy.test.ts`; its
+  name still says "Rules 1–6" — **this phase expands that suite to the full matrix, so update the job + name.**
+- **CI status visibility:** the sandbox git credential cannot read the GitHub Actions API — confirm CI
+  is green via the CEO or by curling the live endpoints, not via `gh` / the Actions tab from the shell.
+- **Team memory** (`/mnt/memory/yugioh-app-team-memory/`) holds decision records and hard-won engine
+  breadcrumbs worth reading: `decisions/2026-07-17-parity-audit-scope.md` (this phase's scope, also
+  inlined below) and `research/edison-engine-rules-flags.md` (flag→behavior mapping + empirical spikes).
+
+---
+
 ## Problem & users
 
 The app is a **private, invite-only Yu-Gi-Oh "Edison format" dueling web app** for a small friend group
@@ -34,7 +63,9 @@ from the engine (writing docs to match the engine would enshrine any engine bug 
 1. **Binding authority = edisonformat.com** (edisonformat.net) for both rules and card errata. On
    source conflict, edisonformat.com wins and the conflict is escalated to the CEO — never silently
    resolved. (Q1, LOCKED.)
-2. **Parity-audit scope = three tiers** (decision record: `/decisions/2026-07-17-parity-audit-scope.md`):
+2. **Parity-audit scope = three tiers** (decision record in team memory:
+   `/mnt/memory/yugioh-app-team-memory/decisions/2026-07-17-parity-audit-scope.md`; the decision is
+   inlined here so the repo copy is self-sufficient):
    - **Tier 1 — rules-level: COMPLETE.** All 13 published rule-differences (expanded to 78 discrete
      testable behaviors) + the Master-Rule-1 base scaffolding.
    - **Tier 2 — card-level: EXHAUSTIVE on the 36 functional-errata cards ONLY.** These are the entire
