@@ -76,9 +76,9 @@ describe("buildCardMap", () => {
 });
 
 describe("loadAliasIndex", () => {
-  it("contains all 7 pre-errata aliases + cdb alt-arts (177 total)", () => {
+  it("contains all 11 pre-errata aliases + cdb alt-arts (181 total)", () => {
     const aliasIndex = loadAliasIndex();
-    expect(Object.keys(aliasIndex).length).toBe(177);
+    expect(Object.keys(aliasIndex).length).toBe(181);
   });
 
   it("maps Brionac alias 511002993 to base 50321796", () => {
