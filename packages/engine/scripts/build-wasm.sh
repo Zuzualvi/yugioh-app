@@ -37,10 +37,10 @@ if [ ! -d "$VENDOR/emsdk" ]; then
   git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$VENDOR/emsdk"
 fi
 
-echo "[2/6] Installing / activating emsdk latest..."
+echo "[2/6] Installing / activating emsdk 6.0.3..."
 cd "$VENDOR/emsdk"
-./emsdk install latest
-./emsdk activate latest
+./emsdk install 6.0.3
+./emsdk activate 6.0.3
 source ./emsdk_env.sh 2>/dev/null || true
 export PATH="$VENDOR/emsdk/upstream/emscripten:$VENDOR/emsdk:$PATH"
 

@@ -11,7 +11,7 @@
 #
 # Pinned sources:
 #   BabelCDB  @ 736536e0ce8bb1fafc798aea641631c690db9e83
-#   CardScripts @ 847f559049ed7e4e043709a319e5fa081490e234
+#   CardScripts @ 105d350039ee58a2e465ca8d9fe19b673107f921
 #
 # Run from any directory; script self-locates.
 # Requirements: git, curl, network access.
@@ -25,7 +25,7 @@ ASSETS_DIR="$ENGINE_DIR/assets"
 
 # ── Pinned commits ────────────────────────────────────────────────────────────
 BABEL_COMMIT="736536e0ce8bb1fafc798aea641631c690db9e83"
-CARDSCRIPTS_COMMIT="847f559049ed7e4e043709a319e5fa081490e234"
+CARDSCRIPTS_COMMIT="105d350039ee58a2e465ca8d9fe19b673107f921"
 
 BABEL_URL="https://github.com/ProjectIgnis/BabelCDB/raw/${BABEL_COMMIT}/cards.cdb"
 BABEL_UNOFFICIAL_URL="https://github.com/ProjectIgnis/BabelCDB/raw/${BABEL_COMMIT}/cards-unofficial.cdb"
@@ -94,11 +94,12 @@ trap 'rm -rf "$CLONE_DIR"' EXIT
 
 echo "[2/3] Cloning CardScripts @ ${CARDSCRIPTS_COMMIT:0:7}..."
 git clone --quiet --depth 1 "$CARDSCRIPTS_URL" "$CLONE_DIR"
-# Verify the commit (depth-1 clone gets HEAD; the pinned commit IS head of main)
+git -C "$CLONE_DIR" fetch --depth 1 origin 105d350039ee58a2e465ca8d9fe19b673107f921
+git -C "$CLONE_DIR" checkout --quiet 105d350039ee58a2e465ca8d9fe19b673107f921
 ACTUAL_COMMIT="$(git -C "$CLONE_DIR" rev-parse HEAD)"
 if [ "$ACTUAL_COMMIT" != "$CARDSCRIPTS_COMMIT" ]; then
-  echo "WARNING: CardScripts HEAD ($ACTUAL_COMMIT) differs from pinned ($CARDSCRIPTS_COMMIT)."
-  echo "         Proceeding with HEAD — update CARDSCRIPTS_COMMIT in this script if needed."
+  echo "ERROR: CardScripts HEAD ($ACTUAL_COMMIT) does not match pinned ($CARDSCRIPTS_COMMIT). Aborting."
+  exit 1
 fi
 echo "      Cloned @ $ACTUAL_COMMIT"
 
