@@ -154,6 +154,55 @@ prev/next), and an app how-to page.
 
 ---
 
+## Reporting back & resume contract (how to hand this back so the Product Lead can resume seamlessly)
+
+**Why this is mandatory:** there is **no live thread** between the build team and the Product Lead, and
+the CTO is session-based (cannot be async-paged). The *only* clean handback is a **written, in-repo
+trail a fresh Product Lead session can read cold and resume from.** Do not rely on any conversational
+handback.
+
+1. **The parity matrix is the live tracker.** As each row is verified, fill **Actual behavior** +
+   **Evidence** (test name + CI run / commit SHA) and set **Status**:
+   - `VERIFIED-PASS` — acceptance test green.
+   - `DEFECT` — engine behavior ≠ expected; add a one-line expected-vs-actual note. *(Use this status.)*
+   - `CARVE-OUT` — confirmed not engine-enforced; note the rationale + that it's documented as
+     human-adjudicated.
+   Keep the top-of-file rollup counts current.
+
+2. **Do NOT silently reconcile the engine to the docs (or vice-versa).** If the engine behaves
+   differently from the authoritative reference, that is a **DEFECT to fix** — not a reason to edit the
+   expected column. If you believe the *authoritative reference itself* is wrong, flag the row
+   `RECONCILE-TO-PRODUCT-LEAD` and leave it for adjudication (edisonformat.com is the authority;
+   conflicts escalate to the CEO). This protects the load-bearing principle: **authority == engine == docs.**
+
+3. **Completion report = the resume trigger.** When Track B (and/or B4) is done, write
+   `docs/working/YYYY-MM-DD-parity-audit-CTO-report.md` — the single artifact that tells the Product
+   Lead "you can resume." It MUST contain:
+   - Final matrix rollup (counts by status) + confirmation the matrix is **100% populated**.
+   - **Defects found & fixed** (each with fix commit SHA) and **any open defects** (with why).
+   - **Carve-outs** with rationale — including the **R12 verdict** from `B-SPIKE-1`.
+   - **RECONCILE list** — every place engine and authoritative reference disagree and the Product Lead
+     must decide doc wording / re-sourcing. *This is the single input the Product Lead most needs to
+     author correct docs — do not omit it.*
+   - **AC-1…AC-6:** met / not-met, one line each.
+   - **CI green** on the final commit (state the SHA).
+   - **B4:** `/learn` shell status + the exact `docs-manifest.json` frontmatter/anchor **schema** the
+     content must satisfy, so Track C content slots in without rework.
+
+4. **Delivery Definition of Done** (team protocol): every deliverable is **pushed to `origin/master`
+   and verified there** (`local HEAD == remote`), with the **pushed SHA reported** in the completion
+   report. A local commit is not delivered. After any slice lands, **confirm CI is green** before proceeding.
+
+5. **Keep the living docs current as work lands:** update `docs/STATUS.md` (accuracy rollup + phase row)
+   and `tasks/BOARD.md`, so the product-wide status never goes stale.
+
+**Product Lead resume point (on the completion report):** review the populated matrix + RECONCILE list
+→ record the **parity sign-off** (decision record + STATUS update) → adjudicate reconcile items (fix vs
+doc-nuance vs CEO escalation) → start **Track C** (write the docs) against the verified matrix + the
+`docs-manifest.json` schema.
+
+---
+
 ## Pointers
 
 - Parity matrix (audit instrument + acceptance gate): `docs/working/2026-07-17-parity-matrix.md`
