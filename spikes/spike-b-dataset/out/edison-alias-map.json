@@ -53,5 +53,15 @@
     "base": 21502796,
     "name": "Ryko, Lightsworn Hunter",
     "reason": "pre-errata"
+  },
+  "511003023": {
+    "base": 80604091,
+    "name": "Ultimate Offering",
+    "reason": "pre-errata"
+  },
+  "25862691": {
+    "base": 25862681,
+    "name": "Ancient Fairy Dragon",
+    "reason": "pre-errata"
   }
 }
