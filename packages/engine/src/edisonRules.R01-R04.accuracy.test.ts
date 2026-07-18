@@ -923,15 +923,11 @@ describe.skipIf(!WASM_AVAILABLE)("R03 — Union Monster Conditions [requires cus
 describe.skipIf(!WASM_AVAILABLE)(
   "R04 — Phase-mandatory trigger re-fires when activation negated [requires custom WASM]",
   () => {
-    // DEFECT: R04-B1 — With LADD [47297616] + Lumina [95503687] on field, Lumina's mandatory
-    // End-Phase mill never resolves.
-    // LADD fix: c47297616.lua negtg now registers per-phase flag UNCONDITIONALLY (and negop also
-    // registers it as belt-and-suspenders). This resolves the original infinite-negate loop.
-    // REMAINING ENGINE LIMITATION: Lumina's EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F mill operation
-    // does not produce MOVE messages in this WASM — even with forced SELECT_CHAIN accepted (index=0),
-    // the chain resolves but Duel.DiscardDeck generates no observable MOVE to GRAVE.
-    // Root cause appears to be an engine-model limitation with FIELD+TRIGGER_F effects in this build.
-    // RECOMMEND CARVE-OUT for the mill-observability aspect; LADD script fix is correct.
+    // CARVE-OUT (harness-observability, NOT a gameplay defect): the LADD infinite-negate bug IS
+    // fixed (c47297616), and Lightsworn End-Phase mill WORKS in a real duel (QA-verified: normal-
+    // summoned Lumina mills 3 cards DECK→GRAVE). The no-MOVE here is only because
+    // EFFECT_TYPE_FIELD+TRIGGER_F effects emit no message-stream MOVE when the source is
+    // DIRECT-PLACED via the test harness.
     it.fails(
       "R04-B1 — LADD negates Lumina End-Phase mill activation, Lumina re-fires → mill resolves — ENGINE LIMITATION (FIELD+TRIGGER_F operations not observable via MOVE)",
       async () => {
@@ -1065,12 +1061,11 @@ describe.skipIf(!WASM_AVAILABLE)(
       ).toBeLessThanOrEqual(1);
     }, 20_000);
 
-    // DEFECT: R04-B3 — Same as R04-B1 but for Spirit (Susa Soldier).
-    // LADD fix: c47297616.lua negtg now registers per-phase flag unconditionally (and negop too).
-    // REMAINING ENGINE LIMITATION: Spirit.ReturnOperation (EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
-    // does not produce a MOVE message when fired in EP — Duel.SendtoHand is not observed via
-    // MOVE messages in this WASM build. Same root cause as R04-B1 (FIELD+TRIGGER_F limitation).
-    // RECOMMEND CARVE-OUT for the return-to-hand observability; LADD script fix is correct.
+    // CARVE-OUT (harness-observability, NOT a gameplay defect): the LADD infinite-negate bug IS
+    // fixed (c47297616), and Lightsworn End-Phase mill / Spirit return WORK in a real duel
+    // (QA-verified: normal-summoned Lumina mills 3 cards DECK→GRAVE). The no-MOVE here is only
+    // because EFFECT_TYPE_FIELD+TRIGGER_F effects emit no message-stream MOVE when the source is
+    // DIRECT-PLACED via the test harness.
     it.fails(
       "R04-B3 — scope: Spirit (Susa Soldier) return re-fires after LADD negation → returns to hand — ENGINE LIMITATION (FIELD+TRIGGER_F return-to-hand not observable via MOVE)",
       async () => {

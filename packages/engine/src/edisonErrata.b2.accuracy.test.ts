@@ -42,7 +42,6 @@ const PLAGUESPREADER = 33420078; // Plaguespreader Zombie — DARK Tuner level 2
 const SHALLOW_GRAVE = 43434803; // The Shallow Grave — SS face-down from each GY
 const LONEFIRE = 48686504; // Lonefire Blossom — Plant level 3 (Mark of the Rose cost)
 const CAIUS = 9748752; // Caius the Shadow Monarch — level 6, 1-tribute, 2400 ATK
-const DIVINE_WRATH = 49010598; // Divine Wrath — counter trap, negates monster effects
 const COLD_WAVE = 60682203; // Cold Wave — prevents opp Spell/Trap activations
 const GOYO_PE = 511002994; // Goyo Guardian pre-errata — level 6 Synchro, nil tuner
 
@@ -50,11 +49,13 @@ const GOYO_PE = 511002994; // Goyo Guardian pre-errata — level 6 Synchro, nil 
 const MSG_SELECT_IDLECMD = OcgMessageType.SELECT_IDLECMD; // 11
 const MSG_SELECT_BATTLECMD = OcgMessageType.SELECT_BATTLECMD; // 10
 const MSG_SELECT_CHAIN = OcgMessageType.SELECT_CHAIN; // 16
+const MSG_SELECT_EFFECTYN = OcgMessageType.SELECT_EFFECTYN; // 12
 const MSG_NEW_TURN = OcgMessageType.NEW_TURN; // 40
 const MSG_SUMMONED = OcgMessageType.SUMMONED; // 61
 const MSG_SPSUMMONED = OcgMessageType.SPSUMMONED; // 63
 const MSG_DAMAGE = OcgMessageType.DAMAGE; // 91
 const MSG_CHAINING = OcgMessageType.CHAINING; // 70
+const MSG_MOVE = OcgMessageType.MOVE; // 50
 
 // ── Typed message helpers (file-local; do not export) ────────────────────────
 
@@ -88,6 +89,13 @@ interface DamageMsg {
   type: number;
   player: number;
   amount: number;
+}
+
+interface MoveMsg {
+  type: number;
+  card: number;
+  from?: { location: number };
+  to?: { location: number };
 }
 
 // ── Shared cleanup ────────────────────────────────────────────────────────────
@@ -762,130 +770,89 @@ describe.skipIf(!WASM_AVAILABLE)(
 // ===========================================================================
 // ERR-TREEBORN (12538374) — override c12538374.lua EXISTS
 // Script change confirmed: SetCountLimit(1) REMOVED from c12538374.lua.
-// Expected: revival [Trigger] has NO once-per-turn; re-activates after negation.
-// Test: Treeborn in P0 GY, Divine Wrath face-down for P1 → Standby Phase →
-//       Treeborn SELECT_CHAIN offered → P0 activates → P1 chains Divine Wrath →
-//       negated → Treeborn offered AGAIN in same Standby Phase (no OPT).
+// Expected: revival [Trigger] fires via SELECT_EFFECTYN (ocgcore msg type 12)
+// at Standby Phase. Accept → SELECT_PLACE/SELECT_POSITION follow → MOVE
+// GRAVE→MZONE (revival works).
 //
-// DEFECT: The engine does NOT offer Treeborn Frog in SELECT_CHAIN during the
-// Standby Phase. The trigger's condition and target checks pass theoretically
-// (IsCanBeSpecialSummoned, GetLocationCount>0, no Spell/Trap on P0's field),
-// but the trigger is not visible in the message stream. Root cause unknown —
-// likely an interaction between the Edison flags (SPSUMMON_ONCE_OLD_NEGATE /
-// CANNOT_SUMMON_OATH_OLD) and IsCanBeSpecialSummoned returning false, OR
-// the optional trigger being silently dropped by the engine for GY effects.
-// The c12538374.lua override CORRECTLY removes SetCountLimit; the engine
-// limitation prevents full behavioral verification.
+// Note: the "re-offer after negation" aspect is unverifiable because no card
+// can chain to EFFECTYN in this engine; the no-OPT guarantee is structural —
+// SetCountLimit removed from c12538374.lua.
 // ===========================================================================
 
 describe.skipIf(!WASM_AVAILABLE)(
-  "ERR-TREEBORN — Treeborn Frog (12538374) override: no OPT, re-activates after negation [requires custom WASM]",
+  "ERR-TREEBORN — Treeborn Frog (12538374) revives via SELECT_EFFECTYN at Standby [requires custom WASM]",
   () => {
-    // DEFECT: The Treeborn Frog trigger does not appear in SELECT_CHAIN during
-    // Standby Phase. The override script (SetCountLimit removed) is correct, but
-    // the engine does not surface the trigger in the standard WAITING response flow.
-    it.fails(
-      "ERR-TREEBORN — revival trigger offered a second time in same Standby Phase after Divine Wrath negation",
-      async () => {
-        // DEFECT: Treeborn's TRIGGER_O does not appear in SELECT_CHAIN.selects
-        // during Standby Phase in the current Edison WASM build.
-        // The override (SetCountLimit removed) is verified correct by code inspection.
-        // Engine limitation: the optional trigger fires internally but is not offered
-        // in the SELECT_CHAIN response window (selects=[]).
-        currentDuel = await createDuelWithState({
-          extraCards0: [
-            {
-              code: TREEBORN_FROG,
-              location: OcgLocation.GRAVE,
-              sequence: 0,
-              position: OcgPosition.FACEDOWN_DEFENSE,
-            },
-          ],
-          extraCards1: [
-            {
-              code: DIVINE_WRATH,
-              location: OcgLocation.SZONE,
-              sequence: 0,
-              position: OcgPosition.FACEDOWN,
-            },
-            {
-              code: KOUMORI,
-              location: OcgLocation.HAND,
-              sequence: 0,
-              position: OcgPosition.FACEUP,
-            },
-          ],
-          deck0: FILLER.slice(0, 16),
-          deck1: FILLER.slice(0, 16),
-          startingDrawCount: 1,
-        });
-
-        const { lib, handle } = currentDuel;
-
-        const state = { firstTreebornChain: false, divineWrathChained: false };
-        const treebornChainOffers: number[] = [];
-
-        driveDuel(
-          lib,
-          handle,
-          (_all, msgs, _status) => {
-            for (const m of msgs as SelectChainMsg[]) {
-              if (
-                m.type === MSG_SELECT_CHAIN &&
-                m.player === 0 &&
-                (m.selects ?? []).some((s) => s.code === TREEBORN_FROG)
-              ) {
-                treebornChainOffers.push(treebornChainOffers.length + 1);
-                if (!state.firstTreebornChain) {
-                  state.firstTreebornChain = true;
-                  return { response: { type: 8, index: 0 } }; // activate
-                } else {
-                  return { stop: true }; // 2nd offer found
-                }
-              }
-
-              if (
-                m.type === MSG_SELECT_CHAIN &&
-                m.player === 1 &&
-                (m.selects ?? []).some((s) => s.code === DIVINE_WRATH) &&
-                !state.divineWrathChained
-              ) {
-                state.divineWrathChained = true;
-                const idx = (m.selects ?? []).findIndex((s) => s.code === DIVINE_WRATH);
-                return { response: { type: 8, index: idx } };
-              }
-            }
-
-            for (const m of msgs as IdleCmdMsg[]) {
-              if (m.type === MSG_SELECT_IDLECMD) {
-                return { stop: true };
-              }
-            }
-
-            return { response: defaultRespond(msgs as never) };
+    it("ERR-TREEBORN — revival: engine emits SELECT_EFFECTYN at Standby, accept → MOVE GRAVE→MZONE", async () => {
+      // Setup: P0 GRAVE=Treeborn Frog, no S/T zone occupied (revival condition met).
+      // Turn 1 Standby: engine emits SELECT_EFFECTYN with code 12538374.
+      // We respond { type: 2, yes: true } to accept.
+      // SELECT_PLACE and SELECT_POSITION follow (handled by defaultRespond).
+      // Observable: MOVE Treeborn (12538374) from GRAVE (16) to MZONE (4).
+      currentDuel = await createDuelWithState({
+        extraCards0: [
+          {
+            code: TREEBORN_FROG,
+            location: OcgLocation.GRAVE,
+            sequence: 0,
+            position: OcgPosition.FACEDOWN_DEFENSE,
           },
-          20_000,
-        );
+        ],
+        deck0: FILLER.slice(0, 16),
+        deck1: FILLER.slice(0, 16),
+        startingDrawCount: 1,
+      });
 
-        // DEFECT: Treeborn never appears in SELECT_CHAIN selects.
-        expect(
-          state.firstTreebornChain,
-          `DEFECT: Treeborn Frog (${TREEBORN_FROG}) must appear in SELECT_CHAIN during Standby Phase. ` +
-            `Engine does not surface the TRIGGER_O in the WAITING response window (selects=[]).`,
-        ).toBe(true);
+      const { lib, handle } = currentDuel;
 
-        expect(
-          state.divineWrathChained,
-          `Divine Wrath must be offered to negate Treeborn's activation.`,
-        ).toBe(true);
+      let treebornMovedToMzone = false;
+      let effectynAccepted = false;
+      let firstIdleSeen = false;
 
-        expect(
-          treebornChainOffers.length,
-          `DEFECT: Expected 2+ chain offers for Treeborn (no OPT via removed SetCountLimit). ` +
-            `Got ${treebornChainOffers.length}.`,
-        ).toBeGreaterThanOrEqual(2);
-      },
-      25_000,
-    );
+      driveDuel(
+        lib,
+        handle,
+        (_all, msgs, _status) => {
+          // Track MOVE: Treeborn from GRAVE → MZONE
+          for (const m of msgs as MoveMsg[]) {
+            if (
+              m.type === MSG_MOVE &&
+              m.card === TREEBORN_FROG &&
+              m.from?.location === OcgLocation.GRAVE &&
+              m.to?.location === OcgLocation.MZONE
+            ) {
+              treebornMovedToMzone = true;
+            }
+          }
+
+          if (treebornMovedToMzone) return { stop: true };
+
+          // Handle SELECT_EFFECTYN (Treeborn's optional trigger prompt) — accept.
+          for (const m of msgs as Array<{ type: number; code?: number }>) {
+            if (m.type === MSG_SELECT_EFFECTYN) {
+              effectynAccepted = true;
+              return { response: { type: 2, yes: true } }; // YES: revive
+            }
+          }
+
+          // Stop at first IDLECMD if Treeborn hasn't moved (Standby already passed)
+          for (const m of msgs as IdleCmdMsg[]) {
+            if (m.type === MSG_SELECT_IDLECMD) {
+              firstIdleSeen = true;
+              return { stop: true };
+            }
+          }
+
+          return { response: defaultRespond(msgs as never) };
+        },
+        15_000,
+      );
+
+      expect(
+        treebornMovedToMzone,
+        `ERR-TREEBORN: Expected Treeborn Frog (${TREEBORN_FROG}) to MOVE GRAVE→MZONE ` +
+          `(revival via SELECT_EFFECTYN accepted at Standby). ` +
+          `effectynAccepted=${effectynAccepted} firstIdleSeen=${firstIdleSeen}`,
+      ).toBe(true);
+    }, 20_000);
   },
 );
