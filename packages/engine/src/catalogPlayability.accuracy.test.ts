@@ -15,7 +15,7 @@
 // (engine must not import card-data; see AGENTS.md dependency graph).
 // ---------------------------------------------------------------------------
 
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -33,19 +33,31 @@ const CATALOG_PATH = resolve(__dir, "../../card-data/out/edison-card-catalog.jso
 describe.skipIf(!existsSync(CDB_PATH))(
   "catalog playability (accuracy — requires fetched assets)",
   () => {
+    // DB is opened in beforeAll so it never executes at collection time when
+    // the suite is skipped (describe.skipIf skips it() bodies but the describe
+    // factory itself runs at collection — any top-level code here would throw).
+    let db: InstanceType<typeof Database>;
+    let stmtById: ReturnType<InstanceType<typeof Database>["prepare"]>;
+
     const catalog = JSON.parse(readFileSync(CATALOG_PATH, "utf-8")) as {
       cards: Array<{ passcode: number; name: string; frame: string }>;
     };
 
-    const db = new Database(CDB_PATH, { readonly: true });
-    const stmtById = db.prepare<[number], { id: number; alias: number }>(
-      "SELECT id, alias FROM datas WHERE id = ?",
-    );
+    beforeAll(() => {
+      db = new Database(CDB_PATH, { readonly: true });
+      stmtById = db.prepare<[number], { id: number; alias: number }>(
+        "SELECT id, alias FROM datas WHERE id = ?",
+      );
+    });
+
+    afterAll(() => {
+      db?.close();
+    });
 
     it("#1: every catalog passcode exists in cards.cdb", () => {
       const violators: Array<{ passcode: number; name: string }> = [];
       for (const card of catalog.cards) {
-        const row = stmtById.get(card.passcode);
+        const row = stmtById.get(card.passcode) as { id: number; alias: number } | undefined;
         if (!row) {
           violators.push({ passcode: card.passcode, name: card.name });
         }
@@ -64,7 +76,7 @@ describe.skipIf(!existsSync(CDB_PATH))(
       for (const card of catalog.cards) {
         if (card.frame === "normal") continue;
 
-        const row = stmtById.get(card.passcode);
+        const row = stmtById.get(card.passcode) as { id: number; alias: number } | undefined;
         // Cards absent from cds are caught by test #1; skip here to avoid double-counting
         if (!row) continue;
 
