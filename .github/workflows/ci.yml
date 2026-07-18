@@ -37,7 +37,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   accuracy:
-    name: accuracy (Edison rules 1–6)
+    name: accuracy (Edison full parity matrix)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -81,5 +81,8 @@ jobs:
         if: steps.cache-assets.outputs.cache-hit != 'true'
         run: bash packages/engine/scripts/fetch-assets.sh
 
-      - name: Run Edison accuracy tests (Rules 1–6)
-        run: npx vitest run packages/engine/src/edisonRules.accuracy.test.ts
+      - name: Run Edison accuracy suite (full parity matrix)
+        # Full parity matrix: every *.accuracy.test.ts + the Tier-3 fixture loader.
+        # A glob so newly-added accuracy files are gated automatically. Uses the
+        # repo-local vitest binary (npx can resolve a different major and break).
+        run: node_modules/.bin/vitest run packages/engine/src/*.accuracy.test.ts packages/engine/src/edisonFixtures.load.test.ts
