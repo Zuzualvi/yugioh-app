@@ -34,23 +34,17 @@ Duels are **link-first**: you create an invite, drop it in your group chat, and 
 3. **Step 2 · Time per move** — choose how long each player gets for **each** move: **5 min · 15 min · 1 hr · 12 hr · 24 hr · 48 hr**, or **Custom**. Short = play live now; long = play out over days. The default is **24 hr**.
 4. Tap **Create duel & get link ▸**.
 
-_[Screenshot: Create-a-duel screen — deck list and time-per-move presets]_
-
 ## Share the link {#share}
 
 1. On the **Duel Created!** screen, tap **🔗 Copy link** and paste it into your group chat, or share it however you like.
 2. The link works for **one** duel with the first member who opens it.
 3. Tap **Enter duel ⚔** whenever you want to wait at the board — the game begins the moment your opponent joins. For a slow (async) game you can leave and come back later; your per-move clock keeps the duel alive.
 
-_[Screenshot: "Duel Created!" screen with the shareable link, Copy, and Enter duel buttons]_
-
 ## Join from a link {#join}
 
 1. Open the invite link a friend shared. You will see **"You've been challenged!"** along with the **time-per-move** the game uses.
 2. Pick the deck you want to play and tap **Accept & enter duel ▸**.
 3. You go straight to the board and the duel starts. (If the link says it has already started or expired, ask for a fresh one.)
-
-_[Screenshot: Join screen — "You've been challenged!" with the per-move timer and deck picker]_
 
 ## Who goes first {#who-goes-first}
 

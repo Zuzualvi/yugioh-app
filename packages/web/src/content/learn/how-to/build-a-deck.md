@@ -35,15 +35,11 @@ The builder only shows cards that are legal for **Edison format**, and it checks
 2. Tap **+ New deck** to start fresh, or tap an existing deck to keep editing it.
 3. Rename the deck any time by editing the **deck name** field at the top of the builder.
 
-_[Screenshot: My Decks list with "+ New deck" and per-deck ⋯ menu]_
-
 ## Search and filter the pool {#search-filter}
 
 1. Type a card name in the **search box** to find cards by name.
 2. Narrow the results with the **filter rail**: Type, Attribute, Level, ATK/DEF, banlist status, and card-text keywords.
 3. Tap any card to **inspect** it full-size; tap **+ Add** on a card (or the inspector's add button) to put it in your deck.
-
-_[Screenshot: deck builder search box + filter rail + card grid]_
 
 ## Add cards and watch legality {#legality}
 

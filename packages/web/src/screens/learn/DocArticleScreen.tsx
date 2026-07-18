@@ -6,8 +6,8 @@
  *
  * Article HTML is pre-rendered at build time by buildDocsManifest.mjs.
  */
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type { DocsManifestEntry } from "@yugioh-app/contracts";
 import { articles } from "../../content/learn/generated/articles";
 import manifestData from "../../content/learn/generated/docsManifest.json";
@@ -53,6 +53,21 @@ interface ArticleViewProps {
 
 function ArticleView({ entry, html }: ArticleViewProps) {
   const [tocOpen, setTocOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = document.getElementById(id);
+    if (!target) return;
+    if (typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ block: "start" });
+    }
+    if (!target.hasAttribute("tabindex")) {
+      target.setAttribute("tabindex", "-1");
+    }
+    target.focus({ preventScroll: true });
+  }, [location.hash, html]);
 
   const prevEntry = entry.prevId ? findById(entry.prevId) : undefined;
   const nextEntry = entry.nextId ? findById(entry.nextId) : undefined;

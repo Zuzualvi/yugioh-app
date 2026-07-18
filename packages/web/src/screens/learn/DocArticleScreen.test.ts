@@ -109,6 +109,46 @@ describe("DocArticleScreen — rendering a known article", () => {
   });
 });
 
+describe("DocArticleScreen — deep-link hash scroll", () => {
+  afterEach(() => {
+    // Restore scrollIntoView mock after each test in this describe
+    Element.prototype.scrollIntoView =
+      undefined as unknown as typeof Element.prototype.scrollIntoView;
+  });
+
+  async function renderArticleWithHash(hash: string) {
+    const { DocArticleScreen } = await import("./DocArticleScreen");
+    const path = `/learn/rules/difference-06-ignition-effect-priority${hash}`;
+    return render(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: [path] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/learn/rules/:slug",
+            element: React.createElement(DocArticleScreen),
+          }),
+        ),
+      ),
+    );
+  }
+
+  it("scrolls to and focuses the target heading when a hash is present", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    await renderArticleWithHash("#summon-no-chain");
+    expect((document.activeElement as HTMLElement | null)?.id).toBe("summon-no-chain");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("does not move focus to a heading when no hash is present", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    await renderArticleWithHash("");
+    expect((document.activeElement as HTMLElement | null)?.id).not.toBe("summon-no-chain");
+  });
+});
+
 describe("DocArticleScreen — unknown slug", () => {
   async function renderUnknown() {
     const { DocArticleScreen } = await import("./DocArticleScreen");

@@ -21,13 +21,9 @@ Edison Duel is a private club, so there is no public sign-up. You get in with an
 
 If you open a duel invite while signed out, sign in first — the app remembers the link and drops you back onto it once you are in.
 
-_[Screenshot: sign-in / set-up-account screen with Display name and password fields]_
-
 ## The Home screen {#home}
 
 Home is your hub. The top bar shows the **⟡ EDISON DUEL** wordmark, your name (**● Your name**), and **Sign out**. Below that, a **"What do you want to do?"** grid holds three cards.
-
-_[Screenshot: Home screen with the three action cards]_
 
 ## Where duels, decks, and guides live {#where-things-live}
 

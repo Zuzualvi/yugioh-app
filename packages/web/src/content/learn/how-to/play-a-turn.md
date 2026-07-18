@@ -34,8 +34,6 @@ You never have to remember what is legal. The app only ever offers you moves you
 
 When the engine needs a choice from you, an **action panel** appears — a sheet that slides up from the bottom on phone and tablet, or a menu on desktop. It lists your legal options; the board stays visible behind it. If there is nothing to decide, the panel simply waits.
 
-_[Screenshot: action sheet listing legal actions grouped by card]_
-
 ## Tap, choose, then pick a destination {#tap-choose-destination}
 
 Making a play is a short, guided chain:

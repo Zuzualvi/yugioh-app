@@ -28,8 +28,6 @@ prevId: howto.play-a-turn
 
 The board is laid out so **your** side is on the bottom and **your opponent's** side is on top, mirroring a real table. Here is what each part tells you.
 
-_[Screenshot: full duel board — opponent side, turn ribbon, your field, hand, phase rail]_
-
 ## Whose turn and which phase {#turn-and-phase}
 
 The **turn ribbon** across the middle reads, for example, **⚔ YOUR turn · Main 1** or **⚔ OPPONENT'S turn · Battle**. The **phase rail** at the bottom lists the six phases — **Draw · Standby · Main 1 · Battle · Main 2 · End** — and highlights the current one.
