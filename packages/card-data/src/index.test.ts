@@ -6,7 +6,8 @@ describe("loadCatalog", () => {
     const catalog = loadCatalog();
     expect(catalog.format).toBe("edison-2010-03");
     expect(catalog.count).toBe(catalog.cards.length);
-    expect(Math.abs(catalog.count - 3681)).toBeLessThanOrEqual(5);
+    // 3673 = 3681 original − 8 script-less promo cards removed (non-buildable, CEO decision 2026-07-18)
+    expect(Math.abs(catalog.count - 3673)).toBeLessThanOrEqual(5);
   });
 
   it("has cards sorted ascending by passcode", () => {

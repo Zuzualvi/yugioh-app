@@ -1,7 +1,7 @@
 {
   "format": "edison-2010-03",
   "generatedAt": "2026-07-13T11:51:51.810Z",
-  "count": 3681,
+  "count": 3673,
   "cards": [
     {
       "passcode": 27551,
@@ -45529,7 +45529,7 @@
       "imageId": 81439173
     },
     {
-      "passcode": 81480461,
+      "passcode": 81480460,
       "name": "Barrel Dragon",
       "frame": "effect",
       "isExtraDeck": false,
@@ -45541,7 +45541,7 @@
       "desc": "Once per turn: You can target 1 monster your opponent controls; toss a coin 3 times and destroy it if at least 2 of the results are heads.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 81480461
+      "imageId": 81480460
     },
     {
       "passcode": 81489939,
@@ -55097,126 +55097,6 @@
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 99995595
-    },
-    {
-      "passcode": 111000561,
-      "name": "Get Your Game On!",
-      "frame": "spell",
-      "isExtraDeck": false,
-      "race": "Continuous",
-      "attribute": null,
-      "level": null,
-      "atk": null,
-      "def": null,
-      "desc": "You can only play this card if you were present at the 2007 Yu-Gi-Oh! TRADING CARD GAME World Championship. The ATK of all your \"Elemental Hero\" and \"Neo-Spacian\" monsters on the field is doubled.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 111000561
-    },
-    {
-      "passcode": 501000000,
-      "name": "Ulevo",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Winged Beast",
-      "attribute": "EARTH",
-      "level": 10,
-      "atk": 3000,
-      "def": 2500,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by offering 3 Winged Beast-Type monsters on your side of the field as Tributes. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000000
-    },
-    {
-      "passcode": 501000001,
-      "name": "Meteo the Matchless",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Beast-Warrior",
-      "attribute": "DARK",
-      "level": 8,
-      "atk": 2400,
-      "def": 2000,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by offering 3 Beast-Warrior-Type monsters on your side of the field as Tributes. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000001
-    },
-    {
-      "passcode": 501000002,
-      "name": "King of Destruction - Xexex",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Fiend",
-      "attribute": "DARK",
-      "level": 10,
-      "atk": 3000,
-      "def": 2500,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by Tributing 3 Fiend-Type monsters on your side of the field. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000002
-    },
-    {
-      "passcode": 501000003,
-      "name": "Queen of Fate - Eternia",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Fairy",
-      "attribute": "LIGHT",
-      "level": 8,
-      "atk": 2400,
-      "def": 2000,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by Tributing 3 Fairy-Type monsters on your side of the field. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000003
-    },
-    {
-      "passcode": 501000004,
-      "name": "Testament of the Arcane Lords",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Spellcaster",
-      "attribute": "LIGHT",
-      "level": 10,
-      "atk": 3000,
-      "def": 3000,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by Tributing 3 Spellcaster-Type monsters on your side of the field. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000004
-    },
-    {
-      "passcode": 501000006,
-      "name": "Chimaera, the Master of Beasts",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Beast",
-      "attribute": "LIGHT",
-      "level": 9,
-      "atk": 3000,
-      "def": 3000,
-      "desc": "This card cannot be Special Summoned. To Tribute Summon this card, you must Tribute 3 Beast-Type monsters. If this card attacks your opponent directly and reduces their Life Points to 0, you win the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000006
-    },
-    {
-      "passcode": 501000007,
-      "name": "Emperor of Lightning",
-      "frame": "effect",
-      "isExtraDeck": false,
-      "race": "Thunder",
-      "attribute": "LIGHT",
-      "level": 8,
-      "atk": 2600,
-      "def": 2600,
-      "desc": "This card cannot be Special Summoned. This card must be Tribute Summoned by Tributing 3 Thunder-Type monsters on your side of the field. If this card attacks your opponent's Life Points directly and makes them 0, the controller of this card wins the Match.",
-      "banlist": "unlimited",
-      "aliasOf": null,
-      "imageId": 501000007
     }
   ]
 }

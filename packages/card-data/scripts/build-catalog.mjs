@@ -276,6 +276,50 @@ async function main() {
     catalogCards.push(dto);
   }
 
+  // ---------------------------------------------------------------------------
+  // Post-processing pass: canonical-passcode remap + unbuildable blocklist.
+  // Applied right before sort/write so a future regen stays consistent with
+  // the committed catalog. (Network-free; verified by inspection only.)
+  // ---------------------------------------------------------------------------
+
+  // Remap: off-by-one passcode corrections discovered after initial build.
+  // Both `passcode` and `imageId` are updated so catalog + image pipeline agree.
+  // { wrongPc: correctPc }
+  const CANONICAL_REMAP = {
+    81480461: 81480460, // Barrel Dragon: allow-list/YGOPRODeck stray +1; real cds id = 81480460
+  };
+  for (const card of catalogCards) {
+    const corrected = CANONICAL_REMAP[card.passcode];
+    if (corrected !== undefined) {
+      card.passcode = corrected;
+      card.imageId = corrected;
+    }
+  }
+
+  // Blocklist: promo/prize cards with no usable ocgcore script (never authored
+  // upstream). Including them in the catalog would let players build decks with
+  // cards the engine cannot instantiate or that are effect-less. CEO decision
+  // 2026-07-18: non-buildable (remove from catalog, not scripted).
+  const UNBUILDABLE_PROMOS = new Set([
+    111000561, // Get Your Game On! — not in cards.cdb at all
+    501000000, // Ulevo
+    501000001, // Meteo the Matchless
+    501000002, // King of Destruction - Xexex
+    501000003, // Queen of Fate - Eternia
+    501000004, // Testament of the Arcane Lords
+    501000006, // Chimaera, the Master of Beasts
+    501000007, // Emperor of Lightning
+  ]);
+  const beforeBlocklist = catalogCards.length;
+  catalogCards.splice(
+    0,
+    catalogCards.length,
+    ...catalogCards.filter((c) => !UNBUILDABLE_PROMOS.has(c.passcode)),
+  );
+  console.log(
+    `\nBlocklist: removed ${beforeBlocklist - catalogCards.length} unbuildable promo cards.`,
+  );
+
   // Sort ascending by passcode
   catalogCards.sort((a, b) => a.passcode - b.passcode);
 
