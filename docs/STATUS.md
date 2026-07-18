@@ -5,7 +5,7 @@
 > Update at each epic close (and when accuracy status changes). Keep claims honest — if something is
 > unverified, say so.
 >
-> _Last updated: 2026-07-18 (Product Lead) — Parity audit **SIGNED OFF** (CEO-confirmed); RECONCILE resolved; **Track C (docs authoring) IN PROGRESS.**_
+> _Last updated: 2026-07-18 (Product Lead) — Parity **SIGNED OFF**; **Track C docs CONTENT SHIPPED** to master @ 43d4048 (24 real pages; verify green). In-app docs feature substantially COMPLETE._
 
 ## What this product is
 
@@ -21,7 +21,7 @@ format. Live at **app.zuhayr.io** (Vercel frontend) / **api.zuhayr.io** (Fly bac
 | Deck builder | ✅ Live | Full Edison pool (3,681 cards), March-2010 banlist, live legality + copy-cap badges, `.ydk` import/export, My Decks. QA-signed-off. |
 | Interactive dueling | ✅ Live | Real Edison duel end-to-end through the UI, desktop + mobile. Server-authoritative custom ocgcore WASM, WS relay + per-seat hidden-info redaction, response-log replay persistence, per-duel forfeit timer (5m–48h), invite-link → duel. All 15 decision-kind panels, chain viz, phase/turn/LP. E2E green in CI (6 tests). |
 | Deployment | ✅ Live | CI green; Vercel READY; Fly deployed. |
-| **In-app rules/help docs** | ❌ Not built | Was in original V1 scope; no rules/help route exists. **← current phase delivers this.** |
+| **In-app rules/help docs** | ✅ Shipped | `/learn` (behind auth): 5 app how-tos, 5-page Edison primer, 13 rule-differences, 36-entry card reference. Authored from edisonformat.com + the verified parity matrix; carve-outs shown as "known table-difference" callouts. Live @ 43d4048. |
 
 ## Engine accuracy status (the "accuracy is sacred" promise)
 
@@ -53,9 +53,9 @@ no-engine-assist table play, gated on **verified engine ↔ authoritative-rules 
 |-------|-------|--------|
 | A — Authoritative rules reference + parity matrix + doc IA | Product Lead's team | ✅ Done |
 | B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | ✅ Done — QA-verified @1f04c24; 107 VP / 17 CO / 3 REC |
-| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ✅ Shell shipped (placeholder content) |
+| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ✅ Shell shipped |
 | Convergence — parity sign-off (joint) | Product Lead + CTO | ✅ **SIGNED OFF** 2026-07-18 (CEO-confirmed); RECONCILE resolved |
-| C — Write & ship the docs | Product Lead's team | 🟡 **In progress** — authoring the two doc sections against the verified matrix + manifest schema |
+| C — Write & ship the docs | Product Lead's team | ✅ **CONTENT SHIPPED** @ 43d4048 — 24 pages authored + integrated; verify green. Residual polish → CTO handoff. |
 
 Handoff: `docs/working/2026-07-17-HANDOFF-parity-audit-and-docs.md`.
 Scope decision: team memory `/decisions/2026-07-17-parity-audit-scope.md`.
