@@ -44,9 +44,11 @@ end
 function s.negtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	local c=e:GetHandler()
 	if chk==0 then return not c:HasFlagEffect(id) end
-	if c:IsHasEffect(EFFECT_REVERSE_UPDATE) then
-		c:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END,0,1)
-	end
+	-- Edison fix: register the per-phase negate-limit flag UNCONDITIONALLY so LADD
+	-- negates a given trigger's activation once, allowing re-fire to resolve.
+	-- (Original guard `if c:IsHasEffect(EFFECT_REVERSE_UPDATE)` was never true at full
+	--  stats → flag never set → LADD negated every re-activation indefinitely.)
+	c:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END,0,1)
 	Duel.SetOperationInfo(0,CATEGORY_NEGATE,eg,1,tp,0)
 end
 function s.negop(e,tp,eg,ep,ev,re,r,rp)
@@ -54,6 +56,9 @@ function s.negop(e,tp,eg,ep,ev,re,r,rp)
 	if c:IsFaceup() and c:IsRelateToEffect(e) and c:IsAttackAbove(500) and c:IsDefenseAbove(500)
 		and not c:IsStatus(STATUS_BATTLE_DESTROYED) and Duel.GetCurrentChain()==ev+1
 		and Duel.NegateActivation(ev) then
+		-- Belt-and-suspenders: also register the per-phase flag here in case negtg(chk!=0)
+		-- was not called (QUICK_F effects may bypass the chk!=0 path in some engine builds).
+		c:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END,0,1)
 		local e1=Effect.CreateEffect(c)
 		e1:SetType(EFFECT_TYPE_SINGLE)
 		e1:SetProperty(EFFECT_FLAG_COPY_INHERIT)
