@@ -92,11 +92,6 @@ describe("DocArticleScreen — rendering a known article", () => {
     expect(screen.getByText(/After a Summon/)).toBeTruthy();
   });
 
-  it("renders a placeholder notice", async () => {
-    await renderArticle("difference-06-ignition-effect-priority");
-    expect(screen.getByText(/Placeholder content/i)).toBeTruthy();
-  });
-
   it("renders the article body HTML", async () => {
     await renderArticle("difference-06-ignition-effect-priority");
     expect(screen.getByText("Test body content.")).toBeTruthy();

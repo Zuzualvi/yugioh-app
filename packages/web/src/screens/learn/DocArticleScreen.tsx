@@ -2,7 +2,7 @@
  * DocArticleScreen — renders a single /learn article (B4-REQ-3, B4-REQ-4).
  *
  * Displays: breadcrumb, rule badge (for differences), title, TL;DR, On-this-page
- * TOC, body HTML, prev/next navigation, and a placeholder notice.
+ * TOC, body HTML, and prev/next navigation.
  *
  * Article HTML is pre-rendered at build time by buildDocsManifest.mjs.
  */
@@ -117,12 +117,6 @@ function ArticleView({ entry, html }: ArticleViewProps) {
 
             {/* Title */}
             <h1 className="docs-article-title">{entry.title}</h1>
-
-            {/* Placeholder notice */}
-            <div className="docs-placeholder-notice" role="note">
-              ⚠ <strong>Placeholder content</strong> — Track C will replace this with verified
-              content sourced from authoritative Edison sources. Do not cite as authoritative.
-            </div>
 
             {/* TL;DR */}
             <div className="docs-tldr">
@@ -314,7 +308,7 @@ function NavTree({ currentId }: { currentId: string }) {
         })}
         <Link
           to="/learn/rules/cards"
-          className={`docs-nav-link${currentId === "rules.cards" ? " active" : ""}`}
+          className={`docs-nav-link${currentId === "rules.card.reference" ? " active" : ""}`}
         >
           Cards that play differently
         </Link>

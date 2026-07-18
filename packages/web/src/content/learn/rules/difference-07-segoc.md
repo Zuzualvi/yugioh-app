@@ -5,7 +5,7 @@ group: difference
 ruleNumber: 7
 title: "SEGOC — Simultaneous Effects Go on the Chain"
 slug: difference-07-segoc
-summary: "When multiple effects trigger at the same time, they go on the chain in a fixed order: turn player's mandatory first, then turn player's optional, then opponent's mandatory, then opponent's optional."
+summary: "When several effects trigger at the same time they build the chain in a fixed order — turn player's mandatory, then opponent's mandatory, then turn player's optional, then opponent's optional — and in Edison an earlier-triggered effect is placed before a later one within the same group."
 keywords:
   [
     SEGOC,
@@ -13,37 +13,46 @@ keywords:
     chain order,
     mandatory,
     optional,
-    trigger effect,
-    synchronize,
-    simultaneous,
+    turn player,
+    Sangan,
+    Caius the Shadow Monarch,
+    Soul Exchange,
+    LIFO,
+    trigger order,
   ]
 prevId: rules.diff.06
 nextId: rules.diff.08
 ---
 
-<!-- ⚠ PLACEHOLDER CONTENT — Track C will replace this with authoritative content sourced from edisonformat.com. Do not cite as authoritative. -->
+**TL;DR:** When several effects trigger at the same time they build the chain in a fixed order — turn player's mandatory, then opponent's mandatory, then turn player's optional, then opponent's optional — and in Edison an earlier-triggered effect is placed before a later one within the same group.
 
-# Rule #7 — SEGOC {#top}
+SEGOC ("Simultaneous Effects Go on the Chain") is the procedure for stacking multiple Trigger Effects that all meet their timing at the same moment. Edison uses the pre-2017 version, which adds one nuance about triggers that met their timing at _different_ moments.
 
-> **PLACEHOLDER:** This page will be authored by Track C with verified content sourced from edisonformat.com once the in-app docs surface (Track B4) ships.
+## The four-step SEGOC order {#four-step-order}
 
-**TL;DR:** When multiple effects trigger simultaneously, they stack on the chain in a fixed order: turn player's mandatory effects → turn player's optional effects → opponent's mandatory effects → opponent's optional effects.
+When two or more Trigger(-like) Effects trigger **simultaneously**, they are placed on the chain in this fixed order:
 
-## The Four-Step SEGOC Order {#four-step-order}
+1. **Turn player's MANDATORY effects**
+2. **Opponent's (non-turn player's) MANDATORY effects**
+3. **Turn player's OPTIONAL effects**
+4. **Opponent's (non-turn player's) OPTIONAL effects**
 
-When two or more Trigger Effects activate at the same time (e.g. two monsters die in the same chain resolution), they go on the chain in this exact sequence:
+All **mandatory** effects are placed on the chain before any **optional** effects; within the mandatory group and again within the optional group, the **turn player's** effect goes on before the **opponent's**. Ownership — **who controls the effect**, not who caused it — decides which player a trigger belongs to.
 
-1. **Turn Player's Mandatory Triggers** (Chain Link 1)
-2. **Turn Player's Optional Triggers** (Chain Link 2, if any)
-3. **Non-Turn Player's Mandatory Triggers** (Chain Link 3, if any)
-4. **Non-Turn Player's Optional Triggers** (Chain Link 4, if any)
+The chain then resolves **Last-In, First-Out (LIFO):** the effect placed on _last_ (highest Chain Link) resolves _first._ So the effect that goes on the chain latest — the opponent's optional trigger, if present — resolves before everything below it.
 
-The chain then resolves in Last In, First Out (LIFO) order — the last effect added resolves first.
+## Earlier trigger goes first within a group {#earlier-triggers-first}
 
-## Why This Matters {#why-it-matters}
+This is the Edison-specific nuance. If two effects fall in the **same** group above (say, both are the turn player's mandatory effects) but they met their trigger timing at **different moments**, the one that triggered **earlier** goes on the chain **first** (the lower Chain Link). (The modern game reverses this ordering; Edison keeps the pre-2017 "earlier trigger first" rule.)
 
-SEGOC determines **who benefits from timing.** An optional effect that ends up as the last Chain Link resolves first and cannot be negated by effects added earlier in the chain.
+The group order from the four-step list always wins first; the "earlier trigger goes first" rule only breaks ties **inside** a single group.
 
-**Example:** Your Sangan and your opponent's Sangan are both destroyed simultaneously. Your opponent is the turn player. The chain is: CL1 = opponent's Sangan (mandatory, turn player goes first even though it's optional — wait, Sangan is optional). See the full rule for how mandatory vs optional interacts.
+## Worked examples {#worked-examples}
 
-> **Note:** The full SEGOC rule is nuanced. Track C will provide worked examples for each case.
+**Example (same group, earlier trigger first) —** You Tribute your own **Sangan** to Tribute Summon **Caius the Shadow Monarch.** Both are your (turn player) **mandatory** triggers, so they are in the same group. Sangan meets its timing **earlier** (the moment it is sent from the field to the Graveyard as Tribute); Caius meets its timing **later** (on a successful Summon). So **Sangan is Chain Link 1** and **Caius is Chain Link 2** — earlier trigger, lower link.
+
+**Example (ownership decides the group) —** You activate **Soul Exchange** on your opponent's **Sangan**, then Tribute that Sangan to Tribute Summon **Caius.** Now the two triggers belong to **different players:** Caius is **yours** (turn player, mandatory) and Sangan is the **opponent's** (non-turn player, mandatory) — because ownership, not who did the tributing, decides the group. So the four-step order puts **Caius at Chain Link 1** (turn player's mandatory) and **Sangan at Chain Link 2** (opponent's mandatory), even though Sangan actually triggered earlier. Here the group order overrides the "earlier trigger first" tie-breaker, because the two triggers are in different groups.
+
+## Related cards {#related-cards}
+
+The teaching pair for SEGOC is **Sangan** and **Caius the Shadow Monarch**: Tributing your own Sangan for Caius shows "earlier trigger first" within one group, while using **Soul Exchange** to Tribute the opponent's Sangan for Caius shows how **ownership** decides which player's group a trigger belongs to. Any pile-up of simultaneous Trigger Effects — for example several monsters destroyed at once by **Dark Hole** — is ordered by these same four steps.

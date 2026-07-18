@@ -168,7 +168,7 @@ function inlineMarkdown(text) {
 function markdownToHtml(body) {
   const lines = body.split("\n");
   const html = [];
-  let inList = false;
+  let listType = null; // "ol" | "ul" | null — track which tag is open so we close the matching one
   let inBlockquote = false;
   let paraLines = [];
 
@@ -179,9 +179,9 @@ function markdownToHtml(body) {
   }
 
   function flushList() {
-    if (!inList) return;
-    html.push("</ul>");
-    inList = false;
+    if (!listType) return;
+    html.push(`</${listType}>`);
+    listType = null;
   }
 
   function flushBlockquote() {
@@ -241,9 +241,10 @@ function markdownToHtml(body) {
     if (numberedList) {
       flushPara();
       flushBlockquote();
-      if (!inList) {
+      if (listType && listType !== "ol") flushList();
+      if (!listType) {
         html.push('<ol class="docs-list">');
-        inList = true;
+        listType = "ol";
       }
       html.push(`<li>${inlineMarkdown(esc(numberedList[1]))}</li>`);
       continue;
@@ -253,9 +254,10 @@ function markdownToHtml(body) {
     if (line.match(/^[-*]\s+/)) {
       flushPara();
       flushBlockquote();
-      if (!inList) {
+      if (listType && listType !== "ul") flushList();
+      if (!listType) {
         html.push('<ul class="docs-list">');
-        inList = true;
+        listType = "ul";
       }
       const item = line.replace(/^[-*]\s+/, "");
       html.push(`<li>${inlineMarkdown(esc(item))}</li>`);

@@ -4,34 +4,72 @@ section: howto
 group: howto
 title: "Build & Manage Decks"
 slug: build-a-deck
-summary: "Search the Edison card pool, add cards to your Main/Extra/Side Deck, and save your deck."
-keywords: [deck builder, search cards, banlist, legality, export, import, ydk]
+summary: "Search and filter the Edison pool, add cards while the builder checks legality live, then save, duplicate, or import/export your deck as a .ydk file."
+keywords:
+  [
+    deck builder,
+    search,
+    filter,
+    banlist,
+    legality,
+    main deck,
+    extra deck,
+    side deck,
+    save,
+    duplicate,
+    import,
+    export,
+    ydk,
+  ]
 prevId: howto.getting-started
 nextId: howto.start-duel
 ---
 
-<!-- ⚠ PLACEHOLDER CONTENT — Track C will replace this with verified content. Do not cite as authoritative. -->
+> **Goal:** Search and filter the Edison pool, add cards while the builder checks legality live, then save, duplicate, or import/export your deck as a `.ydk` file.
 
-# Build & Manage Decks {#top}
+The builder only shows cards that are legal for **Edison format**, and it checks your deck against the format's limits as you go — so a green **✓ Legal** chip means the deck is ready to duel.
 
-> **PLACEHOLDER:** This page will be authored by Track C with verified content once the in-app docs surface (Track B4) ships. The structure below demonstrates the shell.
+## Open the builder {#open}
 
-## Finding Cards {#finding-cards}
+1. From **Home**, tap **🂡 Build a deck** to open **My Decks**.
+2. Tap **+ New deck** to start fresh, or tap an existing deck to keep editing it.
+3. Rename the deck any time by editing the **deck name** field at the top of the builder.
 
-Use the search bar at the top of the Deck Builder to search by name. The results show only cards legal in the **Edison format (March 2010 banlist)**. Each card displays its banlist status (Forbidden / Limited / Semi-Limited / Unlimited).
+_[Screenshot: My Decks list with "+ New deck" and per-deck ⋯ menu]_
 
-## Adding Cards {#adding-cards}
+## Search and filter the pool {#search-filter}
 
-Tap or click a card to open its inspector, then use the **+** button to add it to your Main, Extra, or Side Deck. The builder enforces:
+1. Type a card name in the **search box** to find cards by name.
+2. Narrow the results with the **filter rail**: Type, Attribute, Level, ATK/DEF, banlist status, and card-text keywords.
+3. Tap any card to **inspect** it full-size; tap **+ Add** on a card (or the inspector's add button) to put it in your deck.
+
+_[Screenshot: deck builder search box + filter rail + card grid]_
+
+## Add cards and watch legality {#legality}
+
+Every card shows its Edison **banlist badge**, so you always know how many copies are allowed:
+
+- **🚫 Forbidden** — 0 copies (cannot be added)
+- **① Limited** — 1 copy max
+- **② Semi-Limited** — 2 copies max
+- **✓ 3 Unrestricted** — up to 3 copies
+
+When you reach a card's copy limit, the builder stops you from adding more.
+
+## Main, Extra, and Side limits {#deck-limits}
+
+The **validity chip** at the top reads **✓ Legal** when every rule below is met, or **⚠** with the first problem to fix:
 
 - **Main Deck:** 40–60 cards
-- **Extra Deck:** 0–15 cards (Fusion + Synchro only)
+- **Extra Deck:** 0–15 cards — **Fusion and Synchro monsters only**
 - **Side Deck:** 0–15 cards
 
-## Legality Indicators {#legality}
+You need a **✓ Legal** deck to start or join a duel with it.
 
-A chip at the top of the editor shows whether your deck is **Valid** or lists **violations**. Fix all violations before you can start a duel with that deck.
+## Save, duplicate, import and export {#save-share}
 
-## Saving and Exporting {#saving}
+1. Tap **💾 Save** to store your deck. It appears in **My Decks**.
+2. To copy a deck, open its **⋯** menu in My Decks and choose **Duplicate** — handy for building a Side Deck variant.
+3. Use **Export .ydk** to download your deck, or **Import .ydk** to load a list from another simulator. `.ydk` is the standard deck-list format.
 
-Your deck auto-saves as you edit. Use **Export** to download a `.ydk` file compatible with other simulators. Use **Import** to load a `.ydk` file.
+**See also:** Why the Extra Deck is Fusion + Synchro only is explained in [Summoning basics](/learn/rules/primer-summoning); the deck-size and copy rules come from [Deck building](/learn/rules/primer-deck-building). When your deck is legal, [start or join a duel](/learn/how-to/start-or-join-a-duel).
