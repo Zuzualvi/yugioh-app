@@ -5,7 +5,7 @@
 > Update at each epic close (and when accuracy status changes). Keep claims honest — if something is
 > unverified, say so.
 >
-> _Last updated: 2026-07-18 (Task Manager) — Edison parity audit COMPLETE; Track B ✅ done; Track B4 ✅ shell shipped; convergence in progress._
+> _Last updated: 2026-07-18 (Product Lead) — Parity audit **SIGNED OFF** (CEO-confirmed); RECONCILE resolved; **Track C (docs authoring) IN PROGRESS.**_
 
 ## What this product is
 
@@ -37,8 +37,12 @@ tracked in the **parity matrix** — the single source of truth for accuracy.
   - **§5 eng items: 2 RESOLVED** (ENG-ULTIMATE-OFFERING, ENG-REDMD)
 - **Honest read:** 107 of 127 acceptance-gate behaviors are proven. The 17 CARVE-OUTs are structural
   limits (field-spell zone model, trap-monster reversion, face-down trigger timing, infinite-loop
-  adjudication) — real-duel gameplay is correct; they are disclosed in the rules guide. The 3 RECONCILE
-  rows need Product Lead to stock the missing cards or accept sibling-row coverage.
+  adjudication) — real-duel gameplay is correct; they are disclosed in the rules guide.
+- **PARITY SIGNED OFF (2026-07-18, CEO-confirmed).** Decision record:
+  `/decisions/2026-07-18-parity-sign-off.md`. Resolutions: carve-outs → documented as "known
+  table-differences" (deeper engine-hardening is V2 backlog); 3 RECONCILE out-of-pool cards → accept
+  substitutes in docs (rule verified via sibling rows); 7 passcode corrections + Mark-of-the-Rose wording
+  applied during authoring. Routed to CTO (non-blocking): Necroface script-less playability fix.
 
 ## In flight — Edison Parity Audit + In-App User Docs (started 2026-07-17)
 
@@ -49,9 +53,9 @@ no-engine-assist table play, gated on **verified engine ↔ authoritative-rules 
 |-------|-------|--------|
 | A — Authoritative rules reference + parity matrix + doc IA | Product Lead's team | ✅ Done |
 | B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | ✅ Done — QA-verified @1f04c24; 107 VP / 17 CO / 3 REC |
-| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ✅ Shell shipped — convergence in progress |
-| Convergence — parity sign-off (joint) | Product Lead + CTO | 🟡 In progress — parity matrix final; awaiting Product Lead sign-off + RECONCILE resolution |
-| C — Write & ship the docs | Product Lead's team | ⬜ Gated on convergence sign-off |
+| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ✅ Shell shipped (placeholder content) |
+| Convergence — parity sign-off (joint) | Product Lead + CTO | ✅ **SIGNED OFF** 2026-07-18 (CEO-confirmed); RECONCILE resolved |
+| C — Write & ship the docs | Product Lead's team | 🟡 **In progress** — authoring the two doc sections against the verified matrix + manifest schema |
 
 Handoff: `docs/working/2026-07-17-HANDOFF-parity-audit-and-docs.md`.
 Scope decision: team memory `/decisions/2026-07-17-parity-audit-scope.md`.
