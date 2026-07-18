@@ -1082,117 +1082,113 @@ describe.skipIf(!WASM_AVAILABLE)(
     }, 20_000);
 
     // ── R05-B6b ───────────────────────────────────────────────────────────────
-    it.fails(
-      "R05-B6b — Lightning Vortex vs Trap Monster: My Body as a Shield CAN prevent destruction",
-      async () => {
-        // P0 has Apophis activated (MZONE) + My Body as a Shield in HAND.
-        // P1 activates Lightning Vortex (destroys all face-up monsters).
-        // P0 chains My Body as a Shield.
-        // Expected: Apophis NOT destroyed (My Body treats Apophis as a monster here).
-        //
-        // DEFECT: My Body as a Shield doesn't protect Apophis — Apophis is destroyed
-        // by Lightning Vortex despite My Body. Related to ERR-MYBODY (curate needed:
-        // remove EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DAMAGE_CAL from My Body script).
-        // Root cause: My Body as a Shield's activation condition / damage-step flag
-        // prevents it from being offered in the chain window after Lightning Vortex.
+    it("R05-B6b — Lightning Vortex vs Trap Monster: My Body as a Shield CAN prevent destruction", async () => {
+      // P0 has Apophis activated (MZONE) + My Body as a Shield SET in SZONE[1].
+      // P1 activates Lightning Vortex (destroys all face-up monsters).
+      // P0 chains My Body as a Shield.
+      // Expected: Apophis NOT destroyed (My Body treats Apophis as a monster here).
+      //
+      // Fix note: My Body must be SET (face-down SZONE) to chain during the opponent's
+      // Main Phase in GOAT/Edison mode — Quick-Play Spells from HAND cannot be activated
+      // during the opponent's turn in this engine.  The edison override c69279219.lua
+      // keeps EFFECT_FLAG_DAMAGE_STEP (required for SZONE activation during opponent's
+      // chain window) and adds a Duel.IsDamageStep() guard to enforce the Edison ruling
+      // that My Body cannot activate in the Damage Step.
 
-        currentDuel = await createDuelWithState({
-          extraCards0: [
-            {
-              code: APOPHIS,
-              location: OcgLocation.SZONE,
-              sequence: 0,
-              position: OcgPosition.FACEDOWN,
-            },
-            {
-              code: MY_BODY,
-              location: OcgLocation.HAND,
-              sequence: 0,
-              position: OcgPosition.FACEUP,
-            },
-          ],
-          extraCards1: [
-            {
-              code: LIGHTNING_VORTEX,
-              location: OcgLocation.HAND,
-              sequence: 0,
-              position: OcgPosition.FACEUP,
-            },
-            {
-              code: OJAMA_GREEN,
-              location: OcgLocation.HAND,
-              sequence: 1,
-              position: OcgPosition.FACEUP,
-            },
-          ],
-          startingDrawCount: 1,
-          deck0: FILLER.slice(0, 16),
-          deck1: FILLER.slice(0, 16),
-        });
-
-        const { lib, handle } = currentDuel;
-
-        const state = { apophisActivated: false, lvActivated: false };
-        const movesToGrave: number[] = [];
-        let turn = 0;
-
-        driveDuel(
-          lib,
-          handle,
-          (_all, msgs, status) => {
-            for (const m of msgs as Array<{ type: number }>) {
-              if (m.type === MSG_NEW_TURN) turn++;
-            }
-            for (const m of msgs as MoveMsg[]) {
-              if (m.type === MSG_MOVE && m.to?.location === OcgLocation.GRAVE) {
-                movesToGrave.push(m.card);
-              }
-            }
-            if (state.lvActivated && turn > 2) return { stop: true };
-            if (status !== 1) return {};
-
-            for (const m of msgs as IdleCmdMsg[]) {
-              if (m.type === MSG_SELECT_IDLECMD) {
-                if (turn === 1 && !state.apophisActivated) {
-                  const idx = (m.activates ?? []).findIndex((a) => a.code === APOPHIS);
-                  if (idx >= 0) {
-                    state.apophisActivated = true;
-                    return { response: { type: 1, action: 5, index: idx } };
-                  }
-                }
-                if (turn === 2 && !state.lvActivated) {
-                  const idx = (m.activates ?? []).findIndex((a) => a.code === LIGHTNING_VORTEX);
-                  if (idx >= 0) {
-                    state.lvActivated = true;
-                    return { response: { type: 1, action: 5, index: idx } };
-                  }
-                }
-                return { response: { type: 1, action: 7 } };
-              }
-            }
-            for (const m of msgs as SelectChainMsg[]) {
-              if (m.type === MSG_SELECT_CHAIN) {
-                const myBodyIdx = (m.selects ?? []).findIndex((s) => s.code === MY_BODY);
-                if (myBodyIdx >= 0) {
-                  return { response: { type: 8, index: myBodyIdx } };
-                }
-                return { response: { type: 8, index: null } };
-              }
-            }
-            return { response: defaultRespond(msgs as never) };
+      currentDuel = await createDuelWithState({
+        extraCards0: [
+          {
+            code: APOPHIS,
+            location: OcgLocation.SZONE,
+            sequence: 0,
+            position: OcgPosition.FACEDOWN,
           },
-          15_000,
-        );
+          {
+            code: MY_BODY,
+            location: OcgLocation.SZONE,
+            sequence: 1,
+            position: OcgPosition.FACEDOWN,
+          },
+        ],
+        extraCards1: [
+          {
+            code: LIGHTNING_VORTEX,
+            location: OcgLocation.HAND,
+            sequence: 0,
+            position: OcgPosition.FACEUP,
+          },
+          {
+            code: OJAMA_GREEN,
+            location: OcgLocation.HAND,
+            sequence: 1,
+            position: OcgPosition.FACEUP,
+          },
+        ],
+        startingDrawCount: 1,
+        deck0: FILLER.slice(0, 16),
+        deck1: FILLER.slice(0, 16),
+      });
 
-        // DEFECT: Apophis IS destroyed (engine doesn't protect it via My Body).
-        expect(
-          movesToGrave.includes(APOPHIS),
-          `R05-B6b: Apophis [${APOPHIS}] must NOT be destroyed when My Body as a Shield chains to Lightning Vortex. ` +
-            `DEFECT: Apophis sent to GRAVE despite My Body activation. Cards to GRAVE: ${JSON.stringify(movesToGrave)}`,
-        ).toBe(false);
-      },
-      20_000,
-    );
+      const { lib, handle } = currentDuel;
+
+      const state = { apophisActivated: false, lvActivated: false };
+      const movesToGrave: number[] = [];
+      let turn = 0;
+
+      driveDuel(
+        lib,
+        handle,
+        (_all, msgs, status) => {
+          for (const m of msgs as Array<{ type: number }>) {
+            if (m.type === MSG_NEW_TURN) turn++;
+          }
+          for (const m of msgs as MoveMsg[]) {
+            if (m.type === MSG_MOVE && m.to?.location === OcgLocation.GRAVE) {
+              movesToGrave.push(m.card);
+            }
+          }
+          if (state.lvActivated && turn > 2) return { stop: true };
+          if (status !== 1) return {};
+
+          for (const m of msgs as IdleCmdMsg[]) {
+            if (m.type === MSG_SELECT_IDLECMD) {
+              if (turn === 1 && !state.apophisActivated) {
+                const idx = (m.activates ?? []).findIndex((a) => a.code === APOPHIS);
+                if (idx >= 0) {
+                  state.apophisActivated = true;
+                  return { response: { type: 1, action: 5, index: idx } };
+                }
+              }
+              if (turn === 2 && !state.lvActivated) {
+                const idx = (m.activates ?? []).findIndex((a) => a.code === LIGHTNING_VORTEX);
+                if (idx >= 0) {
+                  state.lvActivated = true;
+                  return { response: { type: 1, action: 5, index: idx } };
+                }
+              }
+              return { response: { type: 1, action: 7 } };
+            }
+          }
+          for (const m of msgs as SelectChainMsg[]) {
+            if (m.type === MSG_SELECT_CHAIN) {
+              const myBodyIdx = (m.selects ?? []).findIndex((s) => s.code === MY_BODY);
+              if (myBodyIdx >= 0) {
+                return { response: { type: 8, index: myBodyIdx } };
+              }
+              return { response: { type: 8, index: null } };
+            }
+          }
+          return { response: defaultRespond(msgs as never) };
+        },
+        15_000,
+      );
+
+      expect(
+        movesToGrave.includes(APOPHIS),
+        `R05-B6b: Apophis [${APOPHIS}] must NOT be destroyed when My Body as a Shield chains to Lightning Vortex. ` +
+          `Cards to GRAVE: ${JSON.stringify(movesToGrave)}`,
+      ).toBe(false);
+    }, 20_000);
 
     // ── R05-B6c ───────────────────────────────────────────────────────────────
     it("R05-B6c — Raigeki Break vs Trap Monster: My Body as a Shield CAN prevent destruction", async () => {
