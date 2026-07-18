@@ -5,7 +5,7 @@
 > Update at each epic close (and when accuracy status changes). Keep claims honest — if something is
 > unverified, say so.
 >
-> _Last updated: 2026-07-17 (Coordination) — R10 LP-cost closed; Track B + B4 in progress._
+> _Last updated: 2026-07-18 (Task Manager) — Edison parity audit COMPLETE; Track B ✅ done; Track B4 ✅ shell shipped; convergence in progress._
 
 ## What this product is
 
@@ -29,13 +29,16 @@ Core Edison rule-flags locked at `EDISON_FLAGS = 0x7f80d072c` (custom WASM). Emp
 tracked in the **parity matrix** — the single source of truth for accuracy.
 
 - **Parity matrix:** `docs/working/2026-07-17-parity-matrix.md` — 127 acceptance-gate rows.
-- **Rollup (2026-07-17):** 6 VERIFIED-PASS · 83 NEEDS-TEST · 0 KNOWN-GAP · 2 CARVE-OUT (R12 infinite
-  loops) · 24 NEEDS-AUTHORING (errata) · 6 SUBSTITUTE-WIRED · 6 RULES-LEVEL-RULING · + 17 Tier-3
-  fixtures + 2 engineering data items. **R10 LP-cost CLOSED** — patch live in the WASM, Brain Control
-  800/801 verified 2026-07-17.
-- **Honest read:** the *framework* rules are configured and 6 are proven; the bulk (83 rules behaviors
-  + 24 errata cards) are **defined and testable but not yet empirically verified**. Closing this is the
-  active phase.
+- **Rollup (QA-verified @1f04c24, `npm run verify` GREEN, 1038 tests):**
+  - **107 VERIFIED-PASS** — engine enforces per authoritative reference
+  - **17 CARVE-OUT** — engine cannot match; documented as known table-differences in the rules guide (per CEO decision; not gameplay defects)
+  - **3 RECONCILE** — example card out-of-pool; rule verified via sibling rows (Product Lead action required)
+  - **§4 staples: 17 fixtures PASS** (all legal + load/step; Substitoad ×3 UNLIMITED per CEO)
+  - **§5 eng items: 2 RESOLVED** (ENG-ULTIMATE-OFFERING, ENG-REDMD)
+- **Honest read:** 107 of 127 acceptance-gate behaviors are proven. The 17 CARVE-OUTs are structural
+  limits (field-spell zone model, trap-monster reversion, face-down trigger timing, infinite-loop
+  adjudication) — real-duel gameplay is correct; they are disclosed in the rules guide. The 3 RECONCILE
+  rows need Product Lead to stock the missing cards or accept sibling-row coverage.
 
 ## In flight — Edison Parity Audit + In-App User Docs (started 2026-07-17)
 
@@ -45,10 +48,10 @@ no-engine-assist table play, gated on **verified engine ↔ authoritative-rules 
 | Track | Owner | Status |
 |-------|-------|--------|
 | A — Authoritative rules reference + parity matrix + doc IA | Product Lead's team | ✅ Done |
-| B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | 🟡 In progress (CTO, 2026-07-17) |
-| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | 🟡 In progress (CTO, 2026-07-17) |
-| Convergence — parity sign-off (joint) | Product Lead + CTO | ⬜ Pending B |
-| C — Write & ship the docs | Product Lead's team | ⬜ Gated on sign-off |
+| B — Engine parity: fill matrix, close gaps, errata scripts+tests, staples spot-check | CTO / eng | ✅ Done — QA-verified @1f04c24; 107 VP / 17 CO / 3 REC |
+| B4 — In-app `/learn` docs surface | CTO / eng (UX designed) | ✅ Shell shipped — convergence in progress |
+| Convergence — parity sign-off (joint) | Product Lead + CTO | 🟡 In progress — parity matrix final; awaiting Product Lead sign-off + RECONCILE resolution |
+| C — Write & ship the docs | Product Lead's team | ⬜ Gated on convergence sign-off |
 
 Handoff: `docs/working/2026-07-17-HANDOFF-parity-audit-and-docs.md`.
 Scope decision: team memory `/decisions/2026-07-17-parity-audit-scope.md`.
@@ -72,7 +75,7 @@ mobile app, AI opponent, public/SEO docs surface, exhaustive per-card verificati
 
 - **This file** — product-wide rollup (start here).
 - `tasks/BOARD.md` — engineering work board (streams, slices, SHAs).
-- `docs/working/2026-07-17-parity-matrix.md` — accuracy audit / acceptance gate.
+- `docs/working/2026-07-17-parity-matrix.md` — accuracy audit / acceptance gate (COMPLETE @1f04c24).
 - `docs/working/YYYY-MM-DD-*` — dated handoffs, specs, research, reports (audit trail).
 - Team memory `/decisions/*` — decision records (the "why").
 - Team memory `docs-and-parity-phase.md` — current phase working notes.
