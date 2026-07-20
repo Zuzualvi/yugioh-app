@@ -174,6 +174,18 @@ export function DeckBuilderScreen() {
   // ── Active zone for adding (only "side" requires explicit choice) ─────────
   const [addZone, setAddZone] = useState<Zone>("main");
 
+  // ── hydrateDeckCards — fetch missing passcodes into cache ─────────────────
+  const hydrateDeckCards = useCallback(
+    async (passcodes: number[]) => {
+      const unique = [...new Set(passcodes)];
+      const missing = unique.filter((p) => !cardCache.has(p));
+      if (missing.length === 0) return;
+      const res = await searchCards({ passcodes: missing });
+      addToCache(res.cards);
+    },
+    [cardCache, addToCache],
+  );
+
   // ── Load existing deck ────────────────────────────────────────────────────
   useEffect(() => {
     if (isNew) return;
@@ -181,13 +193,10 @@ export function DeckBuilderScreen() {
     getDeck(deckId!)
       .then((d) => {
         setDeck({ name: d.name, main: d.main, extra: d.extra, side: d.side });
-        // Fetch all cards in the deck so they're in the cache
         const allPasscodes = [...new Set([...d.main, ...d.extra, ...d.side])];
-        return searchCards({ page: 1, pageSize: 120 }).then((res) => {
+        if (allPasscodes.length === 0) return;
+        return searchCards({ passcodes: allPasscodes }).then((res) => {
           addToCache(res.cards);
-          // The passcodes might not all be in this page; that's OK,
-          // they'll be populated as the user searches.
-          void allPasscodes; // used indirectly via cache
         });
       })
       .catch(() => addToast("Failed to load deck", "error"))
@@ -318,7 +327,6 @@ export function DeckBuilderScreen() {
     setImportLoading(true);
     try {
       const result = await importDeck(importText);
-      addToCache([]); // trigger re-render
       setDeck((prev) => ({
         ...prev,
         name: result.name ?? prev.name,
@@ -330,6 +338,8 @@ export function DeckBuilderScreen() {
         validation: result.validation,
         issues: result.validation.violations,
       });
+      const importedPasscodes = [...result.main, ...result.extra, ...result.side];
+      await hydrateDeckCards(importedPasscodes);
       if (result.validation.violations.length === 0) {
         setShowImport(false);
         addToast("Deck imported successfully", "success");

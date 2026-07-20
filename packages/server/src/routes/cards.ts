@@ -34,9 +34,15 @@ export function createCardsRouter(catalog: LoadedCatalog): Router {
       text,
       page,
       pageSize,
+      passcodes,
     } = parsed.data;
 
     let cards = catalog.catalog.cards;
+
+    if (passcodes !== undefined) {
+      const wanted = new Set(passcodes);
+      cards = cards.filter((c) => wanted.has(c.passcode));
+    }
 
     if (q !== undefined) {
       const lq = q.toLowerCase();
@@ -77,6 +83,17 @@ export function createCardsRouter(catalog: LoadedCatalog): Router {
     }
 
     const total = cards.length;
+
+    if (passcodes !== undefined) {
+      res.status(200).json({
+        total,
+        page: 1,
+        pageSize: total > 0 ? total : 1,
+        cards,
+      });
+      return;
+    }
+
     const offset = (page - 1) * pageSize;
     const paged = cards.slice(offset, offset + pageSize);
 

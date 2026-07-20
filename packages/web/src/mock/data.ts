@@ -385,6 +385,18 @@ export function filterCards(params: Record<string, string>): {
 } {
   let results = [...MOCK_CARDS];
 
+  if (params.passcodes) {
+    const wanted = new Set(
+      params.passcodes
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n)),
+    );
+    results = results.filter((c) => wanted.has(c.passcode));
+    const total = results.length;
+    return { total, page: 1, pageSize: total > 0 ? total : 1, cards: results };
+  }
+
   if (params.q) {
     const q = params.q.toLowerCase();
     results = results.filter((c) => c.name.toLowerCase().includes(q));

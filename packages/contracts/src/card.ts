@@ -80,6 +80,10 @@ export const CardSearchSchema = z.object({
   text: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(120).default(60),
+  passcodes: z.preprocess((val) => {
+    if (typeof val !== "string" || val.trim() === "") return undefined;
+    return val.split(",").map((s) => Number(s.trim()));
+  }, z.array(z.number().int().positive()).optional()),
 });
 
 export type CardSearch = z.infer<typeof CardSearchSchema>;
