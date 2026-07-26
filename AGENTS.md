@@ -127,3 +127,35 @@ Actions pipeline. All must be green before any push or PR.
 **GitHub Actions** (`.github/workflows/ci.yml`) is the remote gate. See
 `ci/README.md` for the one-time step to enable it — requires a token with
 `workflow` scope.
+
+---
+
+## Where documents go (`docs/` has exactly four homes)
+
+Every markdown file you write lands in one of these. There is no fifth option and
+no root-level status document.
+
+| Folder            | Holds                                                                                            | Lifecycle                                                                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/adr/`       | Architecture decisions                                                                           | **Immutable** once accepted. A reversal writes a NEW ADR referencing the old one — you never edit the conclusion of an existing one. Write one only when the decision is **hard to reverse** _or_ **would look wrong to someone who doesn't know the constraint**. Most features produce zero. |
+| `docs/specs/`     | Technical + product specs — what a feature is and how it is built                                | Edited in the same PR that changes the design, so spec and code stay diffable against each other. One spec per feature.                                                                                                                                                                        |
+| `docs/reference/` | Durable domain knowledge — Edison rules, engine research, card-data audits, raw capture evidence | No expiry. Edited in place.                                                                                                                                                                                                                                                                    |
+| `docs/working/`   | **Session handoffs only**                                                                        | Ephemeral. A session that reads a handoff **deletes every superseded handoff** in its re-grounding commit. Nothing else belongs here.                                                                                                                                                          |
+
+**Status is never written into a file.** A spec does not record whether it is
+current — the Linear issue or Project it names does. If you find yourself typing
+"Status: DONE" into markdown, that state belongs in Linear.
+
+**No status boards in the repo.** `docs/STATUS.md` and `tasks/BOARD.md` were
+deleted in 2026-07; work state lives in **Linear** and is driven automatically by
+PR events. Do not recreate them under any name.
+
+**Every PR body must reference its Linear issue** (`ABC-123`, or a magic word like
+`fixes ABC-123`). This is what drives the automatic In Progress → In Review → Done
+transitions, so a PR without it silently breaks work tracking. CI enforces it.
+
+> Why this section exists: this repo previously accumulated **85 files in
+> `docs/working/`** — handoffs, session logs, readiness reports, and specs all in
+> one undifferentiated pile, with several specs written to container-local paths
+> that evaporated with their sandboxes. The discipline did not fail from the start;
+> it _decayed_, because nothing enforced where a document went.

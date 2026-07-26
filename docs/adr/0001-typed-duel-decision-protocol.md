@@ -4,7 +4,7 @@
 **Date:** 2026-07-16  
 **Authors:** Phase 0 agent; locked by CTO  
 **Spec:** `/workspace/specs/interactive-duel-phase0.md`  
-**Catalog:** `docs/working/2026-07-16-ocgcore-decision-catalog.md`
+**Catalog:** `docs/reference/2026-07-16-ocgcore-decision-catalog.md`
 
 ---
 
@@ -48,7 +48,7 @@ compile error in the engine adapter (Phase 1).
 
 **Ground truth is MEASURED, not invented.** Every variant shape was verified against
 a real ocgcore duel run before being committed (catalog in
-`docs/working/2026-07-16-ocgcore-decision-catalog.md`). Variants with no known
+`docs/reference/2026-07-16-ocgcore-decision-catalog.md`). Variants with no known
 live Edison trigger are implemented from the ocgcore-wasm `.d.ts` type definitions and
 marked [unverified-live] — they are real, answerable shapes, never throwing stubs.
 
@@ -136,8 +136,8 @@ seeds, and deck combinations). Engine auto-resolves opening hand selection.
 
 ## References
 - Spec: `specs/interactive-duel-phase0.md`
-- Catalog: `docs/working/2026-07-16-ocgcore-decision-catalog.md`
-- Raw captures: `docs/working/decision-capture-raw.json`
+- Catalog: `docs/reference/2026-07-16-ocgcore-decision-catalog.md`
+- Raw captures: `docs/reference/decision-capture-raw.json`
 - Contract: `packages/contracts/src/duelDecision.ts`
 - Tests: `packages/contracts/src/duelDecision.test.ts`
 - Decision record: `/mnt/memory/yugioh-app-team-memory/decisions/2026-07-16-phase0-decision-catalog.md`
