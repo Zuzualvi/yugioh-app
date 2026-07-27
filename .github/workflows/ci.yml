@@ -7,9 +7,53 @@ name: CI
 on:
   pull_request:
     branches: [master]
+    # `edited` matters: without it, fixing a PR body to add the missing Linear
+    # reference would not re-run the check, and the PR would stay red forever.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   workflow_dispatch:
 
 jobs:
+  # Work state lives in Linear, and Linear's GitHub integration moves an issue
+  # In Progress -> In Review -> Done from PR events — but ONLY when it can find
+  # the issue reference. A PR without one silently breaks the whole chain: the
+  # work looks unstarted to the CEO no matter how green the build is. This job
+  # is what makes that automation trustworthy rather than best-effort.
+  linear-reference:
+    name: PR references a Linear issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check title, body and branch for an issue key
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HAS_OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'no-linear') }}
+          # The Linear team key for this product. Matching the REAL key, not a
+          # generic [A-Z]+-[0-9]+ shape: that shape also matches UTF-8, SHA-256
+          # and ES-2022, so a PR merely mentioning an encoding would have passed
+          # a check whose whole job is to guarantee a Linear reference exists.
+          LINEAR_TEAM_KEY: ZUH
+        run: |
+          if [ "$HAS_OVERRIDE" = "true" ]; then
+            echo "::notice::'no-linear' label present — skipping. Use this only for work that genuinely has no ticket."
+            exit 0
+          fi
+          # Linear keys look like ZUH-12. Search title, body and branch name so
+          # any of Linear's own linking conventions satisfies the check.
+          if printf '%s\n%s\n%s' "$PR_TITLE" "$PR_BODY" "$PR_BRANCH" \
+             | grep -Eqi "(^|[^A-Z0-9])${LINEAR_TEAM_KEY}-[0-9]+([^0-9]|$)"; then
+            echo "✓ Linear issue reference found"
+            exit 0
+          fi
+          echo "::error::No ${LINEAR_TEAM_KEY} issue reference (e.g. ${LINEAR_TEAM_KEY}-12) in this PR's title, body or branch name."
+          echo "Add one so Linear moves the issue automatically as this PR opens, reviews and merges:"
+          echo "  • put 'ZUH-12' in the title or branch, or"
+          echo "  • write 'fixes ZUH-12' in the body to close it on merge."
+          echo "If this work genuinely has no ticket, add the 'no-linear' label."
+          exit 1
+
   ci:
     name: typecheck · lint · arch · actionlint · test
     runs-on: ubuntu-latest

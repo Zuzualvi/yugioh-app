@@ -150,9 +150,18 @@ current — the Linear issue or Project it names does. If you find yourself typi
 deleted in 2026-07; work state lives in **Linear** and is driven automatically by
 PR events. Do not recreate them under any name.
 
-**Every PR body must reference its Linear issue** (`ABC-123`, or a magic word like
-`fixes ABC-123`). This is what drives the automatic In Progress → In Review → Done
-transitions, so a PR without it silently breaks work tracking. CI enforces it.
+**Every PR must reference its Linear issue** — `ZUH-123` in the title, the branch name, or
+the body (`fixes ZUH-123` also closes it on merge). This is what drives the automatic
+In Progress → In Review → Done transitions, so a PR without it silently breaks work
+tracking no matter how green the build is. **CI enforces it** (`linear-reference` job). For
+work that genuinely has no ticket, add the **`no-linear`** label — deliberately a label
+rather than a magic word in the text, so skipping the rule is visible on the PR.
+
+**`npm run verify` includes `docs:check`**, so placement is enforced locally _and_ in CI.
+It runs four rules: nothing loose at the root of `docs/`, no fifth folder, `docs/working/`
+contains only handoffs, and **any spec you add must carry `linear_project:` in its
+frontmatter**. That last one applies only to files your branch ADDS — the pre-2026-07
+corpus predates the convention and is deliberately not retrofitted.
 
 > Why this section exists: this repo previously accumulated **85 files in
 > `docs/working/`** — handoffs, session logs, readiness reports, and specs all in
