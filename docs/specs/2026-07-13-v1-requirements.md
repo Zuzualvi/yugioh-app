@@ -117,23 +117,51 @@ These are locked so downstream code, import/export, and QA all agree.
 - **REQ-LOBBY-04 (MUST):** Opening an invite-to-play link MUST be the **primary and only** V1 way for a second player to enter a duel. When an **authenticated group member** opens a **valid, unconsumed** link, the system MUST place them into the **pre-duel room** as the invitee in the open seat, and MUST show them the **per-move timer before they confirm/ready** (REQ-TIMER-11, REQ-ROOM-09). A non-member — or a visitor who cannot authenticate as a member — MUST be **denied** with clear feedback (REQ-AUTH-01/02); a denied attempt MUST NOT consume the link.
   - *Edge (auth wall):* opening the link while unauthenticated MUST route through login and, on success as a member, land in the room; on failure to authenticate as a member, deny — never silently drop. *Edge (invalid link):* an **expired / already-consumed / creator-revoked** link MUST be rejected with a **clear, specific** failure ("this invite is no longer valid"), never a silent no-op or a blank screen. *Edge (self-duel):* the creator opening their own link MUST NOT claim the invitee seat. *Edge (opener busy):* opening while already in a duel/room is blocked and MUST NOT consume the link.
 - **REQ-LOBBY-05 (MUST):** A member already occupying an **active duel or a pending/live pre-duel room** MUST NOT be able to **silently** start or join a second concurrent duel; any such attempt (minting or opening) MUST be blocked with clear feedback. Claiming the open (invitee) seat MUST be an **atomic single-claim**: exactly one member can occupy it, and one link MUST resolve to **at most one** room.
+  - **SUPERSEDED in part (2026-07-28), CEO:** the one-room-at-a-time rule is **NOT enforced** for
+    MVP. It was written when the creator could revoke an invite, and revoke is parked (ZUH-22).
+    Enforcing it alongside no-cancel and a 30-minute expiry would lock a member out of starting any
+    duel for up to 30 minutes with no escape — a worse failure than the one it prevents. Leave is the
+    escape hatch instead. If it is ever enforced, ZUH-22's cancel must ship with it, not after it.
+    The **atomic single-claim** half of this requirement is unchanged and is now a guarded
+    conditional write (R40).
   - *Edge (two opens race):* two members open the **same** single-use link near-simultaneously — the atomic claim MUST admit **exactly one**; the loser MUST see a clear "already claimed" state (not a second room, not a silent failure). *Edge (open while busy):* blocked, and MUST NOT consume the link (so the intended invitee can still use it). *Retired edges:* the former "A challenges B while B challenges A" and "A challenges B and C at once" edges are **removed** — there is no directed-challenge mechanism to race (see R9, §16).
-- **REQ-LOBBY-06 (SHOULD):** A creator SHOULD be able to **revoke/cancel an unconsumed invite-to-play link** before it is opened, invalidating it and releasing the reserved seat/pending room; a revoked link is thereafter rejected on open (REQ-LOBBY-04). Once a link has been **consumed** (both seats filled → a live pre-duel room), revocation no longer applies — either player instead **leaves the room** (REQ-ROOM-07).
+- **REQ-LOBBY-06 (SHOULD):** ~~SUPERSEDED 2026-07-28 — creator revoke is parked as ZUH-22; the 30-minute expiry replaces it, and no link is revocable in MVP. The 7-day unconsumed-link expiry in §4's LINK-FIRST note is likewise replaced by **30 minutes from mint** (R16). Links are also no longer single-use: an invitee leaving revives the link (R34).~~ A creator SHOULD be able to **revoke/cancel an unconsumed invite-to-play link** before it is opened, invalidating it and releasing the reserved seat/pending room; a revoked link is thereafter rejected on open (REQ-LOBBY-04). Once a link has been **consumed** (both seats filled → a live pre-duel room), revocation no longer applies — either player instead **leaves the room** (REQ-ROOM-07).
   - *Edge (revoke race):* a simultaneous revoke-vs-open MUST resolve deterministically to exactly one outcome (a live room, or a rejected open) — never both. *Edge (no zombie link):* an unconsumed, unrevoked link MUST still expire on its own (7-day default).
 
 ---
 
 ## 5. Pre-duel room — REQ-ROOM (UX §B7)
 
+> **AMENDED 2026-07-28 by the Duel Invite Improvements project (CEO-approved).** This section was
+> written for a room whose seats were fixed at create time. Seat assignment now happens after the
+> coin flip, deck choice happens inside the room, and deck locking is snapshot-at-ready. The
+> superseded points are marked inline below; the current behaviour is
+> `docs/specs/2026-07-28-pre-duel-room-implementation.md` and PRD requirements R1–R48.
+
 - **REQ-ROOM-01 (MUST):** The room MUST show both seats, each player's **ready state**, the **deck each has selected**, and the duel's configured **per-move timer** (REQ-ROOM-09).
+  - **SUPERSEDED in part (2026-07-28):** "the deck each has selected" contradicted REQ-DECK-17,
+    which makes a decklist hidden pre-duel information. In this format a deck *name* is the
+    archetype, so it is most of the competitive information. Resolved in favour of hiding: each
+    player sees their own deck name; the opponent sees only `deck selected ✓` (R25).
 - **REQ-ROOM-02 (MUST):** A player MUST select one of **their own saved decks** before they can ready-up. A deck that fails legality (§2.1) MUST NOT be selectable for a duel (see REQ-DECK-09).
-  - *Edge:* a player edits/deletes the selected deck between selection and start — the room MUST re-validate at Start and block if the deck is now missing/illegal.
+  - ~~*Edge:* a player edits/deletes the selected deck between selection and start — the room MUST re-validate at Start and block if the deck is now missing/illegal.~~
+  - **AMENDED (2026-07-28):** re-validate at **ready**, and **snapshot** the card lists on success;
+    after that the deck is immutable and editing or deleting the source deck has zero effect on the
+    room (R23). Re-validating at Start is now impossible — nothing there references the source deck —
+    and would have been worse: it would kill the room after both players readied and after the flip,
+    for a problem the player could have fixed ten minutes earlier. REQ-DECK-16's edge follows this.
 - **REQ-ROOM-03 (MUST):** The duel MUST NOT start until **both** players are ready with legal decks selected.
 - **REQ-ROOM-04 (MUST):** The room MUST determine **who goes first** by a method **neither player can rig**, and MUST show the result to both players before the duel starts.
   - *Edge:* a player disconnects **during** the first-turn determination — on reconnect the determined result MUST be consistent for both (no re-roll that could differ per client).
-- **REQ-ROOM-05 (SHOULD):** V1 SHOULD implement the tournament-accurate flow: the **winner of the toss chooses to go first or second** (rather than the app forcing an assignment). If not implemented, the fallback MUST be a fair random assignment (REQ-ROOM-04). *(Which of these the group wants is an OPEN QUESTION, §17.)*
+- **REQ-ROOM-05 (SHOULD):** V1 SHOULD implement the tournament-accurate flow: the **winner of the toss chooses to go first or second** (rather than the app forcing an assignment). If not implemented, the fallback MUST be a fair random assignment (REQ-ROOM-04). ~~*(Which of these the group wants is an OPEN QUESTION, §17.)*~~
+  - **CLOSED (2026-07-28):** the winner chooses, and the choice is what assigns seats (R3, R30). No longer an open question.
 - **REQ-ROOM-06 (COULD):** The room COULD provide lightweight text chat between the two players (friends want to talk trash — UX §B7). Chat MUST NOT carry any hidden game information.
 - **REQ-ROOM-07 (MUST):** Either player MUST be able to **leave** the room before Start, which returns both to the lobby and voids the pending duel.
+  - **SUPERSEDED in part (2026-07-28):** true for the creator leaving, and for any leave after the
+    flip has resolved. But the **invitee** leaving while both are in the room REVERTS the room to
+    waiting and revives the original link rather than voiding it (R34) — otherwise a curious tap in a
+    group chat silently destroys the creator's room while their phone is in their pocket. Leave is
+    rejected once the room is `starting`; the exit after that is resign (R36).
 - **REQ-ROOM-08 (SHOULD):** V1 targets **single games** per duel by default. Best-of-3 matches with **side-decking between games** are NOT required for V1; if a match mode is added, side-deck swaps MUST re-validate against §2.1. *(Match support is an OPEN QUESTION, §17 — it interacts with the side-deck's purpose.)*
 - **REQ-ROOM-09 (MUST):** The pre-duel room MUST **display the duel's configured per-move timer** (set by the inviter at challenge creation, REQ-TIMER-01/02) to **both** players before Start. The value the invitee accepted (REQ-TIMER-11) MUST be the value carried into the duel; it MUST NOT be silently altered between challenge, room, and Start.
   - *Edge:* if the room ever allows the inviter to change the timer before Start, any change MUST be re-shown to the invitee for re-confirmation (informed consent, REQ-TIMER-11); it MUST NOT take effect silently.
@@ -177,6 +205,9 @@ These are locked so downstream code, import/export, and QA all agree.
   - *Edge (wrong-zone listing):* a Fusion/Synchro erroneously listed under `#main` (or a Main-only card under `#extra`) MUST be corrected to its proper zone or flagged, never placed somewhere that violates §2.1.
 - **REQ-DECK-16 (MUST):** "My Decks" MUST let a user **list, open, rename, duplicate, and delete** their own saved decks.
   - *Edge:* deleting a deck currently selected in a pre-duel room MUST be handled (block deletion or force re-selection — do not leave a room pointing at a deleted deck; see REQ-ROOM-02).
+    - **AMENDED (2026-07-28):** neither. Deletion is never blocked. Before ready the room holds only
+      a deck *reference*, so a deleted deck simply fails re-validation at ready and the player picks
+      another (R22, R23). After ready the room holds a snapshot and deletion has zero effect.
 - **REQ-DECK-17 (MUST):** A user MUST only be able to view/edit **their own** decks (no access to others' decklists — this is hidden pre-duel information; a decklist is not shared with the opponent). *Sharing a deck by link is a COULD and, if added, is an explicit user action.*
 
 ---
@@ -324,7 +355,7 @@ These are locked so downstream code, import/export, and QA all agree.
 - **REQ-TIMER-01 (MUST):** Every duel MUST have exactly **one per-move timer value**, chosen by the **inviter** at duel-creation (challenge) time (REQ-LOBBY-03) and carried into the pre-duel room (REQ-ROOM-09). Once the duel starts the value is **fixed** and MUST NOT be changeable mid-duel by either player.
   - *Edge:* the inviter makes no explicit choice → the system MUST apply a **documented default preset** (which preset is the default is an OPEN QUESTION, §17); it MUST NOT create a duel with no timer.
   - *Edge:* a duel MUST NOT exist in an "unlimited / no-deadline" state — there is no such option (REQ-TIMER-02).
-- **REQ-TIMER-02 (MUST):** The selectable values MUST be the presets **5 min, 15 min, 1 hr, 12 hr, 24 hr, 48 hr**. A **custom** value MAY be offered but MUST be bounded to the inclusive range **[1 min, 48 hr]**. **48 hr is a hard ceiling; there is NO "unlimited"/"no-limit" option.** A value outside [1 min, 48 hr] MUST be **rejected at creation, server-side, with clear feedback** — never silently clamped or accepted — and the duel MUST NOT be created.
+- **REQ-TIMER-02 (MUST):** ~~SUPERSEDED 2026-07-28, CEO: live duels are the MVP target. The selectable presets are **3 / 5 / 10 / 15 min**, the default is **10 min**, and the server-side bound is the inclusive range **[60 s, 900 s]** (R44). The 1 h / 12 h / 24 h / 48 h options are removed and there is no custom field. The server-rejection rule below is unchanged and is now actually implemented — it previously had a client-side clamp only.~~ The selectable values MUST be the presets **5 min, 15 min, 1 hr, 12 hr, 24 hr, 48 hr**. A **custom** value MAY be offered but MUST be bounded to the inclusive range **[1 min, 48 hr]**. **48 hr is a hard ceiling; there is NO "unlimited"/"no-limit" option.** A value outside [1 min, 48 hr] MUST be **rejected at creation, server-side, with clear feedback** — never silently clamped or accepted — and the duel MUST NOT be created.
   - *Edge (bounds inclusive):* exactly **1 min** and exactly **48 hr** are accepted; **59 sec** and **48 hr + 1 min** are rejected.
   - *Edge (garbage input):* zero, negative, empty, non-numeric, or absurd (e.g., 999 hr) custom input MUST be rejected with specific feedback, not coerced.
   - *Edge (client bypass):* a client that submits an out-of-range value by bypassing the UI MUST still be rejected server-side (client validation is not trusted alone — cf. REQ-DECK-09).
