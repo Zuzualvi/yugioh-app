@@ -353,11 +353,26 @@ T1–T10 are exactly as tabulated in `room-lifecycle-and-edge-cases.md` §4.3, w
   transaction.
   Seat derivation (R3): `seat0 = flip_winner` if `choice === "first"`, else `seat0 = the other
   occupant`; `seat1` is the remaining occupant.
+- **T7** dispatch uses **constructor injection, not a module-level registry.** `DuelManager` reaches
+  the start path the way everything else in this server reaches its dependencies: `createApp` already
+  takes it, so it is threaded `createRoomRouter(db, duelManager)` → `submitChoice(db, duelManager)`.
+  A module-level `registerDuelStart(fn)` singleton was tried first and rejected: it is hidden mutable
+  global state in the start path of the whole feature, invisible at the call site, and a test that
+  forgets to register it gets undefined behaviour rather than a type error.
 - **T7** is `duel.status = 'active'` plus the **first** `deadline_at` / `on_clock_seat = 0` write,
   and only after `manager.createAndStart(...)` resolves (R4). `duel_room.status` stays `starting`
   forever — the room's job is over. This replaces the write at `duel/duelRoutes.ts:151-154`.
 - **T10** on engine-construction rejection: close the room `engine_failed`, broadcast, record no
   duel result (R46). The current code swallows the failure (`duelRoutes.ts:157-161`).
+
+  **Amended 2026-07-28 after review.** `closeRoom` is guarded to refuse a `starting` room, which is
+  correct for R8/R36 — `starting` is the point of no return and Leave must not escape it. But T10 is
+  the one legitimate close from `starting`, so the two rules collided and the first implementation
+  reached for a raw `UPDATE` outside the store. That defeats §1.2's whole point. The store gets a
+  **second, separately named function** instead: `failStartingRoom(db, id)`, guarded
+  `WHERE id = ? AND status = 'starting'`, writing `closed` + `engine_failed`. A distinct name for a
+  distinct permission — no flag on `closeRoom`, because a `reason`-dependent guard is how a guard
+  quietly becomes optional.
 - **T11 (NEW — R34, overrides the discovery doc's "`filled → open` must not exist"):** the
   **invitee** leaving while `status = 'filled'` reverts the room to `open`. Clears
   `opponent_user_id`, `join_token_consumed_at`, **both** occupants' `ready_at` and `deck_json`
