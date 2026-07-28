@@ -42,6 +42,16 @@ Name files after what they do: `validateDeckList.ts`, not `utils.ts`.
 - Every feature PR includes its tests in the same commit/PR — not a follow-up.
 - **Run `npm run verify` before every push.** Green `verify` is the sign-off.
 - AI may draft tests; the human reviewer owns correctness.
+- **No user-facing capability regresses.** Every slice's acceptance criteria include
+  it, whether or not anyone wrote it down: if your change removes, stubs or breaks
+  something a user can do today, that is a finding you must report **before** it is
+  reviewed, not a detail for the reviewer to notice. Say what breaks, for whom, and
+  for how long.
+
+  This exists because it has been missed. A slice was verified 13 criteria out of 13
+  and recommended for merge while reducing two live screens to placeholders — the
+  criteria were all met, and not one of them asked whether the product still worked.
+  A green pipeline measures what you thought to ask it.
 
 ---
 
@@ -67,33 +77,81 @@ first and have it reviewed, then update contracts. Do not invent wire formats.
 
 ---
 
-## Git / push protocol (shared repo, parallel writers)
+## Git / push protocol (one checkout per writer)
 
-1. Commit locally with a clear, imperative message. Only `git add` the paths you
-   own — **never `git add -A`, `git clean`, manual `git stash`, or `git checkout --`
-   on paths you don't own** (a sibling's live, uncommitted work lives in the same
-   working tree).
-2. Before every push: `git pull --rebase --autostash origin master`.
-   `--autostash` is required on this shared tree: a sibling's uncommitted changes to
-   tracked files would otherwise abort a plain rebase. Since writers own DISJOINT
-   paths, the autostash pop can't conflict.
-3. Push: `git push origin master`.
-4. On network error, retry with exponential back-off: 2 s → 4 s → 8 s → 16 s.
+**Work in your OWN clone.** Do not build in a checkout that another agent is also
+working in. Clone the repo to your own directory, `npm install` there, and stay there
+for the whole task.
+
+This rule replaces an earlier "shared working tree" protocol, and it was written
+after that protocol failed in a way nothing caught. Two specialists ran concurrently
+in one checkout; one was running a throwaway spike. The other committed five of the
+spike's files onto its feature branch — including a debug WebSocket endpoint that
+would have shipped to production — and its `index.ts` ended up wired to the spike's
+handler instead of the router its own slice was supposed to deliver. An acceptance
+criterion silently went unmet **behind a green build**. Isolation is cheaper than
+the review round that catches this, and far cheaper than the one that doesn't.
+
+1. Clone, then commit locally with a clear, imperative message. `git add` the
+   **explicit paths you own** — never `git add -A`, and never `git add` a directory
+   whose contents you have not enumerated.
+2. **Assert your branch contains only your files before you push:**
+   ```sh
+   git diff --name-only origin/<base>...HEAD
+   ```
+   Every path in that output must be one you were told you own. If anything else is
+   there, it is not yours — remove it from the branch and find out how it arrived.
+   Paste this output in your task report; it is the only cheap proof that a branch is
+   clean, and it takes one command.
+3. Rebase on your base branch: `git pull --rebase origin <base>`. In your own clone
+   there is no sibling's uncommitted work, so `--autostash` is not needed and its
+   absence is a feature — a rebase that wants to stash something means you have
+   uncommitted changes you did not account for.
+4. Push your branch and open a PR. On network error, retry with exponential back-off:
+   2 s → 4 s → 8 s → 16 s.
 5. Verify remote == local:
    ```sh
    local=$(git rev-parse HEAD)
-   remote=$(git ls-remote origin master | awk '{print $1}')
+   remote=$(git ls-remote origin <your-branch> | awk '{print $1}')
    [ "$local" = "$remote" ] && echo VERIFIED || echo MISMATCH
    ```
 6. Report the pushed SHA as proof of delivery in your task report.
 
-### Verify gate while working in parallel
+### The gate is the WHOLE repo, not your package
 
-A repo-wide `npm run verify` fails on siblings' half-finished code sitting in the
-shared working tree. While other workstreams are mid-flight, **gate on YOUR OWN
-package(s)** (scoped `tsc --noEmit`, `eslint`, and `vitest` for your package). The
-CTO runs the full repo-wide `verify` on a clean checkout once a slice's workstreams
-all land, and resolves any integration issue then.
+Run **`npm run verify`** — the full pipeline — in your own clone before every push.
+
+An earlier version of this file told parallel writers to "gate on your own
+package(s)" with scoped `tsc`, `eslint` and `vitest`, because a repo-wide run would
+trip over siblings' half-finished code in the shared tree. That advice is deleted.
+It was a workaround for a problem that one-checkout-per-writer removes, and it
+directly caused a slice to be reported green while the feature it delivered was not
+attached to the running server: the unit tests passed in isolation, and nothing ever
+exercised the real wiring. **A scoped green is not a green.** If `verify` fails on
+code you do not own, that is information — report it, do not narrow the command until
+it passes.
+
+Independent QA re-runs the same pipeline on a **fresh clone** before anything merges.
+Your green is necessary, not sufficient.
+
+### Integration branches — when a feature is not incrementally shippable
+
+`master` is wired to deploy (merge = deploy). Some features cannot be merged a slice
+at a time without taking working functionality away from users: a slice may replace a
+live screen with a placeholder, or delete an endpoint its replacement has not shipped
+yet. Half a feature on `master` is worse than none of it.
+
+For those, the CTO cuts an integration branch (`integration/<feature>`), every slice
+targets **that** branch, and it merges to `master` once the feature works end to end
+and QA has verified it whole. Each slice still gets its own PR and its own QA pass on
+the way in — the integration branch changes the merge target, not the standard.
+
+**If you add an integration branch, add it to `ci.yml`'s `pull_request.branches`
+trigger in the same change.** That trigger is an allowlist. A PR into a branch not
+named there runs **zero checks** — which is worse than the situation the integration
+branch was created to fix, and it fails silently, because a PR with no checks looks
+much like a PR with passing ones. Workflow files cannot be changed by `git push`;
+they go through the gated GitHub MCP write.
 
 ### Pre-commit format hook (husky + lint-staged)
 
@@ -121,8 +179,9 @@ it never touches your siblings' unstaged work.
 npm run verify
 ```
 
-Runs: `typecheck → lint → arch:check → test` — the same steps as the GitHub
-Actions pipeline. All must be green before any push or PR.
+Runs: `typecheck → lint → arch:check → actionlint → docs:check → test` — the same
+steps as the GitHub Actions pipeline. All must be green before any push or PR. Run it
+whole; see "The gate is the WHOLE repo" above for why a scoped run is not a gate.
 
 **GitHub Actions** (`.github/workflows/ci.yml`) is the remote gate. See
 `ci/README.md` for the one-time step to enable it — requires a token with
