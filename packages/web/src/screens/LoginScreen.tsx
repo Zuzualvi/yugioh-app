@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { login, redeemInvite } from "../api/auth";
+import { lookupJoinToken } from "../api/room";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import type { User } from "../types/contracts";
@@ -17,7 +18,27 @@ export function LoginScreen() {
   const from = (location.state as { from?: string } | null)?.from ?? "/";
 
   // D5b: when resuming to a duel join link, show a context line above the form.
+  // Parse the join token from the `from` path and call the pre-join lookup.
   const isDuelJoinResume = from.startsWith("/duel/join");
+  const duelJoinToken = isDuelJoinResume
+    ? (from.split("/duel/join/")[1] ?? "").split("?")[0]
+    : null;
+  const [duelCreatorName, setDuelCreatorName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!duelJoinToken) return;
+    let cancelled = false;
+    lookupJoinToken(duelJoinToken)
+      .then((info) => {
+        if (!cancelled) setDuelCreatorName(info.creatorDisplayName || null);
+      })
+      .catch(() => {
+        // Name lookup failed — fall back to generic copy, never block the form
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [duelJoinToken]);
 
   const inviteCode = searchParams.get("invite") ?? "";
   const isInviteFlow = !!inviteCode;
@@ -112,7 +133,9 @@ export function LoginScreen() {
               }}
               data-testid="duel-join-context"
             >
-              Sign in to join a duel
+              {duelCreatorName
+                ? `Sign in to join ${duelCreatorName}'s duel`
+                : "Sign in to join a duel"}
             </p>
           )}
           <h2 style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: 20 }}>
