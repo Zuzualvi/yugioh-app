@@ -43,10 +43,22 @@ Recorded as `docs/adr/0002-room-as-its-own-table.md`.
 Every change to room state uses one of exactly three shapes. This is deliberate: it constrains the
 output space so each kind of change has one correct form.
 
-1. **Every state transition is a single guarded write** —
-   `UPDATE duel_room SET … WHERE id = ? AND <expected state>` — and `changes === 1` is the decision.
-   Never read-then-write. This is R40 / REQ-CONC-01, and it applies to the claim (T2), each ready
-   (T4), the flip firing (T5), the choice (T6), leave (T8/T11) and every close (T9/T10).
+1. **The FIRST write of every state transition is a guarded write** —
+   `UPDATE duel_room SET … WHERE id = ? AND <expected state>` — and its `changes === 1` is the
+   decision. This is R40 / REQ-CONC-01, and it applies to the claim (T2), each ready (T4), the flip
+   firing (T5), the choice (T6), leave (T8/T11) and every close (T9/T10).
+
+   **Clarified 2026-07-28 after QA review.** Some transitions need more than one statement — the
+   second ready must rebase a deadline or roll and persist the flip, which depends on the row it just
+   wrote. Those follow-up statements run **inside the same `db.transaction`** and may address the row
+   by `id` alone. That is correct, and it is not the defect this rule exists to prevent: the defect is
+   a read-then-write **spanning an Express handler with no transaction**, which is what
+   `POST /api/duels/join` does today (`duel/duelRoutes.ts:115,145`) and which is safe only by accident
+   of a synchronous driver and no `await`. `better-sqlite3` transactions are synchronous and hold the
+   write lock, so nothing can interleave inside one. The requirement, precisely: **no transition may
+   depend on handler synchrony for its correctness, and the guarded UPDATE must come first and gate
+   everything after it.** A test must prove each guard rejects when the expected state does not
+   hold.
 2. **Every read and every mutation begins with the same expiry evaluation** —
    `evaluateExpiry(row, now)` — and writes back the close before doing anything else. There is no
    sweeper. The lazy check is always the authority (R17, R20).
@@ -400,7 +412,13 @@ Path `GET /api/duels/:id/room/ws`. Handshake, in order:
    `CORS_ALLOWED_ORIGINS` is empty (same-origin dev / E2E), accept a **same-host** `Origin` only.
 2. Parse the `sid` cookie from the handshake `Cookie` header; `resolveSessionUser`. No token in the
    URL (R9, R11).
-3. `requireOccupant`. A non-occupant is closed with `4403` (E22).
+3. `requireOccupant`. **Amended 2026-07-28 after QA review:** all three rejections are an HTTP
+   **403 written to the socket before the upgrade completes**, not a WebSocket close code — including
+   the non-occupant case, which this spec previously specified as close `4403` (E22). Refusing the
+   handshake outright is both simpler and stricter than completing it in order to close it, and it
+   makes all three failure modes one shape. The client treats a failed upgrade as "not authorized",
+   surfaces a real error and falls back to polling (R13); it must not retry the socket in a loop.
+   Tests assert **exactly** 403 — a test that accepts either 403 or 4403 asserts nothing.
 4. Send the initial `ROOM_STATE` immediately; then on every change (R12).
 
 Any number of concurrent sockets per occupant is accepted — no one-socket-per-identity guard (R12,
