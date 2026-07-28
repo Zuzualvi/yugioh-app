@@ -84,6 +84,34 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (duel_id, seq)
   );
   `,
+  // Migration 3: duel_room table (ZUH-26, additive only, no existing table altered)
+  `
+  CREATE TABLE IF NOT EXISTS duel_room (
+    id                     TEXT NOT NULL PRIMARY KEY,
+    join_token             TEXT NOT NULL UNIQUE,
+    join_token_consumed_at INTEGER,
+    creator_user_id        TEXT NOT NULL,
+    opponent_user_id       TEXT,
+    timer_per_move_seconds INTEGER NOT NULL,
+    seed_json              TEXT NOT NULL,
+    creator_deck_id        TEXT,
+    opponent_deck_id       TEXT,
+    creator_deck_json      TEXT,
+    opponent_deck_json     TEXT,
+    creator_ready_at       INTEGER,
+    opponent_ready_at      INTEGER,
+    room_deadline_at       INTEGER NOT NULL,
+    flip_winner_user_id    TEXT,
+    flip_rolled_at         INTEGER,
+    flip_choice            TEXT,
+    flip_choice_at         INTEGER,
+    status                 TEXT NOT NULL DEFAULT 'open',
+    closed_reason          TEXT,
+    closed_by_user_id      TEXT,
+    created_at             INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_duel_room_join_token ON duel_room(join_token);
+  `,
 ];
 
 export function runMigrations(db: InstanceType<typeof Database>): void {
