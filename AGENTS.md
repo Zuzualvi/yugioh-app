@@ -150,27 +150,41 @@ current — the Linear issue or Project it names does. If you find yourself typi
 deleted in 2026-07; work state lives in **Linear** and is driven automatically by
 PR events. Do not recreate them under any name.
 
-**Every PR must CLOSE its Linear issue** — put `Closes ZUH-123` in the body. Not a bare
-mention: the integration is **asymmetric**. A mention (the ID in the title, branch name or
-body) moves the issue to _In Progress_ when the PR opens, but **only a closing keyword**
-(`Closes` / `Fixes` / `Resolves`) moves it to _Done_ on merge. A PR that merely references
-its issue leaves the work stuck _In Progress_ forever — green build, shipped code, and a
-board that has silently stopped matching reality. Both halves of this were verified in this
-repo on 2026-07-27/28.
+**Every PR must CLOSE its Linear issue** — put `Closes ZUH-123` in the body.
 
-**CI enforces the reference** (`linear-reference` job), but it cannot enforce the keyword —
-a PR may legitimately reference an issue it does not complete. That part is on you.
+Linear scans every PR's title, branch name and body for issue keys. **You cannot turn that
+off**, and the label below does not stop it — it only skips our own CI check. What you _can_
+control is which words you use, and they mean three different things:
 
-Two rules about _which_ issue:
+| You write                                                           | Links the issue? | Moves it to _Done_ on merge? |
+| ------------------------------------------------------------------- | ---------------- | ---------------------------- |
+| `Closes` / `Fixes` / `Resolves` **ZUH-123**                         | yes              | **yes**                      |
+| `Refs` / `References` / `Part of` / `Related to` / `Toward` ZUH-123 | yes              | no                           |
+| a bare `ZUH-123` anywhere                                           | yes              | no                           |
+| `Skip ZUH-123` / `Ignore ZUH-123`                                   | **no**           | no                           |
 
-- Reference the **engineering issue you are implementing**. Never a discovery issue: those
-  are owned and closed by the Product Lead when it delivers, and GitHub cannot tell the
-  difference — referencing one rewinds completed product work to _In Progress_ and nothing
-  ever moves it back. (This happened on 2026-07-28.)
-- For work that genuinely has no ticket — a repair, a docs fix — add the **`no-linear`**
-  label. Deliberately a label rather than a magic word in the text, so skipping the rule is
-  visible on the PR. Reaching for an unrelated issue key just to turn CI green is how the
-  bug above was caused.
+Every linked issue moves to _In Progress_ when the PR opens, whichever wording you used. So
+a PR that links its issue without a closing keyword leaves the work stuck _In Progress_
+forever — green build, shipped code, and a board that has silently stopped matching reality.
+Verified in both directions in this repo on 2026-07-27/28.
+
+**CI enforces that a reference exists** (`linear-reference` job); it cannot enforce that you
+used the right word. That part is on you.
+
+Three rules about _which_ issue, all learned the same day:
+
+- Reference the **engineering issue you are implementing**, and close it. One PR, one issue.
+- **Never link a discovery issue.** Those are owned and closed by the Product Lead when it
+  delivers, and Linear cannot tell the difference — linking one rewinds completed product
+  work to _In Progress_. If you need to _mention_ one, write `Skip ZUH-123` so it is not
+  linked at all.
+- **Do not quote an issue key in prose.** A PR body explaining "PR #2 said `Closes ZUH-13`"
+  is not a description of the mechanism — Linear reads it as the mechanism and acts on it.
+  Use `Skip`, or write the key so it cannot match.
+
+For work that genuinely has no ticket — a repair, a docs fix — add the **`no-linear`** label.
+Deliberately a label rather than a magic word, so skipping the rule is visible on the PR.
+Borrowing an unrelated issue key just to turn CI green is how the bug above was caused.
 
 **`npm run verify` includes `docs:check`**, so placement is enforced locally _and_ in CI.
 It runs four rules: nothing loose at the root of `docs/`, no fifth folder, `docs/working/`
