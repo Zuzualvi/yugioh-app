@@ -6,7 +6,16 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    # ALLOWLIST — a PR into a branch not named here runs ZERO checks, and fails
+    # silently: a PR with no checks looks much like a PR with passing ones. So any
+    # new integration branch must be added here in the same change that creates it.
+    #
+    # integration/duel-room: the pre-duel room is not incrementally shippable —
+    # its first slice replaces two live screens with placeholders and deletes the
+    # endpoints their replacements have not shipped yet, so half of it on master
+    # would take creating and joining a duel out of production. The four slices
+    # target this branch and it merges to master once the feature works end to end.
+    branches: [master, integration/duel-room]
     # `edited` matters: without it, fixing a PR body to add the missing Linear
     # reference would not re-run the check, and the PR would stay red forever.
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
