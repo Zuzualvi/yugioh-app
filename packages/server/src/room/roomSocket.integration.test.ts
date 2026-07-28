@@ -10,6 +10,9 @@ import { createServer } from "node:http";
 import type { Server as HttpServer } from "node:http";
 import { WebSocket } from "ws";
 import Database from "better-sqlite3";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { openDb } from "../db/openDb.js";
 import { createApp } from "../app.js";
 import { DuelManager } from "../duel/duelManager.js";
@@ -425,5 +428,74 @@ describe("restart resilience (C12)", () => {
     httpServer = createServer(app);
     await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", () => resolve()));
     port = (httpServer.address() as { port: number }).port;
+  });
+});
+
+// ── File-backed restart: handle closed, DB reopened (C12 R6) ─────────────
+// Proves the room survives losing the DB connection entirely: close handle,
+// reopen from the same path, assert nothing changed.
+
+describe("restart resilience — file-backed DB, handle closed and reopened (C12 R6)", () => {
+  it("awaiting_choice: flip unchanged after handle close + reopen", async () => {
+    // Create a temp file-backed DB
+    const tmpDir = mkdtempSync(join(tmpdir(), "yugioh-c12-"));
+    const dbPath = join(tmpDir, "test.db");
+
+    let fileDb = openDb(dbPath);
+
+    // Seed user and room directly into the file DB
+    const creatorId = randomUUID();
+    const opponentId = randomUUID();
+    fileDb
+      .prepare(
+        "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'member', ?)",
+      )
+      .run(creatorId, "FileCreator", await hash("pw"), new Date().toISOString());
+    fileDb
+      .prepare(
+        "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'member', ?)",
+      )
+      .run(opponentId, "FileOpponent", await hash("pw"), new Date().toISOString());
+
+    const roomId = randomUUID();
+    insertRoom(fileDb, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: creatorId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const flipWinner = creatorId;
+    const flipRolledAt = 77777;
+    const roomDeadlineAt = Date.now() + 120_000;
+    fileDb
+      .prepare(
+        `UPDATE duel_room SET status='awaiting_choice', opponent_user_id=?,
+         flip_winner_user_id=?, flip_rolled_at=?, room_deadline_at=? WHERE id=?`,
+      )
+      .run(opponentId, flipWinner, flipRolledAt, roomDeadlineAt, roomId);
+
+    const rowBefore = getRoom(fileDb, roomId) as DuelRoomRow;
+    expect(rowBefore.status).toBe("awaiting_choice");
+
+    // ── Destroy the handle (simulates process restart) ──
+    fileDb.close();
+
+    // ── Reopen from the same path ──
+    fileDb = openDb(dbPath);
+
+    try {
+      const rowAfter = getRoom(fileDb, roomId) as DuelRoomRow;
+      expect(rowAfter.status).toBe("awaiting_choice");
+      expect(rowAfter.flip_winner_user_id).toBe(rowBefore.flip_winner_user_id);
+      expect(rowAfter.flip_rolled_at).toBe(rowBefore.flip_rolled_at);
+      expect(rowAfter.room_deadline_at).toBe(rowBefore.room_deadline_at);
+    } finally {
+      fileDb.close();
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

@@ -428,6 +428,14 @@ describe("guard invariants — rejected writes change nothing", () => {
     expect(result).toBe(false);
     expect(getRoom(db, id)).toEqual(before);
   });
+
+  it("setDeckRef: row unchanged when occupant is already ready", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 100 });
+    const before = getRoom(db, id)!;
+    const result = setDeckRef(db, id, "creator", "deck-x");
+    expect(result).toBe(false);
+    expect(getRoom(db, id)).toEqual(before);
+  });
 });
 
 // ── Concurrent second-readies (C7) ────────────────────────────────────────
