@@ -16,6 +16,9 @@ export function LoginScreen() {
   // before the auth redirect (INVITE-01), falling back to Home.
   const from = (location.state as { from?: string } | null)?.from ?? "/";
 
+  // D5b: when resuming to a duel join link, show a context line above the form.
+  const isDuelJoinResume = from.startsWith("/duel/join");
+
   const inviteCode = searchParams.get("invite") ?? "";
   const isInviteFlow = !!inviteCode;
 
@@ -99,6 +102,19 @@ export function LoginScreen() {
 
         {/* Form panel */}
         <div className="panel">
+          {/* D5b context line: shown when resuming to a duel join link */}
+          {isDuelJoinResume && !isInviteFlow && (
+            <p
+              style={{
+                color: "var(--text-1)",
+                fontSize: "0.875rem",
+                marginBottom: 16,
+              }}
+              data-testid="duel-join-context"
+            >
+              Sign in to join a duel
+            </p>
+          )}
           <h2 style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: 20 }}>
             {isInviteFlow ? "Set up your account" : "Sign in"}
           </h2>

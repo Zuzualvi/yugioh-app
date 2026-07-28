@@ -71,3 +71,24 @@ describe("LoginScreen — resume after auth (INVITE-01)", () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true }));
   });
 });
+
+describe("LoginScreen — D5b duel join context line", () => {
+  it("shows context line when from starts with /duel/join", async () => {
+    setupMocks();
+    await renderAt({ from: "/duel/join/sometoken" });
+    expect(screen.getByTestId("duel-join-context")).toBeTruthy();
+    expect(screen.getByTestId("duel-join-context").textContent).toMatch(/sign in to join a duel/i);
+  });
+
+  it("does not show context line for other paths", async () => {
+    setupMocks();
+    await renderAt({ from: "/decks" });
+    expect(screen.queryByTestId("duel-join-context")).toBeNull();
+  });
+
+  it("does not show context line when there is no from", async () => {
+    setupMocks();
+    await renderAt(undefined);
+    expect(screen.queryByTestId("duel-join-context")).toBeNull();
+  });
+});
