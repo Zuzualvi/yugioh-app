@@ -150,12 +150,27 @@ current — the Linear issue or Project it names does. If you find yourself typi
 deleted in 2026-07; work state lives in **Linear** and is driven automatically by
 PR events. Do not recreate them under any name.
 
-**Every PR must reference its Linear issue** — `ZUH-123` in the title, the branch name, or
-the body (`fixes ZUH-123` also closes it on merge). This is what drives the automatic
-In Progress → In Review → Done transitions, so a PR without it silently breaks work
-tracking no matter how green the build is. **CI enforces it** (`linear-reference` job). For
-work that genuinely has no ticket, add the **`no-linear`** label — deliberately a label
-rather than a magic word in the text, so skipping the rule is visible on the PR.
+**Every PR must CLOSE its Linear issue** — put `Closes ZUH-123` in the body. Not a bare
+mention: the integration is **asymmetric**. A mention (the ID in the title, branch name or
+body) moves the issue to _In Progress_ when the PR opens, but **only a closing keyword**
+(`Closes` / `Fixes` / `Resolves`) moves it to _Done_ on merge. A PR that merely references
+its issue leaves the work stuck _In Progress_ forever — green build, shipped code, and a
+board that has silently stopped matching reality. Both halves of this were verified in this
+repo on 2026-07-27/28.
+
+**CI enforces the reference** (`linear-reference` job), but it cannot enforce the keyword —
+a PR may legitimately reference an issue it does not complete. That part is on you.
+
+Two rules about _which_ issue:
+
+- Reference the **engineering issue you are implementing**. Never a discovery issue: those
+  are owned and closed by the Product Lead when it delivers, and GitHub cannot tell the
+  difference — referencing one rewinds completed product work to _In Progress_ and nothing
+  ever moves it back. (This happened on 2026-07-28.)
+- For work that genuinely has no ticket — a repair, a docs fix — add the **`no-linear`**
+  label. Deliberately a label rather than a magic word in the text, so skipping the rule is
+  visible on the PR. Reaching for an unrelated issue key just to turn CI green is how the
+  bug above was caused.
 
 **`npm run verify` includes `docs:check`**, so placement is enforced locally _and_ in CI.
 It runs four rules: nothing loose at the root of `docs/`, no fifth folder, `docs/working/`
