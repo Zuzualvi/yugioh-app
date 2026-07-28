@@ -500,9 +500,22 @@ pre-existing over-disclosure is noted in the PRD as out of scope.
 | `src/screens/room/RoomClosed.tsx` | S2 | D1 creator variant, D4 creator-left, E48 |
 | `src/screens/JoinLandingScreen.tsx` | S1 | D1/D2/D3/D5 + the public logged-out landing; replaces `JoinDuelScreen.tsx` (deleted) |
 | `src/screens/CreateDuelScreen.tsx` | S1 | S1: deck picker removed, presets 3/5/10/15 min, default 10 |
-| `src/screens/LoginScreen.tsx` | S1 | D5b context line |
+| `src/screens/LoginScreen.tsx` | S1 | D5b context line — see §6.1 |
 | `src/screens/DuelScreen.tsx` | S3 | Seat-token recovery — see §7 |
 | `src/content/learn/how-to/start-or-join-a-duel.md` | S1 | R48 rewrite |
+
+### 6.1 D5b's context line needs the creator's name, and where it comes from
+
+The UX doc's D5b line is *"Sign in to join {name}'s duel"*, and `LoginScreen` receives only the
+`from` path — a gap this spec did not close. **Resolved 2026-07-28: `LoginScreen` parses the join
+token out of `from` and calls the pre-join lookup itself.** That endpoint is unauthenticated by
+design (R41), so this costs one cheap call and no new surface. If the name does not load the line
+falls back to *"Sign in to join a duel"* — a complete, true sentence — and the name is never allowed
+to gate the form (UX doc §4.4).
+
+Rejected: passing the name through router state. Router state does not survive a refresh, and a
+sign-in page is one of the most-refreshed screens in any product. Building a second thing that
+silently loses its value on reload is the ZUH-21 mistake in miniature, for a line of copy.
 
 **Scaffolding rule.** S0 creates every file in this table that it does not own, as a minimal honest
 render (heading + the status line, no styling, real data from `useRoom`). This exists so S1–S3 never
