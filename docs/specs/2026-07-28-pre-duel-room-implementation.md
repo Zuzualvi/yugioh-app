@@ -412,9 +412,23 @@ both to `{ noServer: true }` and adds one `httpServer.on("upgrade")` dispatcher 
 `packages/server/src/wsUpgradeRouter.ts` that routes by pathname: `/room/ws` → room, everything else
 under `/api/duels/` → board, anything else → destroy.
 
-**R11 contingency (CEO-approved).** If the pre-flight spike shows the `sid` cookie does **not**
-attach on the `app.` → `api.` upgrade in a real browser, the fallback is a **30-second, single-use
-ws ticket** minted by an authenticated `POST /api/duels/:id/room/ws-ticket` and passed as
+**R11 verification result (2026-07-28).** The pre-flight spike ran the upgrade against Chromium 141,
+WebKit 26 and Firefox 142. All three attach the `sid` cookie to a `wss://` handshake initiated from a
+same-site cross-origin page: `SameSite=Lax` does not block a same-registrable-domain WS upgrade in
+any engine, and `app.zuhayr.io` → `api.zuhayr.io` is same-site. WebKit refuses a `Secure` cookie over
+plain `ws://`, which is correct and does not apply to production. Safari's ITP targets *cross-site*
+cookies and so does not bite here either.
+
+**Scope of that evidence, stated honestly:** the runs were local, with synthetic cookies, against
+browser engines — **the deployed stack was not observed**. The debug probe needed to observe it was
+never shipped, deliberately: confirming it would have meant deploying a debug WebSocket endpoint to
+production and then removing it across two deploys, to test something the REST path already exercises
+in production every day. The deployed confirmation comes for free the first time the room socket runs
+against the deployed environment in this feature's E2E suite (QA, ZUH-30). Until that has been
+observed, the contingency below stands.
+
+**R11 contingency (CEO-approved).** If the cookie turns out not to attach on the `app.` → `api.`
+upgrade in the deployed environment, the fallback is a **30-second, single-use ws ticket** minted by an authenticated `POST /api/duels/:id/room/ws-ticket` and passed as
 `?ticket=`. Occupant identity does **not** change: the ticket resolves to the same `user_id` and
 nothing else. R11's "no token in the URL" is then amended, with the reason recorded. The `Origin`
 check stays either way. Nothing outside `roomSocket.ts` and one contract addition changes, and R13's
