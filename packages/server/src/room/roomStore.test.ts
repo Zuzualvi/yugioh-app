@@ -350,3 +350,129 @@ describe("revertToOpen", () => {
     expect(revertToOpen(db, id, 999)).toBe(false);
   });
 });
+
+// ── Guard: writes-nothing assertions (C6) ─────────────────────────────────
+// Each guard-rejected call must return false/null AND leave the row identical.
+
+describe("guard invariants — rejected writes change nothing", () => {
+  const deck = { main: [1, 2, 3], extra: [] };
+
+  it("closeRoom: row unchanged when already closed", () => {
+    const id = seedRoom({ status: "open" });
+    closeRoom(db, id, "left", CREATOR_ID);
+    const before = getRoom(db, id)!;
+    closeRoom(db, id, "expired_idle", null); // second close
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("closeRoom: row unchanged when status=starting", () => {
+    const id = seedRoom({ status: "starting" });
+    const before = getRoom(db, id)!;
+    closeRoom(db, id, "left", null);
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("claimSlot: row unchanged when already filled", () => {
+    const id = seedRoom({ status: "open" });
+    claimSlot(db, id, OPPONENT_ID, 100);
+    const before = getRoom(db, id)!;
+    const result = claimSlot(db, id, "user-3", 200);
+    expect(result).toBe(false);
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("claimSlot: row unchanged when status≠open", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
+    const before = getRoom(db, id)!;
+    const result = claimSlot(db, id, "user-3", 200);
+    expect(result).toBe(false);
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("applyReady: row unchanged when wrong status", () => {
+    const id = seedRoom({ status: "open" });
+    const before = getRoom(db, id)!;
+    const result = applyReady(db, id, "creator", deck, 1000);
+    expect(result).toBeNull();
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("applyReady: row unchanged when occupant already ready", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 100 });
+    const before = getRoom(db, id)!;
+    const result = applyReady(db, id, "creator", deck, 1000);
+    expect(result).toBeNull();
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("clearReady: row unchanged when occupant not ready", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
+    const before = getRoom(db, id)!;
+    const result = clearReady(db, id, "creator");
+    expect(result).toBe(false);
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("applyChoice: row unchanged when status≠awaiting_choice", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
+    const before = getRoom(db, id)!;
+    const result = applyChoice(db, id, "first", 3000);
+    expect(result).toBeNull();
+    expect(getRoom(db, id)).toEqual(before);
+  });
+
+  it("revertToOpen: row unchanged when status≠filled", () => {
+    const id = seedRoom({ status: "open" });
+    const before = getRoom(db, id)!;
+    const result = revertToOpen(db, id, 999);
+    expect(result).toBe(false);
+    expect(getRoom(db, id)).toEqual(before);
+  });
+});
+
+// ── Concurrent second-readies (C7) ────────────────────────────────────────
+// Two occupants' readies racing must produce exactly one flip and one
+// awaiting_choice. Because better-sqlite3 is synchronous, we prove the guard
+// shape: the first applyReady that fires the flip wins; a repeat call for the
+// same occupant returns null (ready_at is no longer NULL) and a repeat call
+// from the other occupant returns null (status is no longer 'filled').
+
+describe("concurrent second-readies (C7)", () => {
+  const deck = { main: [1, 2, 3], extra: [] };
+
+  it("second call for same occupant returns null — no double flip", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
+    // Opponent readies → fires flip
+    const first = applyReady(db, id, "opponent", deck, 1000);
+    expect(first?.flipFired).toBe(true);
+    // Same occupant calls ready again (e.g. duplicate request)
+    const second = applyReady(db, id, "opponent", deck, 1001);
+    expect(second).toBeNull();
+    // Exactly one flip — winner is set once
+    const row = getRoom(db, id)!;
+    expect(row.status).toBe("awaiting_choice");
+    expect(row.flip_winner_user_id).toBeTruthy();
+    expect(row.flip_rolled_at).toBe(1000); // from the first call
+  });
+
+  it("second applyReady after flip returns null — status is awaiting_choice", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
+    const first = applyReady(db, id, "opponent", deck, 1000);
+    expect(first?.flipFired).toBe(true);
+    // Another ready attempt while status=awaiting_choice
+    const late = applyReady(db, id, "creator", deck, 1002);
+    expect(late).toBeNull();
+    // Status unchanged, flip not re-rolled
+    const row = getRoom(db, id)!;
+    expect(row.status).toBe("awaiting_choice");
+    expect(row.flip_rolled_at).toBe(1000);
+  });
+
+  it("flip_winner_user_id is a userId (not a seat number)", () => {
+    const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
+    applyReady(db, id, "opponent", deck, 1000);
+    const row = getRoom(db, id)!;
+    expect([CREATOR_ID, OPPONENT_ID]).toContain(row.flip_winner_user_id);
+    expect(typeof row.flip_winner_user_id).toBe("string");
+  });
+});
