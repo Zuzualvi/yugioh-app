@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
 // Duel unit tests — all run against FakeEdisonDuel (no WASM required).
 //
-// Covers: lifecycle, token auth, persistence, relay routing, timer, reconnect.
+// Covers: board-socket token auth, persistence, relay routing, timer, reconnect.
+// Note: POST /api/duels and POST /api/duels/join HTTP tests are superseded by
+//       the room flow (ZUH-26). Tests here seed the DB directly for board-socket setup.
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -12,6 +14,8 @@ import { openDb } from "../db/openDb.js";
 import { createApp } from "../app.js";
 import { DuelManager } from "./duelManager.js";
 import { attachDuelWsServer } from "./duelSocket.js";
+import { createRoomWss } from "../room/roomSocket.js";
+import { attachUpgradeRouter } from "../wsUpgradeRouter.js";
 import { FakeEdisonDuel } from "./fakeEdisonDuel.js";
 import type { DuelEngine, DuelEngineFactory, DuelEngineReplay } from "./engineInterface.js";
 import type { DuelServerMessage } from "@yugioh-app/contracts";
@@ -22,6 +26,9 @@ import type { Application } from "express";
 import { hash } from "@node-rs/argon2";
 import { randomUUID } from "node:crypto";
 import type { Server as HttpServer } from "node:http";
+import { EDISON_FLAGS } from "@yugioh-app/engine";
+import { computeDeadline } from "./timer.js";
+import type { Seat } from "@yugioh-app/contracts";
 
 // ── Catalog (uses fixture for proper deck validation) ─────────────────────
 
@@ -127,19 +134,6 @@ async function seedAndLogin(
   return { sid, userId };
 }
 
-/** Insert a legal deck directly into DB (bypasses the PUT /api/decks route). */
-function insertLegalDeck(userId: string): string {
-  const deckId = randomUUID();
-  const now = new Date().toISOString();
-  const deck = legalDeck();
-  db.prepare(
-    `INSERT INTO decks
-       (id, owner_id, name, main_json, extra_json, side_json, is_valid, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-  ).run(deckId, userId, "Test Deck", JSON.stringify(deck.main), "[]", "[]", now, now);
-  return deckId;
-}
-
 // ── WebSocket helpers ──────────────────────────────────────────────────────
 
 interface WsSession {
@@ -184,10 +178,13 @@ function waitForMessage(
   });
 }
 
+/** Creates a test HTTP server with both board and room WS upgrade routing. */
 function withServer(testFn: (port: number) => Promise<void>): Promise<void> {
   return new Promise((resolve, reject) => {
     const httpServer = createServer(app);
-    attachDuelWsServer(httpServer, db, manager);
+    const boardWss = attachDuelWsServer(httpServer, db, manager);
+    const roomWss = createRoomWss();
+    attachUpgradeRouter(httpServer, db, boardWss, roomWss);
     const sockets = new Set<import("net").Socket>();
     httpServer.on("connection", (s) => {
       sockets.add(s);
@@ -210,7 +207,7 @@ function withServer(testFn: (port: number) => Promise<void>): Promise<void> {
   });
 }
 
-// ── Duel setup helpers ─────────────────────────────────────────────────────
+// ── Direct DB duel setup helpers ──────────────────────────────────────────
 
 interface DuelSetup {
   duelId: string;
@@ -223,27 +220,48 @@ interface DuelSetup {
   bobUserId: string;
 }
 
-async function createDuelAsAlice(): Promise<DuelSetup> {
+/** Seeds a duel row directly — bypasses the superseded POST /api/duels endpoint. */
+async function createDuelAsAlice(timerSeconds = 60): Promise<DuelSetup> {
   const { sid: aliceSid, userId: aliceUserId } = await seedAndLogin(
     "Alice_" + randomUUID().slice(0, 4),
     "pass123",
   );
-  const aliceDeckId = insertLegalDeck(aliceUserId);
   const { sid: bobSid, userId: bobUserId } = await seedAndLogin(
     "Bob_" + randomUUID().slice(0, 4),
     "pass456",
   );
 
-  const createRes = await request(app)
-    .post("/api/duels")
-    .set("Cookie", `sid=${aliceSid}`)
-    .send({ deckId: aliceDeckId, timer: { perMoveSeconds: 60 } });
-  expect(createRes.status).toBe(201);
+  const duelId = randomUUID();
+  const joinToken = randomUUID();
+  const seat0Token = randomUUID();
+  const seat1Token_unused = randomUUID();
+  const seed =
+    BigInt(Math.floor(Math.random() * 0xffffffff)) * 0x100000000n +
+    BigInt(Math.floor(Math.random() * 0xffffffff));
+  const deck = legalDeck();
+
+  db.prepare(
+    `INSERT INTO duel
+       (id, join_token, seat0_token, seat1_token, seat0_user_id, seed_json,
+        duel_flags, deck0_json, timer_per_move_seconds, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting_for_opponent', ?)`,
+  ).run(
+    duelId,
+    joinToken,
+    seat0Token,
+    seat1Token_unused,
+    aliceUserId,
+    JSON.stringify(seed.toString()),
+    EDISON_FLAGS.toString(16),
+    JSON.stringify(deck),
+    timerSeconds,
+    Date.now(),
+  );
 
   return {
-    duelId: createRes.body.duelId as string,
-    joinToken: createRes.body.joinToken as string,
-    seat0Token: createRes.body.creatorSeatToken as string,
+    duelId,
+    joinToken,
+    seat0Token,
     aliceSid,
     bobSid,
     aliceUserId,
@@ -251,146 +269,38 @@ async function createDuelAsAlice(): Promise<DuelSetup> {
   };
 }
 
+/** Seeds the join + starts the engine — bypasses the superseded POST /api/duels/join. */
 async function joinDuel(setup: DuelSetup): Promise<DuelSetup> {
-  const bobDeckId = insertLegalDeck(setup.bobUserId);
-  const joinRes = await request(app)
-    .post("/api/duels/join")
-    .set("Cookie", `sid=${setup.bobSid}`)
-    .send({ joinToken: setup.joinToken, deckId: bobDeckId });
-  expect(joinRes.status).toBe(201);
+  const deck = legalDeck();
+  const seat1Token = randomUUID();
+  const onClockSeat: Seat = 0;
 
-  // Wait for engine to be registered asynchronously
-  await new Promise<void>((r) => setTimeout(r, 50));
+  // Read timer from the duel row
+  const row = db.prepare("SELECT * FROM duel WHERE id = ?").get(setup.duelId) as {
+    seed_json: string;
+    deck0_json: string;
+    timer_per_move_seconds: number;
+    seat1_token: string;
+  };
 
-  return { ...setup, seat1Token: joinRes.body.seatToken as string };
+  const deadlineAt = computeDeadline(row.timer_per_move_seconds);
+
+  db.prepare(
+    `UPDATE duel
+     SET seat1_user_id = ?, deck1_json = ?, seat1_token = ?, status = 'active',
+         deadline_at = ?, on_clock_seat = ?
+     WHERE id = ?`,
+  ).run(setup.bobUserId, JSON.stringify(deck), seat1Token, deadlineAt, onClockSeat, setup.duelId);
+
+  // Start engine in background (same as old join route did)
+  const seed = BigInt(JSON.parse(row.seed_json) as string);
+  const deck0 = JSON.parse(row.deck0_json) as { main: number[]; extra: number[] };
+  await manager.createAndStart(setup.duelId, seed, deck0, deck);
+
+  return { ...setup, seat1Token };
 }
 
-// ── Lifecycle tests ────────────────────────────────────────────────────────
-
-describe("POST /api/duels — create", () => {
-  it("returns 401 without session", async () => {
-    const res = await request(app)
-      .post("/api/duels")
-      .send({ deckId: "x", timer: { perMoveSeconds: 30 } });
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 400 for missing deckId", async () => {
-    const { sid } = await seedAndLogin("Alice1", "password123");
-    const res = await request(app)
-      .post("/api/duels")
-      .set("Cookie", `sid=${sid}`)
-      .send({ timer: { perMoveSeconds: 30 } });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 for unknown deck", async () => {
-    const { sid } = await seedAndLogin("Alice2", "password123");
-    const res = await request(app)
-      .post("/api/duels")
-      .set("Cookie", `sid=${sid}`)
-      .send({ deckId: "no-such-deck", timer: { perMoveSeconds: 30 } });
-    expect(res.status).toBe(400);
-  });
-
-  it("creates duel and returns joinToken + creatorSeatToken for seat 0", async () => {
-    const setup = await createDuelAsAlice();
-    expect(typeof setup.duelId).toBe("string");
-    expect(typeof setup.joinToken).toBe("string");
-    expect(typeof setup.seat0Token).toBe("string");
-  });
-});
-
-// ── Join + token auth tests ────────────────────────────────────────────────
-
-describe("POST /api/duels/join", () => {
-  it("rejects unknown joinToken", async () => {
-    const setup = await createDuelAsAlice();
-    const bobDeckId = insertLegalDeck(setup.bobUserId);
-    const res = await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.bobSid}`)
-      .send({ joinToken: "bad-token", deckId: bobDeckId });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("invalid_token");
-  });
-
-  it("rejects self-join", async () => {
-    const setup = await createDuelAsAlice();
-    const aliceDeckId = insertLegalDeck(setup.aliceUserId);
-    const res = await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.aliceSid}`)
-      .send({ joinToken: setup.joinToken, deckId: aliceDeckId });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("self_join");
-  });
-
-  it("rejects a second join (token already consumed)", async () => {
-    const setup = await createDuelAsAlice();
-    const bobDeckId1 = insertLegalDeck(setup.bobUserId);
-    const bobDeckId2 = insertLegalDeck(setup.bobUserId);
-
-    const first = await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.bobSid}`)
-      .send({ joinToken: setup.joinToken, deckId: bobDeckId1 });
-    expect(first.status).toBe(201);
-
-    const second = await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.bobSid}`)
-      .send({ joinToken: setup.joinToken, deckId: bobDeckId2 });
-    expect(second.status).toBe(400);
-    expect(second.body.error.code).toBe("already_joined");
-  });
-
-  it("returns seat 1 + seatToken on success", async () => {
-    const setup = await createDuelAsAlice();
-    const bobDeckId = insertLegalDeck(setup.bobUserId);
-    const res = await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.bobSid}`)
-      .send({ joinToken: setup.joinToken, deckId: bobDeckId });
-    expect(res.status).toBe(201);
-    expect(res.body.seat).toBe(1);
-    expect(typeof res.body.seatToken).toBe("string");
-  });
-});
-
-describe("GET /api/duels/join/:joinToken — pre-join lookup (INVITE-02)", () => {
-  it("returns timer + status, and NO secrets, for a valid joinToken", async () => {
-    const setup = await createDuelAsAlice();
-    const res = await request(app)
-      .get(`/api/duels/join/${setup.joinToken}`)
-      .set("Cookie", `sid=${setup.bobSid}`);
-    expect(res.status).toBe(200);
-    expect(res.body.timerPerMoveSeconds).toBe(60);
-    expect(res.body.status).toBe("waiting_for_opponent");
-    // Must not leak seat tokens, decks, or seed.
-    expect(res.body.seat0_token).toBeUndefined();
-    expect(res.body.seat1_token).toBeUndefined();
-    expect(res.body.creatorSeatToken).toBeUndefined();
-    expect(res.body.deck0_json).toBeUndefined();
-    expect(res.body.seed_json).toBeUndefined();
-  });
-
-  it("returns 404 for an unknown joinToken", async () => {
-    const { sid } = await seedAndLogin("Carol_" + randomUUID().slice(0, 4), "pass789");
-    const res = await request(app)
-      .get(`/api/duels/join/${randomUUID()}`)
-      .set("Cookie", `sid=${sid}`);
-    expect(res.status).toBe(404);
-  });
-
-  it("requires a session", async () => {
-    const setup = await createDuelAsAlice();
-    const res = await request(app).get(`/api/duels/join/${setup.joinToken}`);
-    expect(res.status).toBe(401);
-  });
-});
-
-// ── WebSocket relay tests ──────────────────────────────────────────────────
+// ── Board-socket tests ─────────────────────────────────────────────────────
 
 describe("WebSocket relay", () => {
   it("rejects bad token with ERROR", async () => {
@@ -448,7 +358,6 @@ describe("WebSocket relay", () => {
   });
 
   it("routes DECISION frame only to the on-clock seat (Phase 1)", async () => {
-    // Engine is waiting for seat 0; has a typed decision for seat 0 only.
     const customDuel = new FakeEdisonDuel([
       {
         status: "waiting",
@@ -470,19 +379,16 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Seat 0 (on the clock) must receive the DECISION frame on connect.
       const decisionMsg = await waitForMessage(s0, (m) => m.type === "DECISION");
       expect(decisionMsg.type).toBe("DECISION");
       if (decisionMsg.type === "DECISION") {
         expect(decisionMsg.decision.kind).toBe("SelectYesNo");
       }
 
-      // Seat 1 is NOT on the clock → must NOT receive a DECISION frame.
       await waitForMessage(s1, (m) => m.type === "CLOCK");
       const s1Decisions = s1.messages.filter((m) => m.type === "DECISION");
       expect(s1Decisions.length).toBe(0);
 
-      // Send DECISION_RESPONSE from seat 0 → engine advances and ends.
       s0.ws.send(
         JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
       );
@@ -494,10 +400,6 @@ describe("WebSocket relay", () => {
   });
 
   it("re-delivers the pending DECISION to the on-clock seat on connect (Fix #2)", async () => {
-    // The engine steps to the first WAITING boundary at join time (before any
-    // socket connects), so the decision was never broadcast. On connect the
-    // relay must re-send it via DECISION frame to the entitled seat — else the
-    // on-clock player sees the board + a running clock but has nothing to act on.
     const customDuel = new FakeEdisonDuel([
       {
         status: "waiting",
@@ -518,18 +420,15 @@ describe("WebSocket relay", () => {
       const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
 
-      // Seat 0 (on the clock) receives the pending DECISION frame on connect…
       const decision = await waitForMessage(s0, (m) => m.type === "DECISION");
       expect(decision.type).toBe("DECISION");
       if (decision.type === "DECISION") {
         expect(decision.decision.kind).toBe("SelectYesNo");
       }
 
-      // …and it arrives AFTER STATE (the client's STATE handler runs first).
       const s0Types = s0.messages.map((m) => m.type);
       expect(s0Types.indexOf("STATE")).toBeLessThan(s0Types.lastIndexOf("DECISION"));
 
-      // Seat 1 is NOT on the clock → must not receive a DECISION frame.
       await waitForMessage(s1, (m) => m.type === "CLOCK");
       const s1Decisions = s1.messages.filter((m) => m.type === "DECISION");
       expect(s1Decisions.length).toBe(0);
@@ -540,8 +439,6 @@ describe("WebSocket relay", () => {
   });
 
   it("events in step result are relayed before messages, with per-seat redaction", async () => {
-    // DRAW event has player:1 (hidden from seat 0), MOVE has no player (public broadcast).
-    // After seat 0 responds, the engine steps → ended with these events.
     const customDuel = new FakeEdisonDuel([
       {
         status: "waiting",
@@ -552,8 +449,8 @@ describe("WebSocket relay", () => {
         status: "ended",
         messages: [],
         events: [
-          { type: 90, name: "DRAW", player: 1 as 0 | 1 }, // seat-1-only: hidden from seat 0
-          { type: 50, name: "MOVE" }, // public: no player field → both seats see it
+          { type: 90, name: "DRAW", player: 1 as 0 | 1 },
+          { type: 50, name: "MOVE" },
         ],
       },
     ]);
@@ -569,7 +466,6 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Seat 0 responds via DECISION_RESPONSE → engine steps to "ended" emitting events
       s0.ws.send(
         JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
       );
@@ -577,13 +473,11 @@ describe("WebSocket relay", () => {
       await waitForMessage(s0, (m) => m.type === "DUEL_END");
       await waitForMessage(s1, (m) => m.type === "DUEL_END");
 
-      // Public MOVE event (no player) must reach both seats
       const s0Move = s0.messages.filter((m) => m.type === "MSG" && m.msg.name === "MOVE");
       const s1Move = s1.messages.filter((m) => m.type === "MSG" && m.msg.name === "MOVE");
       expect(s0Move.length).toBe(1);
       expect(s1Move.length).toBe(1);
 
-      // DRAW event has player:1, so seat 0 must NOT receive it; seat 1 must receive it
       const s0Draw = s0.messages.filter((m) => m.type === "MSG" && m.msg.name === "DRAW");
       const s1Draw = s1.messages.filter((m) => m.type === "MSG" && m.msg.name === "DRAW");
       expect(s0Draw.length).toBe(0);
@@ -601,7 +495,6 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Seat 1 tries to respond when seat 0 is on clock
       s1.ws.send(JSON.stringify({ type: "RESPONSE", response: { type: 1 } }));
 
       const err = await waitForMessage(s1, (m) => m.type === "ERROR");
@@ -612,8 +505,6 @@ describe("WebSocket relay", () => {
     });
   });
 
-  // ── Phase 1: DECISION_RESPONSE relay tests ─────────────────────────────────
-
   it("DECISION_RESPONSE from wrong seat (not on clock) returns ERROR", async () => {
     const setup = await joinDuel(await createDuelAsAlice());
     await withServer(async (port) => {
@@ -621,7 +512,6 @@ describe("WebSocket relay", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Seat 1 sends DECISION_RESPONSE when seat 0 is on clock
       s1.ws.send(
         JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
       );
@@ -636,7 +526,6 @@ describe("WebSocket relay", () => {
   });
 
   it("invalid DECISION_RESPONSE yields ERROR frame and no state change", async () => {
-    // Script the engine to reject the next applyDecisionResponse call
     const customDuel = new FakeEdisonDuel([
       { status: "waiting", messages: [], awaiting: { seat: 0 } },
       { status: "ended", messages: [] },
@@ -662,12 +551,10 @@ describe("WebSocket relay", () => {
       expect(err.type).toBe("ERROR");
       if (err.type === "ERROR") expect(err.message).toBe("kind mismatch");
 
-      // No state change: engine must not have advanced (no DUEL_END sent)
       await new Promise<void>((r) => setTimeout(r, 50));
       const duelEnds = s0.messages.filter((m) => m.type === "DUEL_END");
       expect(duelEnds.length).toBe(0);
 
-      // Nothing persisted in DB
       const rows = db
         .prepare("SELECT COUNT(*) as c FROM response_log WHERE duel_id = ?")
         .get(setup.duelId) as { c: number };
@@ -698,11 +585,9 @@ describe("WebSocket relay", () => {
       const resp = { kind: "SelectYesNo", yes: true };
       s0.ws.send(JSON.stringify({ type: "DECISION_RESPONSE", response: resp }));
 
-      // Engine advances → DUEL_END broadcast to both seats
       await waitForMessage(s0, (m) => m.type === "DUEL_END");
       await waitForMessage(s1, (m) => m.type === "DUEL_END");
 
-      // Response is persisted in DB
       const rows = db
         .prepare("SELECT response_json FROM response_log WHERE duel_id = ? ORDER BY seq")
         .all(setup.duelId) as { response_json: string }[];
@@ -750,7 +635,6 @@ describe("WebSocket relay", () => {
       s0.ws.send(JSON.stringify({ type: "RESIGN" }));
 
       await waitForMessage(s0, (m) => m.type === "DUEL_END");
-      // Give the server a tick to complete cleanup
       await new Promise<void>((r) => setTimeout(r, 20));
 
       expect(_capturedEngine?.destroyed).toBe(true);
@@ -764,49 +648,21 @@ describe("WebSocket relay", () => {
   it(
     "destroy() is called on engine when duel ends via timeout",
     async () => {
-      const { sid: aliceSid, userId: aliceUserId } = await seedAndLogin(
-        "AliceDst_" + randomUUID().slice(0, 4),
-        "pass123",
-      );
-      const { sid: bobSid, userId: bobUserId } = await seedAndLogin(
-        "BobDst_" + randomUUID().slice(0, 4),
-        "pass456",
-      );
-      const aliceDeckId = insertLegalDeck(aliceUserId);
-      const bobDeckId = insertLegalDeck(bobUserId);
-
-      const createRes = await request(app)
-        .post("/api/duels")
-        .set("Cookie", `sid=${aliceSid}`)
-        .send({ deckId: aliceDeckId, timer: { perMoveSeconds: 1 } });
-      expect(createRes.status).toBe(201);
-      const duelId = createRes.body.duelId as string;
-      const joinToken = createRes.body.joinToken as string;
-      const seat0Token = createRes.body.creatorSeatToken as string;
-
-      const joinRes = await request(app)
-        .post("/api/duels/join")
-        .set("Cookie", `sid=${bobSid}`)
-        .send({ joinToken, deckId: bobDeckId });
-      expect(joinRes.status).toBe(201);
-      const seat1Token = joinRes.body.seatToken as string;
-
-      await new Promise<void>((r) => setTimeout(r, 50));
+      const setup = await joinDuel(await createDuelAsAlice(1)); // 1s timer
 
       await withServer(async (port) => {
-        const s0 = await connectWs(port, duelId, seat0Token);
-        const s1 = await connectWs(port, duelId, seat1Token);
+        const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+        const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
         await waitForMessage(s0, (m) => m.type === "CLOCK");
 
         expect(_capturedEngine?.destroyed).toBe(false);
 
-        // Wait for 1s timer to fire
         await new Promise<void>((r) => setTimeout(r, 2000));
 
         await waitForMessage(s0, (m) => m.type === "DUEL_END", 500);
 
         expect(_capturedEngine?.destroyed).toBe(true);
-        expect(manager.getLive(duelId)).toBeUndefined();
+        expect(manager.getLive(setup.duelId)).toBeUndefined();
 
         s0.close();
         s1.close();
@@ -820,7 +676,6 @@ describe("WebSocket relay", () => {
 
 describe("Persistence: response_log ordering and rehydrate", () => {
   it("persists DuelDecisionResponse in sequence order to response_log", async () => {
-    // Engine needs two WAITING states to collect two responses
     const customDuel = new FakeEdisonDuel([
       { status: "waiting", messages: [], awaiting: { seat: 0 } },
       { status: "waiting", messages: [], awaiting: { seat: 0 } },
@@ -874,7 +729,6 @@ describe("Persistence: response_log ordering and rehydrate", () => {
 
     const setup = await joinDuel(await createDuelAsAlice());
 
-    // Evict from manager to simulate process restart
     manager.remove(setup.duelId);
     expect(manager.getLive(setup.duelId)).toBeUndefined();
 
@@ -887,7 +741,6 @@ describe("Persistence: response_log ordering and rehydrate", () => {
   });
 
   it("restart → replay receives persisted DuelDecisionResponse[] log", async () => {
-    // The customDuel allows one response before ending.
     const customDuel = new FakeEdisonDuel([
       { status: "waiting", messages: [], awaiting: { seat: 0 } },
       { status: "ended", messages: [] },
@@ -900,7 +753,6 @@ describe("Persistence: response_log ordering and rehydrate", () => {
 
     const setup = await joinDuel(await createDuelAsAlice());
 
-    // Connect, submit a response, wait for duel to end (response persisted).
     await withServer(async (port) => {
       const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
@@ -910,13 +762,11 @@ describe("Persistence: response_log ordering and rehydrate", () => {
       s0.close();
     });
 
-    // Verify the persisted log is DuelDecisionResponse[] format.
     const rows = db
       .prepare("SELECT response_json FROM response_log WHERE duel_id = ? ORDER BY seq")
       .all(setup.duelId) as { response_json: string }[];
     expect(rows.length).toBe(1);
     const persisted = JSON.parse(rows[0]?.response_json ?? "{}") as unknown;
-    // Must have `kind` discriminant (DuelDecisionResponse), not `type` (EngineResponse).
     expect((persisted as Record<string, unknown>)["kind"]).toBe("SelectYesNo");
     expect((persisted as Record<string, unknown>)["type"]).toBeUndefined();
   });
@@ -925,17 +775,11 @@ describe("Persistence: response_log ordering and rehydrate", () => {
 // ── Timer tests ─────────────────────────────────────────────────────────────
 
 describe("Timer: deadline + timeout", () => {
-  it("sets deadline_at in DB immediately after join", async () => {
-    const setup = await createDuelAsAlice();
-    const bobDeckId = insertLegalDeck(setup.bobUserId);
-    await request(app)
-      .post("/api/duels/join")
-      .set("Cookie", `sid=${setup.bobSid}`)
-      .send({ joinToken: setup.joinToken, deckId: bobDeckId });
-
+  it("sets deadline_at in DB after join", async () => {
+    const setup = await joinDuel(await createDuelAsAlice());
     const row = db
-      .prepare("SELECT deadline_at, timer_per_move_seconds FROM duel WHERE join_token = ?")
-      .get(setup.joinToken) as { deadline_at: number; timer_per_move_seconds: number };
+      .prepare("SELECT deadline_at, timer_per_move_seconds FROM duel WHERE id = ?")
+      .get(setup.duelId) as { deadline_at: number; timer_per_move_seconds: number };
     expect(row.deadline_at).toBeGreaterThan(0);
     expect(row.timer_per_move_seconds).toBe(60);
   });
@@ -943,36 +787,13 @@ describe("Timer: deadline + timeout", () => {
   it(
     "fires timeout and broadcasts DUEL_END after deadline expires",
     async () => {
-      // Use 1s timer, wait 2s for it to fire
-      const { sid: aliceSid, userId: aliceUserId } = await seedAndLogin("AliceTO", "pass123");
-      const { sid: bobSid, userId: bobUserId } = await seedAndLogin("BobTO", "pass456");
-      const aliceDeckId = insertLegalDeck(aliceUserId);
-      const bobDeckId = insertLegalDeck(bobUserId);
-
-      const createRes = await request(app)
-        .post("/api/duels")
-        .set("Cookie", `sid=${aliceSid}`)
-        .send({ deckId: aliceDeckId, timer: { perMoveSeconds: 1 } });
-      expect(createRes.status).toBe(201);
-      const duelId = createRes.body.duelId as string;
-      const joinToken = createRes.body.joinToken as string;
-      const seat0Token = createRes.body.creatorSeatToken as string;
-
-      const joinRes = await request(app)
-        .post("/api/duels/join")
-        .set("Cookie", `sid=${bobSid}`)
-        .send({ joinToken, deckId: bobDeckId });
-      expect(joinRes.status).toBe(201);
-      const seat1Token = joinRes.body.seatToken as string;
-
-      await new Promise<void>((r) => setTimeout(r, 50));
+      const setup = await joinDuel(await createDuelAsAlice(1)); // 1s timer
 
       await withServer(async (port) => {
-        const s0 = await connectWs(port, duelId, seat0Token);
-        const s1 = await connectWs(port, duelId, seat1Token);
+        const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+        const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
         await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-        // Wait 2s for 1s timer to fire
         await new Promise<void>((r) => setTimeout(r, 2000));
 
         const end0 = await waitForMessage(s0, (m) => m.type === "DUEL_END", 500);
@@ -981,7 +802,7 @@ describe("Timer: deadline + timeout", () => {
         expect(end1.type).toBe("DUEL_END");
         if (end0.type === "DUEL_END") {
           expect(end0.reason).toBe("timeout");
-          expect(end0.winner).toBe(1); // seat 0 was on clock → seat 1 wins
+          expect(end0.winner).toBe(1);
         }
         s0.close();
         s1.close();
@@ -998,13 +819,11 @@ describe("Timer: deadline + timeout", () => {
       const s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
       await waitForMessage(s0, (m) => m.type === "CLOCK");
 
-      // Manually expire the deadline in DB (simulates server restart without timer)
       db.prepare("UPDATE duel SET deadline_at = ? WHERE id = ?").run(
         Date.now() - 5000,
         setup.duelId,
       );
 
-      // Send DECISION_RESPONSE from seat 0 — lazy enforcement should trigger timeout loss
       s0.ws.send(
         JSON.stringify({ type: "DECISION_RESPONSE", response: { kind: "SelectYesNo", yes: true } }),
       );
@@ -1046,22 +865,21 @@ describe("Reconnection", () => {
 
     await new Promise<void>((resolve, reject) => {
       httpServer = createServer(app);
-      attachDuelWsServer(httpServer, db, manager);
+      const boardWss = attachDuelWsServer(httpServer, db, manager);
+      const roomWss = createRoomWss();
+      attachUpgradeRouter(httpServer, db, boardWss, roomWss);
 
       httpServer.listen(0, "127.0.0.1", async () => {
         const addr = httpServer.address();
         const port = typeof addr === "object" && addr ? addr.port : 0;
 
         try {
-          // First connection
           const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
           await waitForMessage(s0, (m) => m.type === "SEAT_ASSIGNED");
           s0.ws.close();
 
-          // Wait for close to propagate
           await new Promise<void>((r) => setTimeout(r, 50));
 
-          // Reconnect with same token
           const s0b = await connectWs(port, setup.duelId, setup.seat0Token);
           const assigned = await waitForMessage(s0b, (m) => m.type === "SEAT_ASSIGNED");
           expect(assigned.type).toBe("SEAT_ASSIGNED");

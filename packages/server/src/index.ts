@@ -5,6 +5,8 @@ import { loadCatalog } from "./catalog/loadCatalog.js";
 import { createApp } from "./app.js";
 import { DuelManager } from "./duel/duelManager.js";
 import { attachDuelWsServer } from "./duel/duelSocket.js";
+import { createRoomWss } from "./room/roomSocket.js";
+import { attachUpgradeRouter } from "./wsUpgradeRouter.js";
 import { createEdisonDuel, replayEdisonDuel } from "@yugioh-app/engine";
 import type { DuelEngineFactory, DuelEngineReplay } from "./duel/engineInterface.js";
 
@@ -40,7 +42,11 @@ const duelManager = new DuelManager(factory, replay);
 const app = createApp(db, catalog, duelManager);
 
 const httpServer = createServer(app);
-attachDuelWsServer(httpServer, db, duelManager);
+
+// Both WS servers use noServer: true; the upgrade router dispatches to them.
+const boardWss = attachDuelWsServer(httpServer, db, duelManager);
+const roomWss = createRoomWss();
+attachUpgradeRouter(httpServer, db, boardWss, roomWss);
 
 httpServer.listen(PORT, () => {
   console.log(`Yu-Gi-Oh server listening on port ${PORT}`);

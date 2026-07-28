@@ -8,6 +8,7 @@ import { MyDecksScreen } from "./screens/MyDecksScreen";
 import { CreateDuelScreen } from "./screens/CreateDuelScreen";
 import { JoinDuelScreen } from "./screens/JoinDuelScreen";
 import { DuelScreen } from "./screens/DuelScreen";
+import { RoomScreen } from "./screens/RoomScreen";
 import { DocsLandingScreen } from "./screens/learn/DocsLandingScreen";
 import { DocArticleScreen } from "./screens/learn/DocArticleScreen";
 import "./styles/global.css";
@@ -116,6 +117,14 @@ export function App() {
         element={
           <RequireAuth>
             <JoinDuelScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/duel/:roomId/room"
+        element={
+          <RequireAuth>
+            <RoomScreen />
           </RequireAuth>
         }
       />
