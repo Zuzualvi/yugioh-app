@@ -5,13 +5,14 @@
 //   1. applyChoice (guarded UPDATE → status='starting', derives seats)
 //   2. INSERT duel row with same id, same seed, decks reordered by seat,
 //      freshly minted seat tokens, deadline_at=NULL, on_clock_seat=NULL
-// Then broadcasts the updated room state and dispatches T7 (engine start).
+// Then broadcasts the updated room state and calls startDuelFromRoom (T7).
 // ---------------------------------------------------------------------------
 
 import type { Request, Response } from "express";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { SubmitChoiceBodySchema } from "@yugioh-app/contracts";
+import type { DuelManager } from "../../duel/duelManager.js";
 import { applyChoice } from "../roomStore.js";
 import { loadRoomView } from "../loadRoomView.js";
 import { requireOccupant } from "../roomAccess.js";
@@ -19,10 +20,10 @@ import { evaluateExpiry } from "../evaluateExpiry.js";
 import { closeRoom } from "../roomStore.js";
 import { buildRoomSnapshot } from "../buildRoomSnapshot.js";
 import { broadcastRoom, getPresenceMap } from "../roomBroadcast.js";
-import { dispatchDuelStart } from "../../duel/startDuelFromRoom.js";
+import { startDuelFromRoom } from "../../duel/startDuelFromRoom.js";
 import { EDISON_FLAGS } from "@yugioh-app/engine";
 
-export function submitChoice(db: InstanceType<typeof Database>) {
+export function submitChoice(db: InstanceType<typeof Database>, duelManager?: DuelManager) {
   return (req: Request, res: Response): void => {
     const roomId = req.params["id"] as string;
     const userId = req.user!.id;
@@ -55,9 +56,7 @@ export function submitChoice(db: InstanceType<typeof Database>) {
     if (expired && expiredReason) {
       closeRoom(db, roomId, expiredReason, null);
       const fresh = loadRoomView(db, roomId);
-      if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
-      }
+      if (fresh) broadcastRoom(db, roomId, fresh.row, fresh.names, now);
       res.status(410).json({ error: { code: "expired", message: "Room has expired." } });
       return;
     }
@@ -126,17 +125,19 @@ export function submitChoice(db: InstanceType<typeof Database>) {
 
     // Broadcast the new 'starting' room snapshot
     const freshView = loadRoomView(db, roomId);
-    if (freshView) {
-      broadcastRoom(db, roomId, freshView.row, freshView.names, now);
-    }
+    if (freshView) broadcastRoom(db, roomId, freshView.row, freshView.names, now);
 
     // Return caller's snapshot
     const finalView = freshView ?? view;
     const presence = getPresenceMap(roomId, finalView.row);
     const snapshot = buildRoomSnapshot(finalView.row, userId, finalView.names, presence, now);
 
-    // T7: async engine start (fire-and-forget)
-    dispatchDuelStart(roomId);
+    // T7: async engine start (fire-and-forget; errors logged inside)
+    if (duelManager) {
+      startDuelFromRoom(db, duelManager, roomId).catch((err: unknown) => {
+        console.error("[submitChoice] Unhandled error from startDuelFromRoom:", err);
+      });
+    }
 
     res.status(200).json(snapshot);
   };

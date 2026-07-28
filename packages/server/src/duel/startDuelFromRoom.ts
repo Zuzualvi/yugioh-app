@@ -1,43 +1,19 @@
 // ---------------------------------------------------------------------------
 // startDuelFromRoom — T7: construct engine + write first per-move deadline.
 //
-// Called fire-and-forget from submitChoice after T6 commits.
-// Also exports recoverStartingDuels for process-restart E47 recovery.
+// Called directly from submitChoice (which now receives DuelManager via
+// createRoomRouter/createApp — no module-level registry).
 //
-// The module-level dispatch registry decouples the room route (which has no
-// DuelManager) from the engine lifecycle, without modifying roomRouter.ts.
+// Also exports recoverStartingDuels for process-restart E47 recovery,
+// called once from index.ts.
 // ---------------------------------------------------------------------------
 
 import Database from "better-sqlite3";
 import type { DuelManager } from "./duelManager.js";
 import { getDuel, setDeadline } from "./duelStore.js";
+import { failStartingRoom } from "../room/roomStore.js";
 import { loadRoomView } from "../room/loadRoomView.js";
 import { broadcastRoom } from "../room/roomBroadcast.js";
-
-// ── Module-level dispatch ──────────────────────────────────────────────────
-
-type DispatchFn = (duelId: string) => Promise<void>;
-let _dispatch: DispatchFn | null = null;
-
-/**
- * Register the function that will be called by dispatchDuelStart.
- * Must be called once at server startup (index.ts) before any duel can start.
- */
-export function registerDuelStart(fn: DispatchFn): void {
-  _dispatch = fn;
-}
-
-/**
- * Trigger T7 for a duel that just completed T6. Fire-and-forget:
- * errors are logged, never thrown. No-op if no handler is registered.
- */
-export function dispatchDuelStart(duelId: string): void {
-  if (_dispatch) {
-    _dispatch(duelId).catch((err: unknown) => {
-      console.error("[startDuelFromRoom] Unhandled error for duel", duelId, err);
-    });
-  }
-}
 
 // ── T7 ────────────────────────────────────────────────────────────────────────
 
@@ -45,7 +21,7 @@ export function dispatchDuelStart(duelId: string): void {
  * T7: construct the engine and write the first per-move deadline.
  *
  * Idempotent: if the duel row is already 'active' or 'ended', returns early.
- * On engine failure: closes the room 'engine_failed' and broadcasts (E46).
+ * On engine failure: closes the room 'engine_failed' and broadcasts (E46, T10).
  */
 export async function startDuelFromRoom(
   db: InstanceType<typeof Database>,
@@ -77,16 +53,10 @@ export async function startDuelFromRoom(
     const view = loadRoomView(db, duelId);
     if (view) broadcastRoom(db, duelId, view.row, view.names, Date.now());
   } catch (err) {
-    // E46: engine failed — close room, broadcast, record no loss.
-    // closeRoom() guards against closing 'starting' rooms, so we write directly.
-    // The guard exists because a normal 'starting' room is terminal — this is the
-    // exceptional T10 path where the engine failed before becoming active.
+    // E46 / T10: engine failed — close room via store, broadcast, record no loss.
     console.error("[startDuelFromRoom] Engine construction failed for duel", duelId, err);
     manager.remove(duelId);
-    db.prepare(
-      `UPDATE duel_room SET status = 'closed', closed_reason = 'engine_failed'
-       WHERE id = ? AND status = 'starting'`,
-    ).run(duelId);
+    failStartingRoom(db, duelId);
     const view = loadRoomView(db, duelId);
     if (view) broadcastRoom(db, duelId, view.row, view.names, Date.now());
   }
@@ -96,7 +66,7 @@ export async function startDuelFromRoom(
 
 /**
  * On server restart, complete T7 for any duel rows still in 'starting' state.
- * Called once from index.ts after registerDuelStart().
+ * Called once from index.ts after server is wired up.
  */
 export async function recoverStartingDuels(
   db: InstanceType<typeof Database>,

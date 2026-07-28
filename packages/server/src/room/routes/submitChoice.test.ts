@@ -22,7 +22,6 @@ import type { DuelEngine } from "../../duel/engineInterface.js";
 import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../../catalog/fixture.js";
 import type { LoadedCatalog } from "../../catalog/loadCatalog.js";
 import { insertRoom } from "../roomStore.js";
-import { registerDuelStart, startDuelFromRoom } from "../../duel/startDuelFromRoom.js";
 import type { Application } from "express";
 
 function makeTestCatalog(): LoadedCatalog {
@@ -66,7 +65,6 @@ beforeEach(() => {
         { status: "waiting", messages: [], awaiting: { seat: 0 } },
       ]) as DuelEngine,
   );
-  registerDuelStart(async (duelId) => startDuelFromRoom(db, manager, duelId));
   app = createApp(db, makeTestCatalog(), manager);
 });
 
