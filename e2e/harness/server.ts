@@ -20,6 +20,9 @@ import { loadCatalog } from "../../packages/server/src/catalog/loadCatalog.js";
 import { createApp } from "../../packages/server/src/app.js";
 import { DuelManager } from "../../packages/server/src/duel/duelManager.js";
 import { attachDuelWsServer } from "../../packages/server/src/duel/duelSocket.js";
+import { createRoomWss } from "../../packages/server/src/room/roomSocket.js";
+import { attachUpgradeRouter } from "../../packages/server/src/wsUpgradeRouter.js";
+import { recoverStartingDuels } from "../../packages/server/src/duel/startDuelFromRoom.js";
 import type {
   DuelEngineFactory,
   DuelEngineReplay,
@@ -46,9 +49,18 @@ const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
   replayEdisonDuel(seed, deck0, deck1, log);
 const duelManager = new DuelManager(factory, replay);
 
+// E47: recover any duels stuck in 'starting' from a previous run.
+await recoverStartingDuels(db, duelManager);
+
 const app = createApp(db, catalog, duelManager, { webDistPath });
 const httpServer = createServer(app);
-attachDuelWsServer(httpServer, db, duelManager);
+
+// Both WS servers use noServer:true — the upgrade router dispatches to them.
+// (board WS was changed to noServer:true in the room-spine commit; the harness
+// must use the same dispatcher as index.ts or board WS upgrades are never routed.)
+const boardWss = attachDuelWsServer(httpServer, db, duelManager);
+const roomWss = createRoomWss();
+attachUpgradeRouter(httpServer, db, boardWss, roomWss);
 
 httpServer.listen(PORT, () => {
   console.log(`[e2e-harness] same-origin stack on http://localhost:${PORT}`);
