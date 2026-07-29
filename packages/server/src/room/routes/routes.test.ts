@@ -11,28 +11,38 @@ import type { Application } from "express";
 import { hash } from "@node-rs/argon2";
 import { openDb } from "../../db/openDb.js";
 import { createApp } from "../../app.js";
-import { loadCatalog } from "../../catalog/loadCatalog.js";
+import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../../catalog/fixture.js";
+import type { LoadedCatalog } from "../../catalog/loadCatalog.js";
 import { insertRoom } from "../roomStore.js";
 import { ROOM_OPEN_TTL_MS } from "../roomState.js";
 import type { RoomSnapshot } from "@yugioh-app/contracts";
 
 // ── Catalog ───────────────────────────────────────────────────────────────
-// Use the real catalog so ready.ts (which calls loadCatalog internally) and
-// the test deck are validated against the same card pool.
 
-// Unlimited, non-extra-deck, non-alias passcodes from the real catalog.
-// 14 cards × 3 copies = 42 cards (a legal 42-card main deck).
+function makeTestCatalog(): LoadedCatalog {
+  const byPasscode = new Map(FIXTURE_CARDS.map((c) => [c.passcode, c]));
+  const aliasIndex = new Map<number, number>();
+  for (const card of FIXTURE_CARDS) {
+    if (card.aliasOf !== null) aliasIndex.set(card.passcode, card.aliasOf);
+  }
+  const legalPasscodes = new Set([...byPasscode.keys(), ...aliasIndex.keys()]);
+  return { catalog: FIXTURE_CATALOG, byPasscode, aliasIndex, legalPasscodes };
+}
+
+// Unlimited, non-extra-deck passcodes from the fixture catalog.
 const UNLIMITED_MAIN = [
-  27551, 32864, 50755, 62121, 102380, 114932, 126218, 131182, 191749, 213326, 218704, 242146,
-  295517, 296499,
+  89631139, 46986414, 70781052, 5405694, 29401950, 71413901, 28604635, 83011277, 23205979, 71564252,
+  24508238, 80441106, 7572887, 89943723,
 ];
 
-/** Build a legal 42-card main deck from unlimited real-catalog cards. */
+/** Build a legal 40-card main deck from fixture unlimited cards. */
 function legalMain(): number[] {
   const main: number[] = [];
-  for (const code of UNLIMITED_MAIN) {
+  for (let i = 0; i < 13; i++) {
+    const code = UNLIMITED_MAIN[i]!;
     main.push(code, code, code);
   }
+  main.push(UNLIMITED_MAIN[13]!);
   return main;
 }
 
@@ -43,7 +53,7 @@ let app: Application;
 
 beforeEach(() => {
   db = openDb(":memory:");
-  app = createApp(db, loadCatalog());
+  app = createApp(db, makeTestCatalog());
 });
 
 afterEach(() => {
@@ -156,7 +166,7 @@ function seedIllegalDeck(ownerId: string): string {
   const now = new Date().toISOString();
   db.prepare(
     "INSERT INTO decks (id, owner_id, name, main_json, extra_json, side_json, is_valid, created_at, updated_at) VALUES (?, ?, ?, ?, '[]', '[]', 0, ?, ?)",
-  ).run(deckId, ownerId, "Illegal Deck", JSON.stringify([27551]), now, now);
+  ).run(deckId, ownerId, "Illegal Deck", JSON.stringify([89631139]), now, now);
   return deckId;
 }
 

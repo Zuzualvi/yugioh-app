@@ -6,6 +6,7 @@
 
 import type { Request, Response } from "express";
 import Database from "better-sqlite3";
+import type { LoadedCatalog } from "../../catalog/loadCatalog.js";
 import { loadRoomView } from "../loadRoomView.js";
 import { requireOccupant } from "../roomAccess.js";
 import { evaluateExpiry } from "../evaluateExpiry.js";
@@ -13,7 +14,6 @@ import { closeRoom, applyReady } from "../roomStore.js";
 import { buildRoomSnapshot } from "../buildRoomSnapshot.js";
 import { broadcastRoom, getPresenceMap, armDeadlineTimer } from "../roomBroadcast.js";
 import { validateDeck } from "../../domain/validateDeck.js";
-import { loadCatalog } from "../../catalog/loadCatalog.js";
 
 interface DeckRow {
   id: string;
@@ -24,7 +24,7 @@ interface DeckRow {
   side_json: string;
 }
 
-export function ready(db: InstanceType<typeof Database>) {
+export function ready(db: InstanceType<typeof Database>, catalog: LoadedCatalog) {
   return (req: Request, res: Response): void => {
     const roomId = req.params["id"] as string;
     const userId = req.user!.id;
@@ -121,7 +121,6 @@ export function ready(db: InstanceType<typeof Database>) {
     const side = JSON.parse(deck.side_json) as number[];
 
     // Validate against the live catalog (E28)
-    const catalog = loadCatalog();
     const validation = validateDeck({ main, extra, side }, catalog);
     if (!validation.legal) {
       res.status(400).json({

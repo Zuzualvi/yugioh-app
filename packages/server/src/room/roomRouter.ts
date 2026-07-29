@@ -7,6 +7,7 @@ import { Router } from "express";
 import Database from "better-sqlite3";
 import { requireSession } from "../middleware/requireSession.js";
 import type { DuelManager } from "../duel/duelManager.js";
+import type { LoadedCatalog } from "../catalog/loadCatalog.js";
 import { createRoom } from "./routes/createRoom.js";
 import { lookupJoinToken } from "./routes/lookupJoinToken.js";
 import { claimRoom } from "./routes/claimRoom.js";
@@ -20,7 +21,8 @@ import { getSeatCredential } from "./routes/getSeatCredential.js";
 
 export function createRoomRouter(
   db: InstanceType<typeof Database>,
-  duelManager?: DuelManager,
+  duelManager: DuelManager | undefined,
+  catalog: LoadedCatalog,
 ): Router {
   const router = Router();
 
@@ -37,7 +39,7 @@ export function createRoomRouter(
   // All :id routes require session
   router.get("/:id/room", requireSession(db), getRoomSnapshot(db));
   router.post("/:id/room/deck", requireSession(db), pickDeck(db));
-  router.post("/:id/room/ready", requireSession(db), ready(db));
+  router.post("/:id/room/ready", requireSession(db), ready(db, catalog));
   router.post("/:id/room/unready", requireSession(db), unready(db));
   router.post("/:id/room/choice", requireSession(db), submitChoice(db, duelManager));
   router.post("/:id/room/leave", requireSession(db), leave(db));
