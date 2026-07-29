@@ -98,6 +98,7 @@ export function RoomChoice({ snapshot }: Props) {
 
         {/* Go First card */}
         <button
+          data-testid="seat-first-btn"
           onClick={() => handleChoice("first")}
           disabled={submitting}
           style={{
@@ -122,6 +123,7 @@ export function RoomChoice({ snapshot }: Props) {
 
         {/* Go Second card */}
         <button
+          data-testid="seat-second-btn"
           onClick={() => handleChoice("second")}
           disabled={submitting}
           style={{

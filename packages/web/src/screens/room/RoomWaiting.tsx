@@ -338,6 +338,7 @@ export function RoomWaiting({ snapshot }: Props) {
 
       {/* Rules strip */}
       <div
+        data-testid="room-timer-strip"
         style={{
           background: "var(--bg-2)",
           color: "var(--accent-light)",
@@ -367,14 +368,16 @@ export function RoomWaiting({ snapshot }: Props) {
 
         {/* Opponent (always bottom) */}
         {hasOpponent && opponent ? (
-          <PlayerRow
-            name={opponent.displayName || "Your opponent"}
-            label={
-              opponent.ready ? "READY" : opponent.deckSelected ? "Deck chosen" : "Picking a deck"
-            }
-            isReady={opponent.ready}
-            presence={opponent.presence}
-          />
+          <div data-testid="opponent-presence">
+            <PlayerRow
+              name={opponent.displayName || "Your opponent"}
+              label={
+                opponent.ready ? "READY" : opponent.deckSelected ? "Deck chosen" : "Picking a deck"
+              }
+              isReady={opponent.ready}
+              presence={opponent.presence}
+            />
+          </div>
         ) : (
           <div
             style={{
@@ -434,6 +437,7 @@ export function RoomWaiting({ snapshot }: Props) {
               wordBreak: "break-all",
             }}
             aria-label="Invite link"
+            data-testid="join-link"
           >
             {joinUrl}
           </div>
@@ -540,6 +544,7 @@ export function RoomWaiting({ snapshot }: Props) {
               return (
                 <label
                   key={deck.id}
+                  data-testid="deck-option"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -598,6 +603,7 @@ export function RoomWaiting({ snapshot }: Props) {
       {deckLocked ? (
         <button
           className="btn btn-ghost"
+          data-testid="room-unready-btn"
           style={{ width: "100%", marginBottom: 12 }}
           onClick={() => {
             void handleUnready();
@@ -610,6 +616,7 @@ export function RoomWaiting({ snapshot }: Props) {
       ) : (
         <button
           className="btn btn-primary"
+          data-testid="room-ready-btn"
           style={{ width: "100%", marginBottom: 12 }}
           onClick={() => {
             void handleReady();

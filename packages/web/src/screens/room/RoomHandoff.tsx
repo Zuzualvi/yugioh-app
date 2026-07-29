@@ -60,6 +60,7 @@ export function RoomHandoff({ snapshot }: Props) {
 
   return (
     <section
+      data-testid="room-handoff"
       aria-label="Duel starting"
       style={{
         display: "flex",
