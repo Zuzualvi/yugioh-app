@@ -402,6 +402,30 @@ the coin flip for a ready that was about to be rejected; that ordering is forbid
 Snapshot-at-ready means editing or deleting the source deck afterwards has zero effect on the room
 (R23). There is no re-validation at start — see §8.
 
+#### R23 implementation: deck name columns and `resolveDeckInfo` precedence rule
+
+The `duel_room` table carries two columns added in Migration 3 alongside the JSON columns:
+
+```
+creator_deck_name      TEXT,   -- immediately after creator_deck_json
+opponent_deck_name     TEXT,   -- immediately after opponent_deck_json
+```
+
+`applyReady` writes the deck name into the matching `*_deck_name` column in the same guarded
+`UPDATE` that writes `*_deck_json`. `clearReady` NULLs it in the same statement. `revertToOpen`
+NULLs both name columns alongside both JSON columns.
+
+`resolveDeckInfo` in `loadRoomView.ts` applies the following precedence:
+
+1. **`deck_json` non-null → the lock wins.** `deckName` comes from the `*_deck_name` column;
+   `deckCardCount` is `main.length + extra.length` parsed from `deck_json`. The `decks` table
+   is not consulted at all.
+2. **Else `deck_id` non-null → picked but not readied.** Read the live `decks` row for name and
+   count (behaviour unchanged from before the lock).
+3. **Else (or if the live row is gone) → all three fields null** (`deckId` null in the first
+   case; in the second, `deckId` is preserved with null name/count — E27 clears the stale
+   reference on the next ready attempt).
+
 ### 5.5 The WebSocket
 
 Path `GET /api/duels/:id/room/ws`. Handshake, in order:

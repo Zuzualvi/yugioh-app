@@ -7,6 +7,7 @@ import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import Database from "better-sqlite3";
+
 /** Parse a raw Cookie header into a name→value map. */
 function parseCookieHeader(header: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -19,6 +20,7 @@ function parseCookieHeader(header: string): Record<string, string> {
   }
   return result;
 }
+
 import { resolveSessionUser } from "../middleware/resolveSessionUser.js";
 import { loadRoomView } from "./loadRoomView.js";
 import { requireOccupant } from "./roomAccess.js";
@@ -124,7 +126,14 @@ export function handleRoomUpgrade(
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
         const presence = getPresenceMap(roomId, fresh.row);
-        const snapshot = buildRoomSnapshot(fresh.row, user.id, fresh.names, presence, now);
+        const snapshot = buildRoomSnapshot(
+          fresh.row,
+          user.id,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         ws.send(toWire({ type: "ROOM_STATE", snapshot }));
       }
       ws.close(4410, "room expired");
@@ -144,7 +153,14 @@ export function handleRoomUpgrade(
     const freshView = loadRoomView(db, roomId);
     if (freshView) {
       const presence = getPresenceMap(roomId, freshView.row);
-      const snapshot = buildRoomSnapshot(freshView.row, user.id, freshView.names, presence, now);
+      const snapshot = buildRoomSnapshot(
+        freshView.row,
+        user.id,
+        freshView.names,
+        presence,
+        now,
+        freshView.deckInfo,
+      );
       ws.send(toWire({ type: "ROOM_STATE", snapshot }));
     }
 

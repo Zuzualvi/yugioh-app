@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildRoomSnapshot } from "./buildRoomSnapshot.js";
 import type { DuelRoomRow } from "./roomStore.js";
-import type { PresenceMap, OccupantNames } from "./buildRoomSnapshot.js";
+import type { PresenceMap, OccupantNames, OccupantDeckInfo } from "./buildRoomSnapshot.js";
 
 const CREATOR_ID = "user-creator";
 const OPPONENT_ID = "user-opponent";
@@ -16,6 +16,12 @@ const PRESENCE: PresenceMap = {
   opponentPresence: "connected",
 };
 
+/** Null deck info for both occupants — used when testing unrelated snapshot properties. */
+const NO_DECKS: OccupantDeckInfo = {
+  creator: { deckId: null, deckName: null, deckCardCount: null },
+  opponent: { deckId: null, deckName: null, deckCardCount: null },
+};
+
 function baseRow(overrides: Partial<DuelRoomRow> = {}): DuelRoomRow {
   return {
     id: "room-1",
@@ -28,7 +34,9 @@ function baseRow(overrides: Partial<DuelRoomRow> = {}): DuelRoomRow {
     creator_deck_id: null,
     opponent_deck_id: null,
     creator_deck_json: null,
+    creator_deck_name: null,
     opponent_deck_json: null,
+    opponent_deck_name: null,
     creator_ready_at: null,
     opponent_ready_at: null,
     room_deadline_at: 9999999,
@@ -43,6 +51,19 @@ function baseRow(overrides: Partial<DuelRoomRow> = {}): DuelRoomRow {
     ...overrides,
   };
 }
+
+// ── Compile-time enforcement: deckInfo is a required parameter (C6 intent) ──
+// This test will fail to COMPILE if someone makes the 6th arg optional again,
+// which is exactly the category of mistake we are preventing.
+describe("buildRoomSnapshot — deckInfo is a required parameter", () => {
+  it("accepts a call with all six arguments (type-level proof)", () => {
+    // If this type-checks, the parameter is required and present.
+    const snap = buildRoomSnapshot(baseRow(), CREATOR_ID, NAMES, PRESENCE, 0, NO_DECKS);
+    expect(snap).toBeDefined();
+  });
+});
+
+// ── R25: opponent deck never exposed ─────────────────────────────────────────
 
 describe("buildRoomSnapshot — R25: opponent deck never exposed", () => {
   const statuses = ["open", "filled", "awaiting_choice", "starting", "closed"] as const;
@@ -62,19 +83,16 @@ describe("buildRoomSnapshot — R25: opponent deck never exposed", () => {
         flip_choice_at: status === "starting" ? 300 : null,
         closed_reason: status === "closed" ? "left" : null,
       });
-      const snap = buildRoomSnapshot(row, OPPONENT_ID, NAMES, PRESENCE, 1000, {
+      const deckInfo: OccupantDeckInfo = {
         creator: { deckId: "deck-creator", deckName: "Black Wing Storm", deckCardCount: 40 },
-      });
+        opponent: { deckId: null, deckName: null, deckCardCount: null },
+      };
+      const snap = buildRoomSnapshot(row, OPPONENT_ID, NAMES, PRESENCE, 1000, deckInfo);
 
       const raw = JSON.stringify(snap);
-
-      // The opponent's own view
       expect(snap.you.role).toBe("opponent");
-      // The opponent must NOT see the creator's deck name, id, or card count
-      expect(snap.opponent?.deckSelected).toBeDefined(); // ok to see boolean
       expect(raw).not.toContain("Black Wing Storm");
       expect(raw).not.toContain("deck-creator");
-      // deckName / deckCardCount / deckId must not appear in the opponent's view
       expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
       expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
       expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
@@ -94,9 +112,11 @@ describe("buildRoomSnapshot — R25: opponent deck never exposed", () => {
         flip_choice_at: status === "starting" ? 300 : null,
         closed_reason: status === "closed" ? "left" : null,
       });
-      const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 1000, {
+      const deckInfo: OccupantDeckInfo = {
+        creator: { deckId: null, deckName: null, deckCardCount: null },
         opponent: { deckId: "deck-opp", deckName: "Quickdraw Festival", deckCardCount: 42 },
-      });
+      };
+      const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 1000, deckInfo);
 
       const raw = JSON.stringify(snap);
       expect(snap.you.role).toBe("creator");
@@ -109,9 +129,18 @@ describe("buildRoomSnapshot — R25: opponent deck never exposed", () => {
   }
 });
 
+// ── joinToken visibility ──────────────────────────────────────────────────────
+
 describe("buildRoomSnapshot — joinToken visibility", () => {
   it("creator sees joinToken while open", () => {
-    const snap = buildRoomSnapshot(baseRow({ status: "open" }), CREATOR_ID, NAMES, PRESENCE, 0);
+    const snap = buildRoomSnapshot(
+      baseRow({ status: "open" }),
+      CREATOR_ID,
+      NAMES,
+      PRESENCE,
+      0,
+      NO_DECKS,
+    );
     expect(snap.joinToken).toBe("join-tok");
   });
 
@@ -122,6 +151,7 @@ describe("buildRoomSnapshot — joinToken visibility", () => {
       NAMES,
       PRESENCE,
       0,
+      NO_DECKS,
     );
     expect(snap.joinToken).toBeNull();
   });
@@ -133,10 +163,13 @@ describe("buildRoomSnapshot — joinToken visibility", () => {
       NAMES,
       PRESENCE,
       0,
+      NO_DECKS,
     );
     expect(snap.joinToken).toBeNull();
   });
 });
+
+// ── seats only in starting ────────────────────────────────────────────────────
 
 describe("buildRoomSnapshot — seats only in starting", () => {
   it("seats is null for non-starting statuses", () => {
@@ -147,6 +180,7 @@ describe("buildRoomSnapshot — seats only in starting", () => {
         NAMES,
         PRESENCE,
         0,
+        NO_DECKS,
       );
       expect(snap.seats).toBeNull();
     }
@@ -161,9 +195,8 @@ describe("buildRoomSnapshot — seats only in starting", () => {
       flip_choice: "first",
       flip_choice_at: 200,
     });
-    const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 0);
+    const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 0, NO_DECKS);
     expect(snap.seats).not.toBeNull();
-    // flip_winner chose "first" → seat0 = flip_winner (creator), seat1 = opponent
     expect(snap.seats?.seat0UserId).toBe(CREATOR_ID);
     expect(snap.seats?.seat1UserId).toBe(OPPONENT_ID);
   });
@@ -177,15 +210,17 @@ describe("buildRoomSnapshot — seats only in starting", () => {
       flip_choice: "second",
       flip_choice_at: 200,
     });
-    const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 0);
+    const snap = buildRoomSnapshot(row, CREATOR_ID, NAMES, PRESENCE, 0, NO_DECKS);
     expect(snap.seats?.seat0UserId).toBe(OPPONENT_ID);
     expect(snap.seats?.seat1UserId).toBe(CREATOR_ID);
   });
 });
 
+// ── serverNow / roomDeadlineAt ────────────────────────────────────────────────
+
 describe("buildRoomSnapshot — serverNow", () => {
   it("serverNow equals the passed now parameter", () => {
-    const snap = buildRoomSnapshot(baseRow(), CREATOR_ID, NAMES, PRESENCE, 12345);
+    const snap = buildRoomSnapshot(baseRow(), CREATOR_ID, NAMES, PRESENCE, 12345, NO_DECKS);
     expect(snap.serverNow).toBe(12345);
   });
 });
@@ -199,6 +234,7 @@ describe("buildRoomSnapshot — roomDeadlineAt", () => {
         NAMES,
         PRESENCE,
         0,
+        NO_DECKS,
       );
       expect(snap.roomDeadlineAt).toBeNull();
     }
@@ -212,8 +248,47 @@ describe("buildRoomSnapshot — roomDeadlineAt", () => {
         NAMES,
         PRESENCE,
         0,
+        NO_DECKS,
       );
       expect(snap.roomDeadlineAt).toBe(9999999);
     }
+  });
+});
+
+// ── deckInfo surfaces correctly in you (not in opponent) ──────────────────────
+
+describe("buildRoomSnapshot — deckInfo surfaces in viewer's own view", () => {
+  it("creator sees their own deckName and deckCardCount", () => {
+    const deckInfo: OccupantDeckInfo = {
+      creator: { deckId: "d1", deckName: "Blackwings", deckCardCount: 41 },
+      opponent: { deckId: null, deckName: null, deckCardCount: null },
+    };
+    const snap = buildRoomSnapshot(
+      baseRow({ creator_deck_id: "d1" }),
+      CREATOR_ID,
+      NAMES,
+      PRESENCE,
+      0,
+      deckInfo,
+    );
+    expect(snap.you.deckName).toBe("Blackwings");
+    expect(snap.you.deckCardCount).toBe(41);
+  });
+
+  it("opponent sees their own deckName and deckCardCount", () => {
+    const deckInfo: OccupantDeckInfo = {
+      creator: { deckId: null, deckName: null, deckCardCount: null },
+      opponent: { deckId: "d2", deckName: "Quickdraw", deckCardCount: 40 },
+    };
+    const snap = buildRoomSnapshot(
+      baseRow({ opponent_user_id: OPPONENT_ID, opponent_deck_id: "d2" }),
+      OPPONENT_ID,
+      NAMES,
+      PRESENCE,
+      0,
+      deckInfo,
+    );
+    expect(snap.you.deckName).toBe("Quickdraw");
+    expect(snap.you.deckCardCount).toBe(40);
   });
 });

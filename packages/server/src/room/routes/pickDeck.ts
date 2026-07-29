@@ -45,9 +45,16 @@ export function pickDeck(db: InstanceType<typeof Database>) {
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+        broadcastRoom(db, roomId, fresh, now);
         const presence = getPresenceMap(roomId, fresh.row);
-        const snap = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+        const snap = buildRoomSnapshot(
+          fresh.row,
+          userId,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         res
           .status(410)
           .json({ error: { code: "expired", message: "Room has expired." }, snapshot: snap });
@@ -105,12 +112,6 @@ export function pickDeck(db: InstanceType<typeof Database>) {
       return;
     }
 
-    const main = JSON.parse(deck.main_json) as number[];
-    const extra = JSON.parse(deck.extra_json) as number[];
-    const deckInfo = {
-      [role]: { deckId, deckName: deck.name, deckCardCount: main.length + extra.length },
-    };
-
     const fresh = loadRoomView(db, roomId);
     if (!fresh) {
       res.status(500).json({ error: { code: "internal_error", message: "Room vanished." } });
@@ -118,13 +119,20 @@ export function pickDeck(db: InstanceType<typeof Database>) {
     }
 
     // Broadcast to others; caller gets their own full view
-    broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+    broadcastRoom(db, roomId, fresh, now);
     if (fresh.row.room_deadline_at) {
       armDeadlineTimer(db, roomId, fresh.row.room_deadline_at);
     }
 
     const presence = getPresenceMap(roomId, fresh.row);
-    const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now, deckInfo);
+    const snapshot = buildRoomSnapshot(
+      fresh.row,
+      userId,
+      fresh.names,
+      presence,
+      now,
+      fresh.deckInfo,
+    );
     res.status(200).json(snapshot);
   };
 }

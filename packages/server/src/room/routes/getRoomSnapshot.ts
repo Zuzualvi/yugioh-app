@@ -9,8 +9,7 @@ import { requireOccupant } from "../roomAccess.js";
 import { evaluateExpiry } from "../evaluateExpiry.js";
 import { closeRoom } from "../roomStore.js";
 import { buildRoomSnapshot } from "../buildRoomSnapshot.js";
-import { getPresenceMap } from "../roomBroadcast.js";
-import { broadcastRoom } from "../roomBroadcast.js";
+import { getPresenceMap, broadcastRoom } from "../roomBroadcast.js";
 
 export function getRoomSnapshot(db: InstanceType<typeof Database>) {
   return (req: Request, res: Response): void => {
@@ -36,16 +35,23 @@ export function getRoomSnapshot(db: InstanceType<typeof Database>) {
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+        broadcastRoom(db, roomId, fresh, now);
         const presence = getPresenceMap(roomId, fresh.row);
-        const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+        const snapshot = buildRoomSnapshot(
+          fresh.row,
+          userId,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         res.status(200).json(snapshot);
         return;
       }
     }
 
     const presence = getPresenceMap(roomId, view.row);
-    const snapshot = buildRoomSnapshot(view.row, userId, view.names, presence, now);
+    const snapshot = buildRoomSnapshot(view.row, userId, view.names, presence, now, view.deckInfo);
     res.status(200).json(snapshot);
   };
 }

@@ -37,9 +37,16 @@ export function unready(db: InstanceType<typeof Database>) {
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+        broadcastRoom(db, roomId, fresh, now);
         const presence = getPresenceMap(roomId, fresh.row);
-        const snap = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+        const snap = buildRoomSnapshot(
+          fresh.row,
+          userId,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         res
           .status(410)
           .json({ error: { code: "expired", message: "Room has expired." }, snapshot: snap });
@@ -59,7 +66,14 @@ export function unready(db: InstanceType<typeof Database>) {
     // Idempotent: if not ready, just return current snapshot
     if (readyAt === null) {
       const presence = getPresenceMap(roomId, view.row);
-      const snapshot = buildRoomSnapshot(view.row, userId, view.names, presence, now);
+      const snapshot = buildRoomSnapshot(
+        view.row,
+        userId,
+        view.names,
+        presence,
+        now,
+        view.deckInfo,
+      );
       res.status(200).json(snapshot);
       return;
     }
@@ -77,12 +91,19 @@ export function unready(db: InstanceType<typeof Database>) {
       return;
     }
 
-    broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+    broadcastRoom(db, roomId, fresh, now);
     if (fresh.row.room_deadline_at) {
       armDeadlineTimer(db, roomId, fresh.row.room_deadline_at);
     }
     const presence = getPresenceMap(roomId, fresh.row);
-    const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+    const snapshot = buildRoomSnapshot(
+      fresh.row,
+      userId,
+      fresh.names,
+      presence,
+      now,
+      fresh.deckInfo,
+    );
     res.status(200).json(snapshot);
   };
 }

@@ -224,7 +224,7 @@ describe("applyReady", () => {
   it("first ready: rebases deadline to now + 10 min", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
     const now = 1000;
-    const result = applyReady(db, id, "creator", deck, now);
+    const result = applyReady(db, id, "creator", deck, "TestDeck", now);
     expect(result).not.toBeNull();
     expect(result?.flipFired).toBe(false);
     expect(result?.roomDeadlineAt).toBe(now + ROOM_READY_TTL_MS);
@@ -236,7 +236,7 @@ describe("applyReady", () => {
   it("second ready: fires flip, sets awaiting_choice, deadline = now + 2 min", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
     const now = 1000;
-    const result = applyReady(db, id, "opponent", deck, now);
+    const result = applyReady(db, id, "opponent", deck, "TestDeck", now);
     expect(result).not.toBeNull();
     expect(result?.flipFired).toBe(true);
     expect(result?.flipWinnerUserId).toBeTruthy();
@@ -249,19 +249,19 @@ describe("applyReady", () => {
 
   it("returns null if guard fails (wrong status)", () => {
     const id = seedRoom({ status: "open" });
-    expect(applyReady(db, id, "creator", deck, 1000)).toBeNull();
+    expect(applyReady(db, id, "creator", deck, "TestDeck", 1000)).toBeNull();
   });
 
   it("returns null if already ready", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 100 });
-    expect(applyReady(db, id, "creator", deck, 1000)).toBeNull();
+    expect(applyReady(db, id, "creator", deck, "TestDeck", 1000)).toBeNull();
   });
 
   it("deck change does NOT move deadline", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
     const now = 1000;
     // Apply first ready to set a deadline
-    const first = applyReady(db, id, "creator", deck, now)!;
+    const first = applyReady(db, id, "creator", deck, "TestDeck", now)!;
     const deadlineAfterFirstReady = first.roomDeadlineAt;
 
     // Simulate a deck pick (setDeckRef) — should not move deadline
@@ -273,7 +273,7 @@ describe("applyReady", () => {
   it("un-ready does NOT move deadline", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
     const now = 1000;
-    applyReady(db, id, "creator", deck, now);
+    applyReady(db, id, "creator", deck, "TestDeck", now);
     const row1 = getRoom(db, id);
     const deadline = row1?.room_deadline_at;
 
@@ -414,7 +414,7 @@ describe("guard invariants — rejected writes change nothing", () => {
   it("applyReady: row unchanged when wrong status", () => {
     const id = seedRoom({ status: "open" });
     const before = getRoom(db, id)!;
-    const result = applyReady(db, id, "creator", deck, 1000);
+    const result = applyReady(db, id, "creator", deck, "TestDeck", 1000);
     expect(result).toBeNull();
     expect(getRoom(db, id)).toEqual(before);
   });
@@ -422,7 +422,7 @@ describe("guard invariants — rejected writes change nothing", () => {
   it("applyReady: row unchanged when occupant already ready", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 100 });
     const before = getRoom(db, id)!;
-    const result = applyReady(db, id, "creator", deck, 1000);
+    const result = applyReady(db, id, "creator", deck, "TestDeck", 1000);
     expect(result).toBeNull();
     expect(getRoom(db, id)).toEqual(before);
   });
@@ -473,10 +473,10 @@ describe("concurrent second-readies (C7)", () => {
   it("second call for same occupant returns null — no double flip", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
     // Opponent readies → fires flip
-    const first = applyReady(db, id, "opponent", deck, 1000);
+    const first = applyReady(db, id, "opponent", deck, "TestDeck", 1000);
     expect(first?.flipFired).toBe(true);
     // Same occupant calls ready again (e.g. duplicate request)
-    const second = applyReady(db, id, "opponent", deck, 1001);
+    const second = applyReady(db, id, "opponent", deck, "TestDeck", 1001);
     expect(second).toBeNull();
     // Exactly one flip — winner is set once
     const row = getRoom(db, id)!;
@@ -487,10 +487,10 @@ describe("concurrent second-readies (C7)", () => {
 
   it("second applyReady after flip returns null — status is awaiting_choice", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
-    const first = applyReady(db, id, "opponent", deck, 1000);
+    const first = applyReady(db, id, "opponent", deck, "TestDeck", 1000);
     expect(first?.flipFired).toBe(true);
     // Another ready attempt while status=awaiting_choice
-    const late = applyReady(db, id, "creator", deck, 1002);
+    const late = applyReady(db, id, "creator", deck, "TestDeck", 1002);
     expect(late).toBeNull();
     // Status unchanged, flip not re-rolled
     const row = getRoom(db, id)!;
@@ -500,7 +500,7 @@ describe("concurrent second-readies (C7)", () => {
 
   it("flip_winner_user_id is a userId (not a seat number)", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID, creatorReadyAt: 500 });
-    applyReady(db, id, "opponent", deck, 1000);
+    applyReady(db, id, "opponent", deck, "TestDeck", 1000);
     const row = getRoom(db, id)!;
     expect([CREATOR_ID, OPPONENT_ID]).toContain(row.flip_winner_user_id);
     expect(typeof row.flip_winner_user_id).toBe("string");

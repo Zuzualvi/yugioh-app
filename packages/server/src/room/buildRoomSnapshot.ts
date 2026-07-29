@@ -24,10 +24,17 @@ export interface PresenceMap {
   opponentPresence: RoomPresence;
 }
 
-interface DeckInfo {
+/** Resolved deck info for one occupant's own view. Never shown to the opponent (R25). */
+export interface DeckInfo {
   deckId: string | null;
   deckName: string | null;
   deckCardCount: number | null;
+}
+
+/** Deck info for both occupants, resolved by loadRoomView. REQUIRED — no call site may omit it. */
+export interface OccupantDeckInfo {
+  creator: DeckInfo;
+  opponent: DeckInfo;
 }
 
 export function buildRoomSnapshot(
@@ -36,19 +43,12 @@ export function buildRoomSnapshot(
   names: OccupantNames,
   presence: PresenceMap,
   now: number,
-  deckInfo?: { creator?: DeckInfo; opponent?: DeckInfo },
+  deckInfo: OccupantDeckInfo,
 ): RoomSnapshot {
   const isCreator = row.creator_user_id === viewerUserId;
   const viewerRole: OccupantRole = isCreator ? "creator" : "opponent";
 
-  const creatorDeck = deckInfo?.creator ?? { deckId: null, deckName: null, deckCardCount: null };
-  const opponentDeck = deckInfo?.opponent ?? {
-    deckId: null,
-    deckName: null,
-    deckCardCount: null,
-  };
-
-  const selfDeck = isCreator ? creatorDeck : opponentDeck;
+  const selfDeck = isCreator ? deckInfo.creator : deckInfo.opponent;
   const selfReadyAt = isCreator ? row.creator_ready_at : row.opponent_ready_at;
   const selfDeckId = isCreator ? row.creator_deck_id : row.opponent_deck_id;
   const selfDeckLocked = isCreator ? row.creator_ready_at !== null : row.opponent_ready_at !== null;

@@ -51,14 +51,14 @@ export async function startDuelFromRoom(
 
     // Broadcast updated room snapshot (room stays 'starting' — its job is done).
     const view = loadRoomView(db, duelId);
-    if (view) broadcastRoom(db, duelId, view.row, view.names, Date.now());
+    if (view) broadcastRoom(db, duelId, view, Date.now());
   } catch (err) {
     // E46 / T10: engine failed — close room via store, broadcast, record no loss.
     console.error("[startDuelFromRoom] Engine construction failed for duel", duelId, err);
     manager.remove(duelId);
     failStartingRoom(db, duelId);
     const view = loadRoomView(db, duelId);
-    if (view) broadcastRoom(db, duelId, view.row, view.names, Date.now());
+    if (view) broadcastRoom(db, duelId, view, Date.now());
   }
 }
 

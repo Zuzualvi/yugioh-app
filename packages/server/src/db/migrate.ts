@@ -85,6 +85,11 @@ const MIGRATIONS: string[] = [
   );
   `,
   // Migration 3: duel_room table (ZUH-26, additive only, no existing table altered)
+  // creator_deck_name / opponent_deck_name are added here (not in a Migration 4) because
+  // duel_room was first introduced in this migration and has never been deployed to any
+  // environment with a stamped version 3 — master's MIGRATIONS array has only two entries.
+  // Creating the columns in the same CREATE TABLE statement is cleaner than ALTER TABLE.
+  // If you have a local dev DB already at version 3, delete the DB file.
   `
   CREATE TABLE IF NOT EXISTS duel_room (
     id                     TEXT NOT NULL PRIMARY KEY,
@@ -97,7 +102,9 @@ const MIGRATIONS: string[] = [
     creator_deck_id        TEXT,
     opponent_deck_id       TEXT,
     creator_deck_json      TEXT,
+    creator_deck_name      TEXT,
     opponent_deck_json     TEXT,
+    opponent_deck_name     TEXT,
     creator_ready_at       INTEGER,
     opponent_ready_at      INTEGER,
     room_deadline_at       INTEGER NOT NULL,
