@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { login, redeemInvite } from "../api/auth";
+import { lookupJoinToken } from "../api/room";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import type { User } from "../types/contracts";
@@ -15,6 +16,29 @@ export function LoginScreen() {
   // Where to go after a successful sign-in — the path the user was heading to
   // before the auth redirect (INVITE-01), falling back to Home.
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+
+  // D5b: when resuming to a duel join link, show a context line above the form.
+  // Parse the join token from the `from` path and call the pre-join lookup.
+  const isDuelJoinResume = from.startsWith("/duel/join");
+  const duelJoinToken = isDuelJoinResume
+    ? (from.split("/duel/join/")[1] ?? "").split("?")[0]
+    : null;
+  const [duelCreatorName, setDuelCreatorName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!duelJoinToken) return;
+    let cancelled = false;
+    lookupJoinToken(duelJoinToken)
+      .then((info) => {
+        if (!cancelled) setDuelCreatorName(info.creatorDisplayName || null);
+      })
+      .catch(() => {
+        // Name lookup failed — fall back to generic copy, never block the form
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [duelJoinToken]);
 
   const inviteCode = searchParams.get("invite") ?? "";
   const isInviteFlow = !!inviteCode;
@@ -99,6 +123,21 @@ export function LoginScreen() {
 
         {/* Form panel */}
         <div className="panel">
+          {/* D5b context line: shown when resuming to a duel join link */}
+          {isDuelJoinResume && !isInviteFlow && (
+            <p
+              style={{
+                color: "var(--text-1)",
+                fontSize: "0.875rem",
+                marginBottom: 16,
+              }}
+              data-testid="duel-join-context"
+            >
+              {duelCreatorName
+                ? `Sign in to join ${duelCreatorName}'s duel`
+                : "Sign in to join a duel"}
+            </p>
+          )}
           <h2 style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: 20 }}>
             {isInviteFlow ? "Set up your account" : "Sign in"}
           </h2>
