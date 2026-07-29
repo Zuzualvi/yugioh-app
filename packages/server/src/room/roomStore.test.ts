@@ -177,10 +177,16 @@ describe("claimSlot", () => {
 // ── setDeckRef ────────────────────────────────────────────────────────────
 
 describe("setDeckRef", () => {
-  it("sets deck id for creator when not ready", () => {
+  it("sets deck id for creator when not ready (status=filled)", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
     expect(setDeckRef(db, id, "creator", "deck-1")).toBe(true);
     expect(getRoom(db, id)?.creator_deck_id).toBe("deck-1");
+  });
+
+  it("sets deck id for creator when alone (status=open)", () => {
+    const id = seedRoom({ status: "open" });
+    expect(setDeckRef(db, id, "creator", "deck-open")).toBe(true);
+    expect(getRoom(db, id)?.creator_deck_id).toBe("deck-open");
   });
 
   it("returns false when creator is already ready", () => {
@@ -192,6 +198,21 @@ describe("setDeckRef", () => {
     const id = seedRoom({ status: "filled", opponentUserId: OPPONENT_ID });
     expect(setDeckRef(db, id, "opponent", "deck-2")).toBe(true);
     expect(getRoom(db, id)?.opponent_deck_id).toBe("deck-2");
+  });
+
+  it("returns false from awaiting_choice", () => {
+    const id = seedRoom({ status: "awaiting_choice", opponentUserId: OPPONENT_ID });
+    expect(setDeckRef(db, id, "creator", "deck-x")).toBe(false);
+  });
+
+  it("returns false from starting", () => {
+    const id = seedRoom({ status: "starting", opponentUserId: OPPONENT_ID });
+    expect(setDeckRef(db, id, "creator", "deck-x")).toBe(false);
+  });
+
+  it("returns false from closed", () => {
+    const id = seedRoom({ status: "closed", opponentUserId: OPPONENT_ID });
+    expect(setDeckRef(db, id, "creator", "deck-x")).toBe(false);
   });
 });
 

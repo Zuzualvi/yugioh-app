@@ -135,7 +135,7 @@ export function claimSlot(
   return result.changes === 1;
 }
 
-/** T3. Guarded: occupant not yet ready. */
+/** T3. Guarded: occupant not yet ready, room not past the picking phase. */
 export function setDeckRef(
   db: InstanceType<typeof Database>,
   id: string,
@@ -146,7 +146,7 @@ export function setDeckRef(
   const readyCol = role === "creator" ? "creator_ready_at" : "opponent_ready_at";
   const result = db
     .prepare(
-      `UPDATE duel_room SET ${col} = ? WHERE id = ? AND ${readyCol} IS NULL AND status = 'filled'`,
+      `UPDATE duel_room SET ${col} = ? WHERE id = ? AND ${readyCol} IS NULL AND status IN ('open','filled')`,
     )
     .run(deckId, id);
   return result.changes === 1;
