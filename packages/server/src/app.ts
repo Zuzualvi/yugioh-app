@@ -49,7 +49,7 @@ export function createApp(
   // Room router — handles pre-duel room lifecycle (ZUH-26).
   // Mounted at /api/duels. The GET /join/:token route is unauthenticated-capable;
   // per-route session guards are applied inside the router.
-  app.use("/api/duels", createRoomRouter(db));
+  app.use("/api/duels", createRoomRouter(db, duelManager));
 
   // Duel board routes (active-duel relay) — also mounted at /api/duels.
   // The room router is checked first; unmatched paths fall through here.

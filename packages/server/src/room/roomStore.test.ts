@@ -11,6 +11,7 @@ import {
   clearReady,
   applyChoice,
   revertToOpen,
+  failStartingRoom,
 } from "./roomStore.js";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
@@ -482,5 +483,33 @@ describe("concurrent second-readies (C7)", () => {
     const row = getRoom(db, id)!;
     expect([CREATOR_ID, OPPONENT_ID]).toContain(row.flip_winner_user_id);
     expect(typeof row.flip_winner_user_id).toBe("string");
+  });
+});
+
+describe("failStartingRoom (T10 — engine_failed close)", () => {
+  it("closes a starting room with engine_failed reason", () => {
+    const id = seedRoom({ status: "starting" });
+    const result = failStartingRoom(db, id);
+    expect(result).toBe(true);
+    const row = getRoom(db, id)!;
+    expect(row.status).toBe("closed");
+    expect(row.closed_reason).toBe("engine_failed");
+  });
+
+  it("returns false and changes nothing for a non-starting room", () => {
+    for (const status of ["open", "filled", "awaiting_choice", "closed"] as const) {
+      const id = seedRoom({
+        status,
+        ...(status !== "open" ? { opponentUserId: OPPONENT_ID } : {}),
+      });
+      const result = failStartingRoom(db, id);
+      expect(result).toBe(false);
+      const row = getRoom(db, id)!;
+      expect(row.status).toBe(status);
+    }
+  });
+
+  it("returns false for an unknown room id", () => {
+    expect(failStartingRoom(db, "no-such-id")).toBe(false);
   });
 });

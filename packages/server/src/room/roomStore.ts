@@ -101,6 +101,23 @@ export function closeRoom(
   return result.changes === 1;
 }
 
+/**
+ * T10. Guarded on status='starting': the one legitimate close from 'starting' —
+ * engine construction failed. Deliberately a separate function from closeRoom so the
+ * guard on that function (which must exclude 'starting' for Leave-is-final) stays exact.
+ * Returns true iff the row was in 'starting' and was closed.
+ */
+export function failStartingRoom(db: InstanceType<typeof Database>, id: string): boolean {
+  const result = db
+    .prepare(
+      `UPDATE duel_room
+       SET status = 'closed', closed_reason = 'engine_failed'
+       WHERE id = ? AND status = 'starting'`,
+    )
+    .run(id);
+  return result.changes === 1;
+}
+
 /** T2. Guarded: UPDATE WHERE status='open' AND opponent_user_id IS NULL. */
 export function claimSlot(
   db: InstanceType<typeof Database>,

@@ -9,6 +9,7 @@ import { createRoomWss } from "./room/roomSocket.js";
 import { attachUpgradeRouter } from "./wsUpgradeRouter.js";
 import { createEdisonDuel, replayEdisonDuel } from "@yugioh-app/engine";
 import type { DuelEngineFactory, DuelEngineReplay } from "./duel/engineInterface.js";
+import { recoverStartingDuels } from "./duel/startDuelFromRoom.js";
 
 // ---------------------------------------------------------------------------
 // Server entry point.
@@ -39,6 +40,10 @@ const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
   replayEdisonDuel(seed, deck0, deck1, log);
 
 const duelManager = new DuelManager(factory, replay);
+
+// E47 recovery: complete T7 for any duels stuck in 'starting' after a crash.
+await recoverStartingDuels(db, duelManager);
+
 const app = createApp(db, catalog, duelManager);
 
 const httpServer = createServer(app);
