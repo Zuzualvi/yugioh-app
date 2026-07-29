@@ -420,6 +420,102 @@ describe("deckInfo — opponent view contains no deck secrets (R25)", () => {
     expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
     expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
   });
+
+  // ── After-READY state: the newly added creator_deck_name column is now live.
+  // These two tests guard the specific column added in e98ee4f — a future edit that
+  // accidentally exposes it via snap.opponent must trip a wire here.
+
+  it("GET after READY: opponent view carries no creator deck name, id, or count (R25, after-ready state)", async () => {
+    const { sid: creatorSid, userId: creatorId } = await seedUser("Creator13");
+    const { sid: oppSid, userId: oppId } = await seedUser("Opponent13");
+    // Use a name that is DISTINCT from any opponent deck name to make direction-swaps detectable
+    const creatorDeckId = insertDeck(creatorId, "CreatorReadyDeck");
+    insertDeck(oppId, "OppNotReadyDeck");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: creatorId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+    claimSlot(db, roomId, oppId, Date.now());
+
+    // Creator picks and READIES — this populates creator_deck_name (the column added in e98ee4f)
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${creatorSid}`)
+      .send({ deckId: creatorDeckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${creatorSid}`);
+
+    // Opponent GETs the snapshot — snap.opponent is the creator
+    const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${oppSid}`);
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+
+    // Scoped to snap.opponent — the creator's locked deck must not appear here (R25)
+    expect(snap.opponent).not.toBeNull();
+    expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
+
+    // Sanity: creator's own view does carry the locked name
+    const creatorRes = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${creatorSid}`);
+    expect((creatorRes.body as RoomSnapshot).you.deckName).toBe("CreatorReadyDeck");
+  });
+
+  it("GET after opponent READY: creator view carries no opponent deck name, id, or count (R25, reverse direction after-ready)", async () => {
+    const { sid: creatorSid, userId: creatorId } = await seedUser("Creator14");
+    const { sid: oppSid, userId: oppId } = await seedUser("Opponent14");
+    const creatorDeckId = insertDeck(creatorId, "CreatorOpenDeck");
+    // Opponent has a DISTINCT name — a direction swap would be detectable
+    const oppDeckId = insertDeck(oppId, "OppReadyDeck");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: creatorId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+    claimSlot(db, roomId, oppId, Date.now());
+
+    // Both pick; only OPPONENT readies — opponent_deck_name column is now populated
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${creatorSid}`)
+      .send({ deckId: creatorDeckId });
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${oppSid}`)
+      .send({ deckId: oppDeckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${oppSid}`);
+
+    // Creator GETs the snapshot — snap.opponent is the opponent (who has readied)
+    const res = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${creatorSid}`);
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+
+    // Scoped to snap.opponent — the opponent's locked deck must not appear here (R25)
+    expect(snap.opponent).not.toBeNull();
+    expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
+
+    // Sanity: opponent's own view does carry their locked name
+    const oppRes = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${oppSid}`);
+    expect((oppRes.body as RoomSnapshot).you.deckName).toBe("OppReadyDeck");
+  });
 });
 
 // ── 4. R23: locked snapshot is the authoritative source of truth ──────────
