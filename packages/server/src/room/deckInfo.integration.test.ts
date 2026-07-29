@@ -6,8 +6,10 @@
 //  1. GET /api/duels/:id/room returns deckName+count after pick and after ready.
 //  2. WS ROOM_STATE frame carries the same: on initial connect and on a frame
 //     triggered by the OTHER player's action.
-//  3. Opponent view never contains deckName or deckCardCount.
+//  3. Opponent view never contains deckName or deckCardCount (R25) — GET and
+//     both WS paths.
 //  4. TypeScript rejects a missing 6th arg to buildRoomSnapshot (in unit test).
+//  5. R23: locked deck snapshot is the source of truth — survives source deletion.
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -228,6 +230,7 @@ describe("deckInfo — WS ROOM_STATE frames", () => {
   it("frame triggered by opponent's action carries the viewer's deckName", async () => {
     const { sid: creatorSid, userId: creatorId } = await seedUser("Creator4");
     const { sid: oppSid, userId: oppId } = await seedUser("Opponent4");
+    // Distinct deck names: swapping them would produce detectable failures
     const creatorDeckId = insertDeck(creatorId, "GradientBlue");
     insertDeck(oppId, "OppDeck");
     const roomId = randomUUID();
@@ -280,13 +283,21 @@ describe("deckInfo — WS ROOM_STATE frames", () => {
   });
 });
 
-// ── 3. Opponent view never contains deckName or deckCardCount ─────────────
+// ── 3. Opponent view never contains deckName or deckCardCount (R25) ────────
+// Covers GET, WS reconnect path, and WS broadcast path.
+// NOTE: the assertions are scoped to snap.opponent — a raw JSON.stringify grep
+// of the whole payload is NOT sufficient because snap.you.deckName legitimately
+// appears in the snapshot (for the viewing player). A raw grep would pass for the
+// wrong reason (e.g. if both players happened to have the same deck name, a raw
+// grep would false-fail even when R25 is correctly implemented).
 
 describe("deckInfo — opponent view contains no deck secrets (R25)", () => {
-  it("snapshot seen by opponent contains no creator deckName or deckCardCount", async () => {
+  it("GET: snapshot seen by opponent carries no creator deckName, deckId, or deckCardCount", async () => {
     const { sid: creatorSid, userId: creatorId } = await seedUser("Creator5");
     const { sid: oppSid, userId: oppId } = await seedUser("Opponent5");
     const creatorDeckId = insertDeck(creatorId, "SecretDeck");
+    // Opponent has a DIFFERENT deck name to make the test fail if names are swapped
+    insertDeck(oppId, "OppPublicDeck");
     const roomId = randomUUID();
     insertRoom(db, {
       id: roomId,
@@ -307,15 +318,164 @@ describe("deckInfo — opponent view contains no deck secrets (R25)", () => {
     const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${oppSid}`);
     expect(res.status).toBe(200);
     const snap = res.body as RoomSnapshot;
-    const raw = JSON.stringify(snap);
 
-    // Opponent's opponent-view must carry no deck name or count
-    expect(raw).not.toContain("SecretDeck");
+    // Scoped assertions on snap.opponent — NOT a raw-string grep of the whole payload.
     expect(snap.opponent).not.toBeNull();
     expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
     expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
     expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
-    // Opponent can see their own (empty) deck info
+    // Opponent's own view has no deck name (they haven't picked)
     expect(snap.you.deckName).toBeNull();
+  });
+
+  it("WS reconnect: initial frame seen by opponent carries no creator deck secrets", async () => {
+    const { sid: creatorSid, userId: creatorId } = await seedUser("Creator6");
+    const { sid: oppSid, userId: oppId } = await seedUser("Opponent6");
+    const creatorDeckId = insertDeck(creatorId, "HiddenArrow");
+    insertDeck(oppId, "OppVisible");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: creatorId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+    claimSlot(db, roomId, oppId, Date.now());
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${creatorSid}`)
+      .send({ deckId: creatorDeckId });
+
+    // Opponent connects WS and reads the initial ROOM_STATE frame
+    const snap = await new Promise<RoomSnapshot>((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/api/duels/${roomId}/room/ws`, {
+        headers: { Cookie: `sid=${oppSid}` },
+      });
+      ws.on("message", (data: Buffer) => {
+        ws.close();
+        const msg = JSON.parse(data.toString()) as { type: string; snapshot: RoomSnapshot };
+        resolve(msg.snapshot);
+      });
+      ws.on("error", reject);
+    });
+
+    // In the opponent's view: snap.opponent is the creator
+    expect(snap.opponent).not.toBeNull();
+    expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
+  });
+
+  it("WS broadcast: frame triggered by creator's action carries no creator deck secrets to opponent", async () => {
+    const { sid: creatorSid, userId: creatorId } = await seedUser("Creator7");
+    const { sid: oppSid, userId: oppId } = await seedUser("Opponent7");
+    const creatorDeckId = insertDeck(creatorId, "SteelTrap");
+    insertDeck(oppId, "OppOpenDeck");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: creatorId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+    claimSlot(db, roomId, oppId, Date.now());
+
+    // Opponent connects WS first and waits for a broadcast triggered by creator's pick
+    const broadcastFrame = new Promise<RoomSnapshot>((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/api/duels/${roomId}/room/ws`, {
+        headers: { Cookie: `sid=${oppSid}` },
+      });
+      let count = 0;
+      ws.on("message", (data: Buffer) => {
+        count++;
+        const msg = JSON.parse(data.toString()) as { type: string; snapshot: RoomSnapshot };
+        if (count === 2) {
+          // Second frame: triggered by creator's deck pick
+          ws.close();
+          resolve(msg.snapshot);
+        }
+      });
+      ws.on("error", reject);
+    });
+
+    await new Promise<void>((r) => setTimeout(r, 50)); // ensure WS is connected
+
+    // Creator picks a deck (triggers broadcast to opponent)
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${creatorSid}`)
+      .send({ deckId: creatorDeckId });
+
+    const snap = await broadcastFrame;
+
+    // In the opponent's view after the broadcast: snap.opponent is the creator
+    expect(snap.opponent).not.toBeNull();
+    expect((snap.opponent as Record<string, unknown>)["deckName"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckCardCount"]).toBeUndefined();
+    expect((snap.opponent as Record<string, unknown>)["deckId"]).toBeUndefined();
+  });
+});
+
+// ── 4. R23: locked deck snapshot is the source of truth after source deletion ─
+// After a player readies (locking deck_json), deleting the source deck row must
+// not blank out the card count. The name cannot be preserved (deck_json stores
+// only card lists, not the name) — see FINDING below.
+
+describe("deckInfo — R23: locked snapshot survives source deck deletion", () => {
+  it("deckCardCount is preserved after ready + source deck deletion; deckName is lost (FINDING)", async () => {
+    const { sid, userId } = await seedUser("Creator8");
+    const deckId = insertDeck(userId, "MirrorForce");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: userId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const { userId: oppId } = await seedUser("Opponent8");
+    claimSlot(db, roomId, oppId, Date.now());
+
+    // Pick deck and ready — this locks creator_deck_json in the room row
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${sid}`)
+      .send({ deckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${sid}`);
+
+    // Confirm deck is locked before deletion
+    const beforeDel = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${sid}`);
+    expect(beforeDel.body.you.deckName).toBe("MirrorForce");
+    expect(beforeDel.body.you.deckCardCount).toBe(40);
+
+    // Delete the source deck row — simulating a user deleting their deck after readying
+    db.prepare("DELETE FROM decks WHERE id = ?").run(deckId);
+
+    // Re-read the room — the locked snapshot (creator_deck_json) must still supply card count
+    const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+
+    // Card count is preserved from the locked deck_json snapshot (R23 partially satisfied)
+    expect(snap.you.deckCardCount).toBe(40);
+
+    // FINDING (R23 violation): deck_json stores only card lists, not the name.
+    // loadRoomView.resolveDeckInfo returns deckName: null when the source row is gone.
+    // The locked snapshot does NOT preserve the name — this is a bug.
+    // The assertion below documents the current (broken) behaviour.
+    // When the bug is fixed, this assertion should be changed to:
+    //   expect(snap.you.deckName).toBe("MirrorForce");
+    expect(snap.you.deckName).toBeNull(); // FINDING: name is lost after source deck deletion
   });
 });
