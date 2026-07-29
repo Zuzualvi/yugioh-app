@@ -1,9 +1,13 @@
 // ---------------------------------------------------------------------------
 // Integration tests for S2 route handlers:
 //   pickDeck, ready, unready, leave
+// Also: C2 (no socket frame on rejected ready) and C6 (flip winner leave).
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createServer } from "node:http";
+import type { Server as HttpServer } from "node:http";
+import { WebSocket } from "ws";
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
@@ -15,7 +19,13 @@ import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../../catalog/fixture.js";
 import type { LoadedCatalog } from "../../catalog/loadCatalog.js";
 import { insertRoom } from "../roomStore.js";
 import { ROOM_OPEN_TTL_MS } from "../roomState.js";
-import type { RoomSnapshot } from "@yugioh-app/contracts";
+import { DuelManager } from "../../duel/duelManager.js";
+import { attachDuelWsServer } from "../../duel/duelSocket.js";
+import { createRoomWss } from "../roomSocket.js";
+import { attachUpgradeRouter } from "../../wsUpgradeRouter.js";
+import { FakeEdisonDuel } from "../../duel/fakeEdisonDuel.js";
+import type { DuelEngine } from "../../duel/engineInterface.js";
+import type { RoomSnapshot, RoomServerMessage } from "@yugioh-app/contracts";
 
 // ── Catalog ───────────────────────────────────────────────────────────────
 
@@ -757,5 +767,185 @@ describe("POST /api/duels/:id/room/leave (leave)", () => {
     expect(row.opponent_ready_at).toBeNull();
     expect(row.creator_deck_json).toBeNull();
     expect(row.opponent_deck_json).toBeNull();
+  });
+});
+
+// ── C2 — no ROOM_STATE frame on rejected ready ────────────────────────────
+// Spins up a real HTTP server so the room WebSocket is reachable.
+
+describe("ready — C2: rejected ready produces zero socket frames for opponent", () => {
+  let wsDb: Database.Database;
+  let wsApp: Application;
+  let httpServer: HttpServer;
+  let port: number;
+
+  beforeEach(async () => {
+    wsDb = openDb(":memory:");
+    const catalog = makeTestCatalog();
+    const manager = new DuelManager(
+      async () =>
+        new FakeEdisonDuel([
+          { status: "waiting", messages: [], awaiting: { seat: 0 } },
+        ]) as DuelEngine,
+      async () =>
+        new FakeEdisonDuel([
+          { status: "waiting", messages: [], awaiting: { seat: 0 } },
+        ]) as DuelEngine,
+    );
+    wsApp = createApp(wsDb, catalog, manager);
+    httpServer = createServer(wsApp);
+    const boardWss = attachDuelWsServer(httpServer, wsDb, manager);
+    const roomWss = createRoomWss();
+    attachUpgradeRouter(httpServer, wsDb, boardWss, roomWss);
+    await new Promise<void>((resolve) => {
+      httpServer.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = httpServer.address();
+    port = typeof addr === "object" && addr ? addr.port : 0;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    wsDb.close();
+  });
+
+  async function seedWsUser(displayName: string): Promise<{ sid: string; userId: string }> {
+    const userId = randomUUID();
+    const pw = await hash("pw");
+    wsDb
+      .prepare(
+        "INSERT INTO users (id, display_name, password_hash, role, created_at) VALUES (?, ?, ?, 'member', ?)",
+      )
+      .run(userId, displayName, pw, new Date().toISOString());
+    const res = await request(wsApp).post("/api/auth/login").send({ displayName, password: "pw" });
+    const cookies = (res.headers["set-cookie"] as string[] | undefined) ?? [];
+    const sid =
+      cookies
+        .find((c) => c.startsWith("sid="))
+        ?.split(";")[0]
+        ?.slice(4) ?? "";
+    return { sid, userId };
+  }
+
+  it("opponent receives no new ROOM_STATE frame when creator ready is rejected (C2, AC3)", async () => {
+    const { sid: cSid, userId: cId } = await seedWsUser("Creator-C2");
+    const { sid: oSid, userId: oId } = await seedWsUser("Opp-C2");
+
+    const roomId = randomUUID();
+    insertRoom(wsDb, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: cId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 30 * 60_000,
+      createdAt: Date.now() - 60_000,
+    });
+    wsDb
+      .prepare("UPDATE duel_room SET status = 'filled', opponent_user_id = ? WHERE id = ?")
+      .run(oId, roomId);
+
+    // Creator has a non-existent deck reference (simulates deleted deck, E27)
+    wsDb.prepare("UPDATE duel_room SET creator_deck_id = ? WHERE id = ?").run(randomUUID(), roomId);
+
+    // Connect opponent's socket and collect frames
+    const frames: RoomServerMessage[] = [];
+    const wsUrl = `ws://127.0.0.1:${port}/api/duels/${roomId}/room/ws`;
+
+    await new Promise<void>((resolve, reject) => {
+      const ws = new WebSocket(wsUrl, { headers: { Cookie: `sid=${oSid}` } });
+      ws.on("open", () => resolve());
+      ws.on("message", (data: Buffer) => {
+        frames.push(JSON.parse(data.toString()) as RoomServerMessage);
+      });
+      ws.on("error", reject);
+      ws.on("unexpected-response", (_req, res) => {
+        reject(new Error(`WS upgrade rejected: ${res.statusCode}`));
+      });
+
+      // Close the socket after the test window
+      setTimeout(() => ws.close(), 300);
+    });
+
+    // Wait for the initial frame
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    const frameCountAfterConnect = frames.length;
+    expect(frameCountAfterConnect).toBe(1); // only the initial snapshot
+
+    // Creator sends ready with the deleted deck — should be rejected
+    const readyRes = await request(wsApp)
+      .post(`/api/duels/${roomId}/room/ready`)
+      .set("Cookie", `sid=${cSid}`);
+    expect(readyRes.status).toBe(400); // deck_invalid — deck not found
+
+    // Wait to give any spurious broadcast time to arrive
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+    // Opponent must have received no additional frames (AC3, C2)
+    expect(frames.length).toBe(frameCountAfterConnect);
+
+    // Confirm nothing changed in the row either (belt-and-suspenders)
+    const row = wsDb.prepare("SELECT creator_ready_at FROM duel_room WHERE id = ?").get(roomId) as {
+      creator_ready_at: null;
+    };
+    expect(row.creator_ready_at).toBeNull();
+  });
+});
+
+// ── C6 — flip winner leaving from awaiting_choice closes the room ─────────
+
+describe("leave — C6: flip winner leave from awaiting_choice closes room for both", () => {
+  it("flip winner leaves → room closed, no duel recorded (C6)", async () => {
+    const { sid: winnerSid, userId: winnerId } = await seedAndLogin("Winner-C6");
+    const { userId: loserId } = await seedUser("Loser-C6");
+
+    const { roomId } = seedRoom(winnerId, {
+      status: "awaiting_choice",
+      opponentUserId: loserId,
+    });
+    // winner is the flip winner
+    db.prepare("UPDATE duel_room SET flip_winner_user_id = ?, flip_rolled_at = ? WHERE id = ?").run(
+      winnerId,
+      Date.now() - 1_000,
+      roomId,
+    );
+
+    const res = await request(app)
+      .post(`/api/duels/${roomId}/room/leave`)
+      .set("Cookie", `sid=${winnerSid}`);
+
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+    expect(snap.status).toBe("closed");
+    expect(snap.closedReason).toBe("left");
+    expect(snap.closedByUserId).toBe(winnerId);
+
+    // No duel row should exist
+    const duelRow = db.prepare("SELECT id FROM duel WHERE id = ?").get(roomId);
+    expect(duelRow).toBeUndefined();
+  });
+
+  it("flip loser leaving from awaiting_choice also closes the room", async () => {
+    const { userId: winnerId } = await seedUser("Winner-C6b");
+    const { sid: loserSid, userId: loserId } = await seedAndLogin("Loser-C6b");
+
+    const { roomId } = seedRoom(winnerId, {
+      status: "awaiting_choice",
+      opponentUserId: loserId,
+    });
+    db.prepare("UPDATE duel_room SET flip_winner_user_id = ?, flip_rolled_at = ? WHERE id = ?").run(
+      winnerId,
+      Date.now() - 1_000,
+      roomId,
+    );
+
+    const res = await request(app)
+      .post(`/api/duels/${roomId}/room/leave`)
+      .set("Cookie", `sid=${loserSid}`);
+
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+    expect(snap.status).toBe("closed");
+    expect(snap.closedReason).toBe("left");
   });
 });
