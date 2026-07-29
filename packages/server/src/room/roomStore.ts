@@ -21,7 +21,9 @@ export interface DuelRoomRow {
   creator_deck_id: string | null;
   opponent_deck_id: string | null;
   creator_deck_json: string | null;
+  creator_deck_name: string | null;
   opponent_deck_json: string | null;
+  opponent_deck_name: string | null;
   creator_ready_at: number | null;
   opponent_ready_at: number | null;
   room_deadline_at: number;
@@ -165,18 +167,20 @@ export function applyReady(
   id: string,
   role: OccupantRole,
   deckSnapshot: DeckLists,
+  deckName: string,
   now: number,
 ): { flipFired: boolean; flipWinnerUserId: string | null; roomDeadlineAt: number } | null {
   const deckJsonCol = role === "creator" ? "creator_deck_json" : "opponent_deck_json";
+  const deckNameCol = role === "creator" ? "creator_deck_name" : "opponent_deck_name";
   const readyCol = role === "creator" ? "creator_ready_at" : "opponent_ready_at";
 
   return db.transaction(() => {
-    // Guarded update: set this occupant's ready_at and deck_json
+    // Guarded update: set this occupant's ready_at, deck_json, and deck_name
     const writeReady = db.prepare(
-      `UPDATE duel_room SET ${deckJsonCol} = ?, ${readyCol} = ?
+      `UPDATE duel_room SET ${deckJsonCol} = ?, ${deckNameCol} = ?, ${readyCol} = ?
        WHERE id = ? AND status = 'filled' AND ${readyCol} IS NULL`,
     );
-    const r = writeReady.run(JSON.stringify(deckSnapshot), now, id);
+    const r = writeReady.run(JSON.stringify(deckSnapshot), deckName, now, id);
     if (r.changes !== 1) return null;
 
     // Read back the row to check if both are now ready
@@ -210,7 +214,7 @@ export function applyReady(
   })() as ReturnType<typeof applyReady>;
 }
 
-/** T4′. Clears that occupant's ready_at AND deck_json. Never moves the deadline (R28). */
+/** T4′. Clears that occupant's ready_at, deck_json, and deck_name. Never moves the deadline (R28). */
 export function clearReady(
   db: InstanceType<typeof Database>,
   id: string,
@@ -218,9 +222,10 @@ export function clearReady(
 ): boolean {
   const readyCol = role === "creator" ? "creator_ready_at" : "opponent_ready_at";
   const deckJsonCol = role === "creator" ? "creator_deck_json" : "opponent_deck_json";
+  const deckNameCol = role === "creator" ? "creator_deck_name" : "opponent_deck_name";
   const result = db
     .prepare(
-      `UPDATE duel_room SET ${readyCol} = NULL, ${deckJsonCol} = NULL
+      `UPDATE duel_room SET ${readyCol} = NULL, ${deckJsonCol} = NULL, ${deckNameCol} = NULL
        WHERE id = ? AND status = 'filled' AND ${readyCol} IS NOT NULL`,
     )
     .run(id);
@@ -282,7 +287,9 @@ export function revertToOpen(
            creator_ready_at = NULL,
            opponent_ready_at = NULL,
            creator_deck_json = NULL,
+           creator_deck_name = NULL,
            opponent_deck_json = NULL,
+           opponent_deck_name = NULL,
            room_deadline_at = ?
        WHERE id = ? AND status = 'filled'`,
     )

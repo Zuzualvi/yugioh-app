@@ -151,7 +151,7 @@ export function ready(db: InstanceType<typeof Database>, catalog: LoadedCatalog)
     const deckSnapshot = { main, extra };
 
     // applyReady does T4 (+T5 if both ready) in one transaction (R24, R29)
-    const result = applyReady(db, roomId, role, deckSnapshot, now);
+    const result = applyReady(db, roomId, role, deckSnapshot, deck.name, now);
     if (!result) {
       res.status(409).json({
         error: { code: "wrong_state", message: "Ready guard failed — room state changed." },

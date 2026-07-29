@@ -422,13 +422,12 @@ describe("deckInfo — opponent view contains no deck secrets (R25)", () => {
   });
 });
 
-// ── 4. R23: locked deck snapshot is the source of truth after source deletion ─
-// After a player readies (locking deck_json), deleting the source deck row must
-// not blank out the card count. The name cannot be preserved (deck_json stores
-// only card lists, not the name) — see FINDING below.
+// ── 4. R23: locked snapshot is the authoritative source of truth ──────────
+// Once a player readies, creator_deck_json + creator_deck_name are locked.
+// Renaming, rebuilding, or deleting the source deck afterwards has zero effect.
 
-describe("deckInfo — R23: locked snapshot survives source deck deletion", () => {
-  it("deckCardCount is preserved after ready + source deck deletion; deckName is lost (FINDING)", async () => {
+describe("deckInfo — R23: locked snapshot survives post-ready source deck changes", () => {
+  it("locked name and count both returned after source deck deletion", async () => {
     const { sid, userId } = await seedUser("Creator8");
     const deckId = insertDeck(userId, "MirrorForce");
     const roomId = randomUUID();
@@ -445,37 +444,184 @@ describe("deckInfo — R23: locked snapshot survives source deck deletion", () =
     const { userId: oppId } = await seedUser("Opponent8");
     claimSlot(db, roomId, oppId, Date.now());
 
-    // Pick deck and ready — this locks creator_deck_json in the room row
     await request(app)
       .post(`/api/duels/${roomId}/room/deck`)
       .set("Cookie", `sid=${sid}`)
       .send({ deckId });
     await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${sid}`);
 
-    // Confirm deck is locked before deletion
+    // Confirm lock is in place before deletion
     const beforeDel = await request(app)
       .get(`/api/duels/${roomId}/room`)
       .set("Cookie", `sid=${sid}`);
     expect(beforeDel.body.you.deckName).toBe("MirrorForce");
     expect(beforeDel.body.you.deckCardCount).toBe(40);
 
-    // Delete the source deck row — simulating a user deleting their deck after readying
+    // Delete the source deck row
     db.prepare("DELETE FROM decks WHERE id = ?").run(deckId);
 
-    // Re-read the room — the locked snapshot (creator_deck_json) must still supply card count
     const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
     expect(res.status).toBe(200);
     const snap = res.body as RoomSnapshot;
 
-    // Card count is preserved from the locked deck_json snapshot (R23 partially satisfied)
+    // Both name and count come from the locked snapshot (R23)
+    expect(snap.you.deckName).toBe("MirrorForce");
     expect(snap.you.deckCardCount).toBe(40);
+  });
 
-    // FINDING (R23 violation): deck_json stores only card lists, not the name.
-    // loadRoomView.resolveDeckInfo returns deckName: null when the source row is gone.
-    // The locked snapshot does NOT preserve the name — this is a bug.
-    // The assertion below documents the current (broken) behaviour.
-    // When the bug is fixed, this assertion should be changed to:
-    //   expect(snap.you.deckName).toBe("MirrorForce");
-    expect(snap.you.deckName).toBeNull(); // FINDING: name is lost after source deck deletion
+  it("locked name is returned after source deck is renamed", async () => {
+    const { sid, userId } = await seedUser("Creator9");
+    const deckId = insertDeck(userId, "LockedName");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: userId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const { userId: oppId } = await seedUser("Opponent9");
+    claimSlot(db, roomId, oppId, Date.now());
+
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${sid}`)
+      .send({ deckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${sid}`);
+
+    // Rename the source deck to a different name
+    db.prepare("UPDATE decks SET name = ? WHERE id = ?").run("RenamedAfterReady", deckId);
+
+    const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+
+    // Room still shows the locked name, not the new name
+    expect(snap.you.deckName).toBe("LockedName");
+    expect(snap.you.deckName).not.toBe("RenamedAfterReady");
+  });
+
+  it("locked card count is returned after cards are added to the source deck", async () => {
+    const { sid, userId } = await seedUser("Creator10");
+    const deckId = insertDeck(userId, "CountLock");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: userId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const { userId: oppId } = await seedUser("Opponent10");
+    claimSlot(db, roomId, oppId, Date.now());
+
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${sid}`)
+      .send({ deckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${sid}`);
+
+    // Add cards to the source deck (locked count is 40; new count would be 43)
+    const expandedMain = [
+      ...legalMainDeck(),
+      UNLIMITED_MAIN_CARDS[0]!,
+      UNLIMITED_MAIN_CARDS[1]!,
+      UNLIMITED_MAIN_CARDS[2]!,
+    ];
+    db.prepare("UPDATE decks SET main_json = ? WHERE id = ?").run(
+      JSON.stringify(expandedMain),
+      deckId,
+    );
+
+    const res = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(res.status).toBe(200);
+    const snap = res.body as RoomSnapshot;
+
+    // Room still shows the locked count (40), not the edited count (43)
+    expect(snap.you.deckCardCount).toBe(40);
+    expect(snap.you.deckCardCount).not.toBe(43);
+  });
+
+  it("before ready, renaming the source deck DOES change the displayed name", async () => {
+    const { sid, userId } = await seedUser("Creator11");
+    const deckId = insertDeck(userId, "OriginalName");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: userId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const { userId: oppId } = await seedUser("Opponent11");
+    claimSlot(db, roomId, oppId, Date.now());
+
+    // Pick deck only (no ready — no lock)
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${sid}`)
+      .send({ deckId });
+
+    const before = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(before.body.you.deckName).toBe("OriginalName");
+
+    // Rename source deck before readying
+    db.prepare("UPDATE decks SET name = ? WHERE id = ?").run("RenamedBeforeReady", deckId);
+
+    const after = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(after.body.you.deckName).toBe("RenamedBeforeReady");
+    expect(after.body.you.deckName).not.toBe("OriginalName");
+  });
+
+  it("un-ready clears the locked name (lock does not linger)", async () => {
+    const { sid, userId } = await seedUser("Creator12");
+    const deckId = insertDeck(userId, "LockLinger");
+    const roomId = randomUUID();
+    insertRoom(db, {
+      id: roomId,
+      joinToken: randomUUID(),
+      creatorUserId: userId,
+      perMoveSeconds: 300,
+      seed: 42n,
+      roomDeadlineAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    const { userId: oppId } = await seedUser("Opponent12");
+    claimSlot(db, roomId, oppId, Date.now());
+
+    await request(app)
+      .post(`/api/duels/${roomId}/room/deck`)
+      .set("Cookie", `sid=${sid}`)
+      .send({ deckId });
+    await request(app).post(`/api/duels/${roomId}/room/ready`).set("Cookie", `sid=${sid}`);
+
+    // Confirm lock is set
+    const locked = await request(app).get(`/api/duels/${roomId}/room`).set("Cookie", `sid=${sid}`);
+    expect(locked.body.you.deckName).toBe("LockLinger");
+
+    // Un-ready
+    await request(app).post(`/api/duels/${roomId}/room/unready`).set("Cookie", `sid=${sid}`);
+
+    // After un-ready, the locked name must be gone — live row drives it again
+    const afterUnready = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${sid}`);
+    expect(afterUnready.body.you.deckName).toBe("LockLinger"); // live row still has the same name
+    // But verify it's reading from the live row by renaming and checking it tracks
+    db.prepare("UPDATE decks SET name = ? WHERE id = ?").run("LiveName", deckId);
+    const afterRename = await request(app)
+      .get(`/api/duels/${roomId}/room`)
+      .set("Cookie", `sid=${sid}`);
+    expect(afterRename.body.you.deckName).toBe("LiveName");
   });
 });
