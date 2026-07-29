@@ -11,6 +11,24 @@ on:
     paths-ignore:
       - "docs/**"
       - "**/*.md"
+  # PRs get this suite too, and the branch list is an ALLOWLIST — a PR into a
+  # branch not named here runs zero checks, silently, because a PR with no checks
+  # looks much like a PR with passing ones.
+  #
+  # integration/* is here for the reason this trigger was added at all. The
+  # pre-duel room was built across five slices on integration/duel-room, and this
+  # workflow only ever ran on push to master — so the browser suite never saw the
+  # feature until the cutover merge, at which point duel.spec.ts turned out to be
+  # driving a flow the feature had deleted, and the harness turned out to be
+  # silently dropping every WebSocket upgrade. Both were findable weeks earlier by
+  # exactly this job. A feature must not be able to reach completion unseen by it.
+  #
+  # If you add an integration branch, the glob below already covers integration/*.
+  pull_request:
+    branches: [master, "integration/*"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 jobs:
@@ -86,6 +104,6 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           content: |
-            ❌ **E2E FAILED** on `master`
+            ❌ **E2E FAILED** on `${{ github.head_ref || github.ref_name }}`
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
