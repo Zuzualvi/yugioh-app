@@ -14,6 +14,7 @@ import type { DeckSummary } from "../../types/contracts";
 import { listDecks } from "../../api/decks";
 import { pickDeck, ready, unready, leaveRoom } from "../../api/room";
 import { ApiError } from "../../api/client";
+import { useToast } from "../../context/ToastContext";
 
 interface Props {
   snapshot: RoomSnapshot;
@@ -49,6 +50,7 @@ function deadlineColor(msLeft: number): string {
 
 export function RoomWaiting({ snapshot }: Props) {
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [decksLoading, setDecksLoading] = useState(true);
@@ -95,23 +97,28 @@ export function RoomWaiting({ snapshot }: Props) {
     }
   }, [snapshot.you.deckId]);
 
-  // Detect T11 revert (filled → open) and show D4 banner
+  // Detect transitions: opponent arrival (open→filled) and T11 revert (filled→open)
   useEffect(() => {
     const prev = prevSnapshotRef.current;
-    if (
-      prev !== null &&
-      prev.status === "filled" &&
-      snapshot.status === "open" &&
-      prev.opponent !== null
-    ) {
-      const opponentName = prev.opponent.displayName || "Your opponent";
-      const wasReady = prev.you.ready;
-      let msg = `⚠ ${opponentName} left the room.`;
-      if (wasReady) msg += " You've been un-readied.";
-      setRevertBanner(msg);
+    if (prev !== null) {
+      // Opponent just arrived
+      if (prev.status === "open" && snapshot.status === "filled" && snapshot.opponent) {
+        const name = snapshot.opponent.displayName || "Your opponent";
+        addToast(`${name} joined the room`, "success");
+        document.title = `(1) ${name} joined — Edison Duel`;
+      }
+      // T11 revert: opponent left while filled
+      if (prev.status === "filled" && snapshot.status === "open" && prev.opponent !== null) {
+        const opponentName = prev.opponent.displayName || "Your opponent";
+        const wasReady = prev.you.ready;
+        let msg = `⚠ ${opponentName} left the room.`;
+        if (wasReady) msg += " You've been un-readied.";
+        setRevertBanner(msg);
+        document.title = "Edison Duel";
+      }
     }
     prevSnapshotRef.current = snapshot;
-  }, [snapshot]);
+  }, [snapshot, addToast]);
 
   // Reset elapsed on opponent arrival
   useEffect(() => {
@@ -143,16 +150,12 @@ export function RoomWaiting({ snapshot }: Props) {
     return () => clearInterval(id);
   }, [snapshot.roomDeadlineAt]);
 
-  // Update document title on opponent arrival
+  // Reset title on unmount
   useEffect(() => {
-    if (snapshot.status === "filled" && snapshot.opponent) {
-      const name = snapshot.opponent.displayName || "Opponent";
-      document.title = `(1) ${name} joined — Edison Duel`;
-      return () => {
-        document.title = "Edison Duel";
-      };
-    }
-  }, [snapshot.status, snapshot.opponent]);
+    return () => {
+      document.title = "Edison Duel";
+    };
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
@@ -241,10 +244,11 @@ export function RoomWaiting({ snapshot }: Props) {
   const handleCopy = useCallback(() => {
     if (!snapshot.joinToken) return;
     const url = `${window.location.origin}/duel/join/${snapshot.joinToken}`;
-    navigator.clipboard.writeText(url).catch(() => {
-      setInlineError("Copy failed — select the link text and copy manually.");
-    });
-  }, [snapshot.joinToken]);
+    navigator.clipboard.writeText(url).then(
+      () => addToast("Link copied!", "success"),
+      () => setInlineError("Copy failed — select the link text and copy manually."),
+    );
+  }, [snapshot.joinToken, addToast]);
 
   // ── Derived state ─────────────────────────────────────────────────────
 

@@ -56,18 +56,26 @@ function setup(snap: RoomSnapshot | null, loading = false) {
 }
 
 async function renderRoomScreen(roomId = "r1") {
+  // Dynamic imports so ToastProvider and RoomWaiting share the same module
+  // instance (vi.resetModules in afterEach would otherwise give them different
+  // ToastContext objects, making useToast throw "not within ToastProvider").
   const { RoomScreen } = await import("./RoomScreen");
+  const { ToastProvider } = await import("../context/ToastContext");
   render(
     React.createElement(
-      MemoryRouter,
-      { initialEntries: [`/duel/${roomId}/room`] },
+      ToastProvider,
+      null,
       React.createElement(
-        Routes,
-        null,
-        React.createElement(Route, {
-          path: "/duel/:roomId/room",
-          element: React.createElement(RoomScreen),
-        }),
+        MemoryRouter,
+        { initialEntries: [`/duel/${roomId}/room`] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: "/duel/:roomId/room",
+            element: React.createElement(RoomScreen),
+          }),
+        ),
       ),
     ),
   );

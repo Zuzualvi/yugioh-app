@@ -90,12 +90,19 @@ function setupMocks({
 }
 
 async function renderWaiting(snapshot: RoomSnapshot) {
+  // Dynamic import of ToastProvider so it shares the same ToastContext module
+  // instance as RoomWaiting (vi.resetModules in afterEach clears the cache).
   const { RoomWaiting } = await import("./RoomWaiting");
+  const { ToastProvider } = await import("../../context/ToastContext");
   render(
     React.createElement(
-      MemoryRouter,
-      { initialEntries: ["/"] },
-      React.createElement(RoomWaiting, { snapshot }),
+      ToastProvider,
+      null,
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/"] },
+        React.createElement(RoomWaiting, { snapshot }),
+      ),
     ),
   );
 }

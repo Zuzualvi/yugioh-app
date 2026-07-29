@@ -96,22 +96,8 @@ export function pickDeck(db: InstanceType<typeof Database>) {
       return;
     }
 
-    // Write the deck reference. setDeckRef requires status='filled'; for status='open'
-    // (creator waiting alone, T3 has no status guard per spec §5.1), write directly.
-    let wrote = false;
-    if (status === "filled") {
-      wrote = setDeckRef(db, roomId, role, deckId);
-    } else {
-      // status='open' — only creator can be here
-      const col = "creator_deck_id";
-      const result = db
-        .prepare(
-          `UPDATE duel_room SET ${col} = ? WHERE id = ? AND creator_ready_at IS NULL AND status = 'open'`,
-        )
-        .run(deckId, roomId);
-      wrote = result.changes === 1;
-    }
-
+    // setDeckRef guards on status IN ('open','filled') AND ready_at IS NULL
+    const wrote = setDeckRef(db, roomId, role, deckId);
     if (!wrote) {
       res
         .status(409)
