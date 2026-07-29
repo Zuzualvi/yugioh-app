@@ -84,6 +84,41 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (duel_id, seq)
   );
   `,
+  // Migration 3: duel_room table (ZUH-26, additive only, no existing table altered)
+  // creator_deck_name / opponent_deck_name are added here (not in a Migration 4) because
+  // duel_room was first introduced in this migration and has never been deployed to any
+  // environment with a stamped version 3 — master's MIGRATIONS array has only two entries.
+  // Creating the columns in the same CREATE TABLE statement is cleaner than ALTER TABLE.
+  // If you have a local dev DB already at version 3, delete the DB file.
+  `
+  CREATE TABLE IF NOT EXISTS duel_room (
+    id                     TEXT NOT NULL PRIMARY KEY,
+    join_token             TEXT NOT NULL UNIQUE,
+    join_token_consumed_at INTEGER,
+    creator_user_id        TEXT NOT NULL,
+    opponent_user_id       TEXT,
+    timer_per_move_seconds INTEGER NOT NULL,
+    seed_json              TEXT NOT NULL,
+    creator_deck_id        TEXT,
+    opponent_deck_id       TEXT,
+    creator_deck_json      TEXT,
+    creator_deck_name      TEXT,
+    opponent_deck_json     TEXT,
+    opponent_deck_name     TEXT,
+    creator_ready_at       INTEGER,
+    opponent_ready_at      INTEGER,
+    room_deadline_at       INTEGER NOT NULL,
+    flip_winner_user_id    TEXT,
+    flip_rolled_at         INTEGER,
+    flip_choice            TEXT,
+    flip_choice_at         INTEGER,
+    status                 TEXT NOT NULL DEFAULT 'open',
+    closed_reason          TEXT,
+    closed_by_user_id      TEXT,
+    created_at             INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_duel_room_join_token ON duel_room(join_token);
+  `,
 ];
 
 export function runMigrations(db: InstanceType<typeof Database>): void {

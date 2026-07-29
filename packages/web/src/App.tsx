@@ -6,8 +6,9 @@ import { HomeScreen } from "./screens/HomeScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { MyDecksScreen } from "./screens/MyDecksScreen";
 import { CreateDuelScreen } from "./screens/CreateDuelScreen";
-import { JoinDuelScreen } from "./screens/JoinDuelScreen";
+import { JoinLandingScreen } from "./screens/JoinLandingScreen";
 import { DuelScreen } from "./screens/DuelScreen";
+import { RoomScreen } from "./screens/RoomScreen";
 import { DocsLandingScreen } from "./screens/learn/DocsLandingScreen";
 import { DocArticleScreen } from "./screens/learn/DocArticleScreen";
 import "./styles/global.css";
@@ -111,11 +112,13 @@ export function App() {
           </RequireAuth>
         }
       />
+      {/* /duel/join/:joinToken is public — unauthenticated visitors see the D5 landing */}
+      <Route path="/duel/join/:joinToken" element={<JoinLandingScreen />} />
       <Route
-        path="/duel/join/:joinToken"
+        path="/duel/:roomId/room"
         element={
           <RequireAuth>
-            <JoinDuelScreen />
+            <RoomScreen />
           </RequireAuth>
         }
       />

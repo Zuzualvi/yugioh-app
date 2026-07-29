@@ -9,6 +9,7 @@ import { createDecksRouter } from "./routes/decks.js";
 import { requireSession, requireAdmin } from "./middleware/requireSession.js";
 import { corsMiddleware, allowedOriginsFromEnv } from "./middleware/cors.js";
 import { createDuelRouter } from "./duel/duelRoutes.js";
+import { createRoomRouter } from "./room/roomRouter.js";
 import type { DuelManager } from "./duel/duelManager.js";
 
 // ---------------------------------------------------------------------------
@@ -45,29 +46,29 @@ export function createApp(
   // Admin routes — requires session + admin role
   app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
 
-  // Duel routes — requires session
+  // Room router — handles pre-duel room lifecycle (ZUH-26).
+  // Mounted at /api/duels. The GET /join/:token route is unauthenticated-capable;
+  // per-route session guards are applied inside the router.
+  app.use("/api/duels", createRoomRouter(db, duelManager, catalog));
+
+  // Duel board routes (active-duel relay) — also mounted at /api/duels.
+  // The room router is checked first; unmatched paths fall through here.
   if (duelManager) {
     app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
   }
 
   if (opts?.webDistPath) {
-    // Same-origin dev / E2E mode: this one origin serves the built SPA AND the
-    // API + WS, so the SameSite=Lax session cookie attaches with zero CORS.
-    // NOT used in production (Vercel serves the SPA there); active only when
-    // webDistPath is provided.
     const webDist = opts.webDistPath;
     app.use("/api", (_req, res) => {
       res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
     });
     app.use(express.static(webDist));
-    // SPA fallback: any non-API, non-WS GET serves index.html (client routing).
     app.use((req, res, next) => {
       if (req.method !== "GET") return next();
       if (req.path.startsWith("/api") || req.path.startsWith("/ws")) return next();
       res.sendFile(join(webDist, "index.html"));
     });
   } else {
-    // 404 fallback (default: API-only server, e.g. unit tests / prod split).
     app.use((_req, res) => {
       res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
     });

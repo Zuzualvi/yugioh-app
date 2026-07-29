@@ -361,19 +361,16 @@ async function onConnection(
 // ── Public: attach WS server to HTTP server ──────────────────────────────────
 
 export function attachDuelWsServer(
-  httpServer: HttpServer,
+  _httpServer: HttpServer,
   db: InstanceType<typeof Database>,
   manager: DuelManager,
 ): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: undefined });
+  // noServer: true — index.ts dispatches upgrades to us centrally.
+  // SPIKE-r11: this was changed from { server: httpServer } to allow the cookie
+  // probe WS to share the same httpServer without double-handling sockets.
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
-    // Only handle duel WS paths
-    const url = req.url ?? "/";
-    if (!url.includes("/api/duels/")) {
-      ws.close(4000, "unknown path");
-      return;
-    }
     void onConnection(ws, req, db, manager);
   });
 

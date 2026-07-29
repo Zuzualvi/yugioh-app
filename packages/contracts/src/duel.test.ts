@@ -3,9 +3,7 @@ import {
   SeatSchema,
   PerMoveTimerSchema,
   CreateDuelBodySchema,
-  CreateDuelResultSchema,
   JoinDuelBodySchema,
-  JoinDuelResultSchema,
   EngineResponseSchema,
   RedactedEngineMessageSchema,
   ZoneCardSchema,
@@ -14,6 +12,7 @@ import {
   DuelEndReasonSchema,
   DuelServerMessageSchema,
   DuelClientMessageSchema,
+  DuelStatusSchema,
 } from "./duel.js";
 
 // ── SeatSchema ───────────────────────────────────────────────────────────────
@@ -31,10 +30,19 @@ describe("SeatSchema", () => {
 // ── PerMoveTimerSchema ───────────────────────────────────────────────────────
 
 describe("PerMoveTimerSchema", () => {
-  it("parses a valid timer", () => {
+  it("parses min bound (60)", () => {
     expect(PerMoveTimerSchema.parse({ perMoveSeconds: 60 })).toEqual({ perMoveSeconds: 60 });
   });
-  it("rejects non-positive values", () => {
+  it("parses max bound (900)", () => {
+    expect(PerMoveTimerSchema.parse({ perMoveSeconds: 900 })).toEqual({ perMoveSeconds: 900 });
+  });
+  it("rejects below 60", () => {
+    expect(() => PerMoveTimerSchema.parse({ perMoveSeconds: 59 })).toThrow();
+  });
+  it("rejects above 900", () => {
+    expect(() => PerMoveTimerSchema.parse({ perMoveSeconds: 901 })).toThrow();
+  });
+  it("rejects zero", () => {
     expect(() => PerMoveTimerSchema.parse({ perMoveSeconds: 0 })).toThrow();
   });
 });
@@ -42,67 +50,38 @@ describe("PerMoveTimerSchema", () => {
 // ── CreateDuelBodySchema ─────────────────────────────────────────────────────
 
 describe("CreateDuelBodySchema", () => {
-  it("parses a valid body", () => {
-    const result = CreateDuelBodySchema.parse({
-      deckId: "deck-123",
-      timer: { perMoveSeconds: 120 },
-    });
-    expect(result.deckId).toBe("deck-123");
+  it("parses a valid body (timer only, no deckId)", () => {
+    const result = CreateDuelBodySchema.parse({ timer: { perMoveSeconds: 120 } });
+    expect(result.timer.perMoveSeconds).toBe(120);
   });
   it("rejects missing timer", () => {
-    expect(() => CreateDuelBodySchema.parse({ deckId: "deck-123" })).toThrow();
-  });
-});
-
-// ── CreateDuelResultSchema ───────────────────────────────────────────────────
-
-describe("CreateDuelResultSchema", () => {
-  it("parses a valid result", () => {
-    const result = CreateDuelResultSchema.parse({
-      duelId: "00000000-0000-0000-0000-000000000001",
-      joinToken: "jt-abc",
-      creatorSeatToken: "cst-xyz",
-      seat: 0,
-    });
-    expect(result.seat).toBe(0);
-  });
-  it("rejects invalid seat", () => {
-    expect(() =>
-      CreateDuelResultSchema.parse({
-        duelId: "id",
-        joinToken: "jt",
-        creatorSeatToken: "cst",
-        seat: 2,
-      }),
-    ).toThrow();
+    expect(() => CreateDuelBodySchema.parse({})).toThrow();
   });
 });
 
 // ── JoinDuelBodySchema ───────────────────────────────────────────────────────
 
 describe("JoinDuelBodySchema", () => {
-  it("parses a valid join body", () => {
-    const result = JoinDuelBodySchema.parse({ joinToken: "abc", deckId: "deck-1" });
+  it("parses a valid join body (joinToken only, no deckId)", () => {
+    const result = JoinDuelBodySchema.parse({ joinToken: "abc" });
     expect(result.joinToken).toBe("abc");
   });
-  it("rejects missing deckId", () => {
-    expect(() => JoinDuelBodySchema.parse({ joinToken: "abc" })).toThrow();
+  it("rejects missing joinToken", () => {
+    expect(() => JoinDuelBodySchema.parse({})).toThrow();
   });
 });
 
-// ── JoinDuelResultSchema ─────────────────────────────────────────────────────
+// ── DuelStatusSchema ─────────────────────────────────────────────────────────
 
-describe("JoinDuelResultSchema", () => {
-  it("parses a valid join result", () => {
-    const result = JoinDuelResultSchema.parse({
-      duelId: "id",
-      seat: 1,
-      seatToken: "st-xxx",
-    });
-    expect(result.seat).toBe(1);
+describe("DuelStatusSchema", () => {
+  it("parses all valid statuses including starting", () => {
+    expect(DuelStatusSchema.parse("waiting_for_opponent")).toBe("waiting_for_opponent");
+    expect(DuelStatusSchema.parse("active")).toBe("active");
+    expect(DuelStatusSchema.parse("ended")).toBe("ended");
+    expect(DuelStatusSchema.parse("starting")).toBe("starting");
   });
-  it("rejects missing seatToken", () => {
-    expect(() => JoinDuelResultSchema.parse({ duelId: "id", seat: 1 })).toThrow();
+  it("rejects unknown status", () => {
+    expect(() => DuelStatusSchema.parse("pending")).toThrow();
   });
 });
 

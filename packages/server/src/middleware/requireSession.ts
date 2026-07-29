@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import Database from "better-sqlite3";
+import { resolveSessionUser } from "./resolveSessionUser.js";
+export type { SessionUser } from "./resolveSessionUser.js";
 
 // ---------------------------------------------------------------------------
 // Session resolution middleware.
@@ -7,31 +9,14 @@ import Database from "better-sqlite3";
 // user record to req.user. Returns 401 if no valid session.
 // ---------------------------------------------------------------------------
 
-export interface SessionUser {
-  id: string;
-  displayName: string;
-  role: "admin" | "member";
-}
-
 // Augment Express Request to carry the resolved user
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      user?: SessionUser;
+      user?: import("./resolveSessionUser.js").SessionUser;
     }
   }
-}
-
-interface UserRow {
-  id: string;
-  display_name: string;
-  role: string;
-}
-
-interface SessionRow {
-  user_id: string;
-  expires_at: string;
 }
 
 export function requireSession(db: InstanceType<typeof Database>) {
@@ -42,33 +27,13 @@ export function requireSession(db: InstanceType<typeof Database>) {
       return;
     }
 
-    const session = db
-      .prepare("SELECT user_id, expires_at FROM sessions WHERE sid = ?")
-      .get(sid) as SessionRow | undefined;
-    if (!session) {
+    const user = resolveSessionUser(db, sid);
+    if (!user) {
       res.status(401).json({ error: { code: "unauthenticated", message: "Invalid session." } });
       return;
     }
 
-    if (new Date(session.expires_at) < new Date()) {
-      db.prepare("DELETE FROM sessions WHERE sid = ?").run(sid);
-      res.status(401).json({ error: { code: "unauthenticated", message: "Session expired." } });
-      return;
-    }
-
-    const user = db
-      .prepare("SELECT id, display_name, role FROM users WHERE id = ?")
-      .get(session.user_id) as UserRow | undefined;
-    if (!user) {
-      res.status(401).json({ error: { code: "unauthenticated", message: "User not found." } });
-      return;
-    }
-
-    req.user = {
-      id: user.id,
-      displayName: user.display_name,
-      role: user.role as "admin" | "member",
-    };
+    req.user = user;
     next();
   };
 }

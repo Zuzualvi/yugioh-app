@@ -1,136 +1,91 @@
 // @vitest-environment jsdom
-/**
- * CreateDuelScreen tests — create → link lifecycle.
- */
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
-import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockNavigate = vi.fn();
 
 afterEach(() => {
   cleanup();
   vi.resetModules();
   vi.restoreAllMocks();
+  mockNavigate.mockReset();
 });
 
-const MOCK_DECKS = {
-  decks: [
-    {
-      id: "deck-1",
-      name: "Blackwings",
-      counts: { main: 40, extra: 5, side: 0 },
-      isValid: true,
-      updatedAt: "",
-    },
-    {
-      id: "deck-2",
-      name: "Quickdraw",
-      counts: { main: 42, extra: 8, side: 0 },
-      isValid: true,
-      updatedAt: "",
-    },
-  ],
-};
-
-const MOCK_DUEL_RESULT = {
-  duelId: "duel-abc",
-  joinToken: "join-xyz",
-  creatorSeatToken: "creator-token",
-  seat: 0,
-};
-
-function setupMocks(createFn = vi.fn().mockResolvedValue(MOCK_DUEL_RESULT)) {
-  vi.doMock("../api/decks", () => ({
-    listDecks: vi.fn().mockResolvedValue(MOCK_DECKS),
-  }));
-  vi.doMock("../api/duel", () => ({
-    createDuel: createFn,
-  }));
-  vi.doMock("../context/ToastContext", () => ({
-    useToast: () => ({ addToast: vi.fn() }),
-  }));
-  vi.doMock("react-router-dom", async (orig) => {
-    const actual = await orig<typeof import("react-router-dom")>();
-    return {
-      ...actual,
-      useNavigate: () => vi.fn(),
-    };
+beforeEach(() => {
+  vi.doMock("react-router-dom", async () => {
+    const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+    return { ...actual, useNavigate: () => mockNavigate };
   });
+});
+
+async function renderScreen() {
+  const { CreateDuelScreen } = await import("./CreateDuelScreen");
+  render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
 }
 
-describe("CreateDuelScreen — create → shareable link", () => {
-  it("shows deck list on load", async () => {
-    setupMocks();
-    const { CreateDuelScreen } = await import("./CreateDuelScreen");
-
-    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
-
-    await waitFor(() => screen.getByText("Blackwings"));
-    expect(screen.getByText("Blackwings")).toBeTruthy();
-    expect(screen.getByText("Quickdraw")).toBeTruthy();
-  });
-
-  it("shows timer presets", async () => {
-    setupMocks();
-    const { CreateDuelScreen } = await import("./CreateDuelScreen");
-
-    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
-
-    await waitFor(() => screen.getByText("5 min"));
+describe("CreateDuelScreen", () => {
+  it("renders the four timer presets", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
+    expect(screen.getByText("3 min")).toBeTruthy();
+    expect(screen.getByText("5 min")).toBeTruthy();
+    expect(screen.getByText("10 min")).toBeTruthy();
     expect(screen.getByText("15 min")).toBeTruthy();
-    expect(screen.getByText("24 hr")).toBeTruthy();
-    expect(screen.getByText("48 hr")).toBeTruthy();
   });
 
-  it("calls createDuel with selected deck and timer on submit", async () => {
-    const createFn = vi.fn().mockResolvedValue(MOCK_DUEL_RESULT);
-    setupMocks(createFn);
-    const { CreateDuelScreen } = await import("./CreateDuelScreen");
+  it("has 10 min selected by default", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
+    const tenMin = screen.getByText("10 min");
+    expect(tenMin.getAttribute("aria-checked")).toBe("true");
+  });
 
-    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
+  it("shows the 'you'll pick your deck in the room' line", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
+    expect(screen.getByText(/pick your deck in the room/i)).toBeTruthy();
+  });
 
-    await waitFor(() => screen.getByText("Blackwings"));
+  it("does not render a deck picker", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
+    expect(screen.queryByLabelText(/deck/i)).toBeNull();
+    expect(screen.queryByText(/choose a deck/i)).toBeNull();
+  });
 
-    // Select deck
-    fireEvent.click(screen.getByText("Blackwings"));
+  it("shows the Create challenge link button", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
+    expect(screen.getByText("Create challenge link ▸")).toBeTruthy();
+  });
 
-    // Click create
-    fireEvent.click(screen.getByText(/create duel/i));
+  it("switches selection when a different preset is clicked", async () => {
+    vi.doMock("../api/room", () => ({ createRoom: vi.fn() }));
+    await renderScreen();
 
-    await waitFor(() => expect(createFn).toHaveBeenCalledOnce());
-    expect(createFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        deckId: "deck-1",
-        timer: expect.objectContaining({ perMoveSeconds: expect.any(Number) }),
-      }),
+    const fiveMin = screen.getByText("5 min");
+    fireEvent.click(fiveMin);
+    expect(fiveMin.getAttribute("aria-checked")).toBe("true");
+
+    const tenMin = screen.getByText("10 min");
+    expect(tenMin.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("calls createRoom with selected seconds and navigates to room on success", async () => {
+    const mockCreate = vi.fn().mockResolvedValue({ roomId: "room-abc", joinToken: "tok123" });
+    vi.doMock("../api/room", () => ({ createRoom: mockCreate }));
+    await renderScreen();
+
+    // Select 5 min
+    fireEvent.click(screen.getByText("5 min"));
+    fireEvent.click(screen.getByText("Create challenge link ▸"));
+
+    // Wait for async
+    await vi.waitFor(() =>
+      expect(mockCreate).toHaveBeenCalledWith({ timer: { perMoveSeconds: 300 } }),
     );
-  });
-
-  it("shows shareable join link after creation", async () => {
-    setupMocks();
-    const { CreateDuelScreen } = await import("./CreateDuelScreen");
-
-    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
-
-    await waitFor(() => screen.getByText("Blackwings"));
-    fireEvent.click(screen.getByText("Blackwings"));
-    fireEvent.click(screen.getByText(/create duel/i));
-
-    await waitFor(() => screen.getByTestId("join-link"));
-    const link = screen.getByTestId("join-link");
-    expect(link.textContent).toContain("join-xyz");
-    expect(link.textContent).toContain("/duel/join/");
-  });
-
-  it("disables create button when no deck selected", async () => {
-    setupMocks();
-    const { CreateDuelScreen } = await import("./CreateDuelScreen");
-
-    render(React.createElement(MemoryRouter, null, React.createElement(CreateDuelScreen)));
-
-    await waitFor(() => screen.getByText("Blackwings"));
-
-    const createBtn = screen.getByText(/create duel/i) as HTMLButtonElement;
-    expect(createBtn.disabled).toBe(true);
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/duel/room-abc/room"));
   });
 });

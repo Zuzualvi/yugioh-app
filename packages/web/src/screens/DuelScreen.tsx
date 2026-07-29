@@ -1,19 +1,19 @@
 /**
  * DuelScreen — the main duel board.
  *
- * Reads duelId from route params, seatToken + seat from location.state
- * (set by CreateDuelScreen / JoinDuelScreen).  In dev/test mode, wires up
- * the mock duel session instead of the real WebSocket.
+ * Reads duelId from route params. Seat credential (seatToken + seat) comes from:
+ *   1. location.state (set by RoomHandoff navigation) — fast path
+ *   2. GET /api/duels/:id/seat — fallback for refresh during 'starting' (E45)
+ *
+ * useMock is now EXPLICIT-ONLY: only active when location.state.useMock === true.
+ * A missing or refused credential renders a real error, never a silent mock board
+ * (R32, R43 — fixes the ZUH-21 symptom where a missing seatToken silently started
+ * a fake duel while the player's real clock ran).
  *
  * Renders:
  *   - DuelBoard (zone/LP/phase snapshot)
  *   - DuelTimer (server-authoritative countdown)
  *   - ActionPanel (typed DECISION response + RESIGN)
- *
- * Wire contract (Phase 2):
- *   - Consumes: DECISION frame { type:"DECISION", decision: DuelDecision }
- *   - Sends:    DECISION_RESPONSE frame { type:"DECISION_RESPONSE", response: DuelDecisionResponse }
- *   - RESPONSE / MSG paths removed.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +31,7 @@ import { DuelBoard } from "../components/DuelBoard";
 import { DuelTimer } from "../components/DuelTimer";
 import { DocsSlideIn } from "../components/DocsSlideIn";
 import { openDuelSocket } from "../api/duelSocket";
+import { getSeatCredential } from "../api/room";
 import type { MockDuelSession } from "../mock/duelSession";
 
 interface LocationState {
@@ -46,12 +47,18 @@ export function DuelScreen() {
   const navigate = useNavigate();
 
   const locationState = (location.state as LocationState | null) ?? {};
-  const { seatToken, seat: seatFromState } = locationState;
 
-  const [mySeat, setMySeat] = useState<Seat | null>(seatFromState ?? null);
+  // useMock is explicit-only: never triggered by a missing seatToken (R32, R43).
+  const useMock = locationState.useMock === true;
+
+  const [seatToken, setSeatToken] = useState<string | undefined>(locationState.seatToken);
+  const [mySeat, setMySeat] = useState<Seat | null>(locationState.seat ?? null);
+
+  const [credentialLoading, setCredentialLoading] = useState(!useMock && !locationState.seatToken);
+  const [credentialError, setCredentialError] = useState<string | null>(null);
+
   const [state, setState] = useState<DuelStateSnapshot | null>(null);
   const [clock, setClock] = useState<{ onClockSeat: Seat; deadlineAt: number } | null>(null);
-  /** Typed pending decision — null when no decision is awaiting this seat */
   const [pendingDecision, setPendingDecision] = useState<DuelDecision | null>(null);
   const [duelEnded, setDuelEnded] = useState<{
     winner: Seat | null;
@@ -59,13 +66,36 @@ export function DuelScreen() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  /** Docs slide-in — B4-REQ-5: generic "?" panel, no engine-event deep-links in V1. */
   const [docsOpen, setDocsOpen] = useState(false);
 
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
 
-  /** Send a typed DuelDecisionResponse to the server (or mock). */
+  // Fetch seat credential if not provided via router state (E45 refresh recovery)
+  useEffect(() => {
+    if (useMock || locationState.seatToken || !duelId) return;
+
+    let cancelled = false;
+    getSeatCredential(duelId)
+      .then((cred) => {
+        if (cancelled) return;
+        setSeatToken(cred.seatToken);
+        setMySeat(cred.seat);
+        setCredentialLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCredentialError(
+          "Could not retrieve your seat credential. The duel may have ended or you may not be a participant.",
+        );
+        setCredentialLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [duelId, useMock, locationState.seatToken]);
+
   const respond = useCallback((r: DuelDecisionResponse) => {
     const msg: DuelClientMessage = { type: "DECISION_RESPONSE", response: r };
     if (mockSessionRef.current) {
@@ -95,45 +125,35 @@ export function DuelScreen() {
         setMySeat(msg.seat);
         setConnected(true);
         break;
-
       case "STATE":
         setState(msg.state);
-        // A state update after a decision clears the pending decision
         setPendingDecision(null);
         break;
-
       case "DECISION":
-        // Typed decision from Phase 1 server: render via DecisionDispatcher
         setPendingDecision(msg.decision);
         break;
-
       case "CLOCK":
         setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
         break;
-
       case "DUEL_END":
         setDuelEnded({ winner: msg.winner, reason: msg.reason });
         setPendingDecision(null);
         break;
-
       case "ERROR":
         setError(msg.message);
         break;
-
-      // MSG frame: legacy redacted engine message — no longer processed here.
-      // The typed DECISION frame supersedes MSG for player decisions.
       case "MSG":
         break;
     }
   }, []);
 
+  // Connect to the duel (mock or real) once credentials are available
   useEffect(() => {
     if (!duelId) return;
-
-    const useMock = !seatToken || locationState.useMock;
+    if (credentialLoading) return; // wait for credential fetch to complete
 
     if (useMock) {
-      const seat: Seat = seatFromState ?? 0;
+      const seat: Seat = locationState.seat ?? 0;
       import("../mock/duelSession")
         .then(({ createMockDuelSession }) => {
           const session = createMockDuelSession(seat, handleServerMessage);
@@ -151,7 +171,8 @@ export function DuelScreen() {
       };
     }
 
-    // Real WebSocket
+    if (!seatToken) return; // credential fetch failed — handled by credentialError state
+
     const socket = openDuelSocket(duelId, seatToken, {
       onMessage: handleServerMessage,
       onOpen: () => setConnected(true),
@@ -163,7 +184,7 @@ export function DuelScreen() {
       socket.close();
       socketRef.current = null;
     };
-  }, [duelId, seatToken]);
+  }, [duelId, seatToken, credentialLoading, useMock]);
 
   const effectiveSeat: Seat = mySeat ?? 0;
 
@@ -178,9 +199,41 @@ export function DuelScreen() {
     );
   }
 
+  // Credential loading state (E45 refresh during 'starting')
+  if (credentialLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <span className="loading-spinner" aria-label="Loading duel…" />
+        <p style={{ color: "var(--text-1)" }}>Loading duel…</p>
+      </div>
+    );
+  }
+
+  // Credential error — real error, never a mock fallback
+  if (credentialError) {
+    return (
+      <div style={{ padding: 32, textAlign: "center" }}>
+        <p role="alert" style={{ color: "var(--invalid)", marginBottom: 16 }}>
+          {credentialError}
+        </p>
+        <button className="btn" onClick={() => navigate("/")} style={{ marginTop: 8 }}>
+          Go home
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
       <header
         style={{
           background: "var(--bg-1)",
@@ -221,7 +274,6 @@ export function DuelScreen() {
             mySeat={effectiveSeat}
           />
         )}
-        {/* Rules & Guides "?" button — opens generic docs slide-in (B4-REQ-5) */}
         <button
           className="btn btn-ghost"
           onClick={() => setDocsOpen(true)}
@@ -233,10 +285,8 @@ export function DuelScreen() {
         </button>
       </header>
 
-      {/* Docs slide-in — V1: generic; no engine-event deep-links */}
       {docsOpen && <DocsSlideIn onClose={() => setDocsOpen(false)} />}
 
-      {/* Error banner */}
       {error && (
         <div
           role="alert"
@@ -252,7 +302,6 @@ export function DuelScreen() {
         </div>
       )}
 
-      {/* Duel ended overlay */}
       {duelEnded && (
         <DuelEndBanner
           winner={duelEnded.winner}
@@ -262,7 +311,6 @@ export function DuelScreen() {
         />
       )}
 
-      {/* Main content */}
       <main
         style={{
           flex: 1,

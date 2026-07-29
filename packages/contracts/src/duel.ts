@@ -14,50 +14,24 @@ export type Seat = z.infer<typeof SeatSchema>;
 export type DuelId = string;
 
 export const PerMoveTimerSchema = z.object({
-  perMoveSeconds: z.number().int().positive(),
+  perMoveSeconds: z.number().int().min(60).max(900),
 });
 export type PerMoveTimer = z.infer<typeof PerMoveTimerSchema>;
 
 // ── Duel lifecycle — HTTP ────────────────────────────────────────────────────
 
 export const CreateDuelBodySchema = z.object({
-  deckId: z.string(),
   timer: PerMoveTimerSchema,
 });
 export type CreateDuelBody = z.infer<typeof CreateDuelBodySchema>;
 
-export const CreateDuelResultSchema = z.object({
-  duelId: z.string(),
-  joinToken: z.string(),
-  creatorSeatToken: z.string(),
-  seat: SeatSchema,
-});
-export type CreateDuelResult = z.infer<typeof CreateDuelResultSchema>;
-
 export const JoinDuelBodySchema = z.object({
   joinToken: z.string(),
-  deckId: z.string(),
 });
 export type JoinDuelBody = z.infer<typeof JoinDuelBodySchema>;
 
-export const JoinDuelResultSchema = z.object({
-  duelId: z.string(),
-  seat: SeatSchema,
-  seatToken: z.string(),
-});
-export type JoinDuelResult = z.infer<typeof JoinDuelResultSchema>;
-
-export const DuelStatusSchema = z.enum(["waiting_for_opponent", "active", "ended"]);
+export const DuelStatusSchema = z.enum(["waiting_for_opponent", "active", "ended", "starting"]);
 export type DuelStatus = z.infer<typeof DuelStatusSchema>;
-
-// Safe, pre-join public view of a duel, looked up by its shareable joinToken.
-// Exposes ONLY what an invitee needs before accepting (informed consent, REQ-TIMER-11).
-// NEVER includes seat tokens, decks, or the seed.
-export const PreJoinDuelInfoSchema = z.object({
-  timerPerMoveSeconds: z.number().int().positive(),
-  status: DuelStatusSchema,
-});
-export type PreJoinDuelInfo = z.infer<typeof PreJoinDuelInfoSchema>;
 
 // ── EngineResponse ────────────────────────────────────────────────────────────
 

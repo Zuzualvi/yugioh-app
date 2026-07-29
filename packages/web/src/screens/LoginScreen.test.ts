@@ -71,3 +71,65 @@ describe("LoginScreen — resume after auth (INVITE-01)", () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true }));
   });
 });
+
+describe("LoginScreen — D5b duel join context line", () => {
+  it("shows generic context line when creator name has not loaded yet", async () => {
+    setupMocks();
+    vi.doMock("../api/room", () => ({
+      lookupJoinToken: vi.fn().mockResolvedValue({
+        perMoveSeconds: 600,
+        creatorDisplayName: "Kaiba",
+        usable: true,
+        reason: "ok",
+      }),
+    }));
+    await renderAt({ from: "/duel/join/sometoken" });
+    // Shows immediately before async name loads
+    expect(screen.getByTestId("duel-join-context")).toBeTruthy();
+  });
+
+  it("shows creator's name once lookup resolves", async () => {
+    setupMocks();
+    vi.doMock("../api/room", () => ({
+      lookupJoinToken: vi.fn().mockResolvedValue({
+        perMoveSeconds: 600,
+        creatorDisplayName: "Kaiba",
+        usable: true,
+        reason: "ok",
+      }),
+    }));
+    await renderAt({ from: "/duel/join/sometoken" });
+    await waitFor(() =>
+      expect(screen.getByTestId("duel-join-context").textContent).toMatch(
+        /sign in to join Kaiba's duel/i,
+      ),
+    );
+  });
+
+  it("falls back to generic when lookup fails", async () => {
+    setupMocks();
+    vi.doMock("../api/room", () => ({
+      lookupJoinToken: vi.fn().mockRejectedValue(new Error("network error")),
+    }));
+    await renderAt({ from: "/duel/join/sometoken" });
+    await waitFor(() =>
+      expect(screen.getByTestId("duel-join-context").textContent).toMatch(
+        /sign in to join a duel/i,
+      ),
+    );
+  });
+
+  it("does not show context line for other paths", async () => {
+    setupMocks();
+    vi.doMock("../api/room", () => ({ lookupJoinToken: vi.fn() }));
+    await renderAt({ from: "/decks" });
+    expect(screen.queryByTestId("duel-join-context")).toBeNull();
+  });
+
+  it("does not show context line when there is no from", async () => {
+    setupMocks();
+    vi.doMock("../api/room", () => ({ lookupJoinToken: vi.fn() }));
+    await renderAt(undefined);
+    expect(screen.queryByTestId("duel-join-context")).toBeNull();
+  });
+});
