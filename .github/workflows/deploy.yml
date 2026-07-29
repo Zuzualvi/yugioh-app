@@ -3,8 +3,12 @@ name: Deploy
 # Every push to master runs the verify gate, then (only if green) deploys:
 #   • Fly backend  (api.zuhayr.io)  — flyctl remote build from Dockerfile
 #   • Vercel frontend (app.zuhayr.io) — token-based `vercel build` then `vercel deploy --prebuilt`
-#     (authorship-independent, same model as the Fly backend). Vercel's Git integration is NOT
-#     used: it rejects bot-authored commits (TEAM_ACCESS_REQUIRED), so the CLI + VERCEL_TOKEN is
+#     Vercel's Git integration is NOT used, but that never made the CLI authorship-blind:
+#     `vercel deploy` reads .git from THIS checkout and attaches the commit author to the
+#     deployment, and the Hobby plan BLOCKS any deployment whose author is not a
+#     recognised collaborator — the build is never queued, so the CLI waits forever and
+#     the job dies on timeout. That is why deploy-frontend deletes .git below. Verified
+#     22/22 across this project's deployment history. The CLI + VERCEL_TOKEN is
 #     the sole deployer. The build runs on the GH runner deliberately — see the deploy-frontend
 #     job for why a remote build made the deploy's outcome unobservable.
 # Secrets: FLY_API_TOKEN + BOOTSTRAP_ADMIN_* (backend), VERCEL_TOKEN + VERCEL_ORG_ID +
@@ -242,6 +246,17 @@ jobs:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v5
+      - name: Drop git metadata (the deploy must not be author-gated)
+        # `vercel deploy` reads .git from the checkout and attaches the commit author.
+        # Vercel's Hobby plan blocks any deployment whose author is not a recognised
+        # collaborator, and a commit written through the GitHub API — which is the ONLY
+        # way to change a workflow file here — is authored
+        # `...@users.noreply.github.com`. With no .git there is no author to gate on.
+        # Deliberately tool-agnostic: it holds for git push, the API, a merge, or any
+        # write path added later, instead of every path having to get authorship right
+        # forever. Cost: the Vercel dashboard loses commit/branch annotation. Actions
+        # already has it.
+        run: rm -rf .git
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
