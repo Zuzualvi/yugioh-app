@@ -49,7 +49,14 @@ export function claimRoom(db: InstanceType<typeof Database>) {
         return;
       }
       const presence = getPresenceMap(row.id, view.row);
-      const snapshot = buildRoomSnapshot(view.row, user.id, view.names, presence, now);
+      const snapshot = buildRoomSnapshot(
+        view.row,
+        user.id,
+        view.names,
+        presence,
+        now,
+        view.deckInfo,
+      );
       res.status(200).json(snapshot);
       return;
     }
@@ -98,10 +105,10 @@ export function claimRoom(db: InstanceType<typeof Database>) {
     }
 
     const presence = getPresenceMap(row.id, view.row);
-    const snapshot = buildRoomSnapshot(view.row, user.id, view.names, presence, now);
+    const snapshot = buildRoomSnapshot(view.row, user.id, view.names, presence, now, view.deckInfo);
 
     // Broadcast to any connected sockets (e.g. creator in the room)
-    broadcastRoom(db, row.id, view.row, view.names, now);
+    broadcastRoom(db, row.id, view, now);
 
     res.status(200).json(snapshot);
   };

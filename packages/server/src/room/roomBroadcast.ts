@@ -10,7 +10,8 @@ import { closeRoom } from "./roomStore.js";
 import { evaluateExpiry } from "./evaluateExpiry.js";
 import { buildRoomSnapshot } from "./buildRoomSnapshot.js";
 import { loadRoomView } from "./loadRoomView.js";
-import type { OccupantNames, PresenceMap } from "./buildRoomSnapshot.js";
+import type { RoomView } from "./loadRoomView.js";
+import type { PresenceMap } from "./buildRoomSnapshot.js";
 import Database from "better-sqlite3";
 
 const AWAY_TIMEOUT_MS = 10_000; // 10 s with no socket → 'away'
@@ -69,18 +70,24 @@ function toWire(msg: RoomServerMessage): string {
 export function broadcastRoom(
   db: InstanceType<typeof Database>,
   roomId: string,
-  row: DuelRoomRow,
-  names: OccupantNames,
+  view: RoomView,
   now: number,
 ): void {
   const registry = rooms.get(roomId);
   if (!registry || registry.sockets.size === 0) return;
 
-  const presence = getPresenceMap(roomId, row);
+  const presence = getPresenceMap(roomId, view.row);
 
   for (const entry of registry.sockets) {
     if (entry.ws.readyState !== WebSocket.OPEN) continue;
-    const snapshot = buildRoomSnapshot(row, entry.userId, names, presence, now);
+    const snapshot = buildRoomSnapshot(
+      view.row,
+      entry.userId,
+      view.names,
+      presence,
+      now,
+      view.deckInfo,
+    );
     entry.ws.send(toWire({ type: "ROOM_STATE", snapshot }));
   }
 }
@@ -112,7 +119,7 @@ export function registerSocket(
       registry.awayTimers.delete(userId);
       const view = loadRoomView(db, roomId);
       if (view) {
-        broadcastRoom(db, roomId, view.row, view.names, Date.now());
+        broadcastRoom(db, roomId, view, Date.now());
       }
       if (registry.sockets.size === 0 && registry.awayTimers.size === 0) {
         clearDeadlineTimer(roomId);
@@ -137,12 +144,11 @@ export function armDeadlineTimer(
     const now = Date.now();
     const view = loadRoomView(db, roomId);
     if (!view) return;
-    const { row } = view;
-    const { expired, reason } = evaluateExpiry(row, now);
+    const { expired, reason } = evaluateExpiry(view.row, now);
     if (expired && reason) {
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
-      if (fresh) broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+      if (fresh) broadcastRoom(db, roomId, fresh, now);
     }
   }, delay);
 }

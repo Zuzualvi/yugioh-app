@@ -42,9 +42,16 @@ export function leave(db: InstanceType<typeof Database>) {
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+        broadcastRoom(db, roomId, fresh, now);
         const presence = getPresenceMap(roomId, fresh.row);
-        const snap = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+        const snap = buildRoomSnapshot(
+          fresh.row,
+          userId,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         res
           .status(410)
           .json({ error: { code: "expired", message: "Room has expired." }, snapshot: snap });
@@ -90,9 +97,16 @@ export function leave(db: InstanceType<typeof Database>) {
         res.status(500).json({ error: { code: "internal_error", message: "Room vanished." } });
         return;
       }
-      broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+      broadcastRoom(db, roomId, fresh, now);
       const presence = getPresenceMap(roomId, fresh.row);
-      const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+      const snapshot = buildRoomSnapshot(
+        fresh.row,
+        userId,
+        fresh.names,
+        presence,
+        now,
+        fresh.deckInfo,
+      );
       res.status(200).json(snapshot);
       return;
     }
@@ -107,9 +121,16 @@ export function leave(db: InstanceType<typeof Database>) {
       res.status(500).json({ error: { code: "internal_error", message: "Room vanished." } });
       return;
     }
-    broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+    broadcastRoom(db, roomId, fresh, now);
     const presence = getPresenceMap(roomId, fresh.row);
-    const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+    const snapshot = buildRoomSnapshot(
+      fresh.row,
+      userId,
+      fresh.names,
+      presence,
+      now,
+      fresh.deckInfo,
+    );
     res.status(200).json(snapshot);
   };
 }

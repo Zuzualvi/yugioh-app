@@ -56,7 +56,7 @@ export function submitChoice(db: InstanceType<typeof Database>, duelManager?: Du
     if (expired && expiredReason) {
       closeRoom(db, roomId, expiredReason, null);
       const fresh = loadRoomView(db, roomId);
-      if (fresh) broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+      if (fresh) broadcastRoom(db, roomId, fresh, now);
       res.status(410).json({ error: { code: "expired", message: "Room has expired." } });
       return;
     }
@@ -125,12 +125,19 @@ export function submitChoice(db: InstanceType<typeof Database>, duelManager?: Du
 
     // Broadcast the new 'starting' room snapshot
     const freshView = loadRoomView(db, roomId);
-    if (freshView) broadcastRoom(db, roomId, freshView.row, freshView.names, now);
+    if (freshView) broadcastRoom(db, roomId, freshView, now);
 
     // Return caller's snapshot
     const finalView = freshView ?? view;
     const presence = getPresenceMap(roomId, finalView.row);
-    const snapshot = buildRoomSnapshot(finalView.row, userId, finalView.names, presence, now);
+    const snapshot = buildRoomSnapshot(
+      finalView.row,
+      userId,
+      finalView.names,
+      presence,
+      now,
+      finalView.deckInfo,
+    );
 
     // T7: async engine start (fire-and-forget; errors logged inside)
     if (duelManager) {

@@ -48,9 +48,16 @@ export function ready(db: InstanceType<typeof Database>, catalog: LoadedCatalog)
       closeRoom(db, roomId, reason, null);
       const fresh = loadRoomView(db, roomId);
       if (fresh) {
-        broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+        broadcastRoom(db, roomId, fresh, now);
         const presence = getPresenceMap(roomId, fresh.row);
-        const snap = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now);
+        const snap = buildRoomSnapshot(
+          fresh.row,
+          userId,
+          fresh.names,
+          presence,
+          now,
+          fresh.deckInfo,
+        );
         res
           .status(410)
           .json({ error: { code: "expired", message: "Room has expired." }, snapshot: snap });
@@ -84,7 +91,14 @@ export function ready(db: InstanceType<typeof Database>, catalog: LoadedCatalog)
       // Since deck is locked, any further ready is either idempotent or already_ready.
       // The deck is already snapshotted; deckId can't change while locked.
       const presence = getPresenceMap(roomId, view.row);
-      const snapshot = buildRoomSnapshot(view.row, userId, view.names, presence, now);
+      const snapshot = buildRoomSnapshot(
+        view.row,
+        userId,
+        view.names,
+        presence,
+        now,
+        view.deckInfo,
+      );
       res.status(200).json(snapshot);
       return;
     }
@@ -154,13 +168,16 @@ export function ready(db: InstanceType<typeof Database>, catalog: LoadedCatalog)
       return;
     }
 
-    const deckInfo = {
-      [role]: { deckId, deckName: deck.name, deckCardCount: main.length + extra.length },
-    };
-
-    broadcastRoom(db, roomId, fresh.row, fresh.names, now);
+    broadcastRoom(db, roomId, fresh, now);
     const presence = getPresenceMap(roomId, fresh.row);
-    const snapshot = buildRoomSnapshot(fresh.row, userId, fresh.names, presence, now, deckInfo);
+    const snapshot = buildRoomSnapshot(
+      fresh.row,
+      userId,
+      fresh.names,
+      presence,
+      now,
+      fresh.deckInfo,
+    );
     res.status(200).json(snapshot);
   };
 }
