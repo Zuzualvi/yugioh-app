@@ -44,6 +44,9 @@ import { requireSession, requireAdmin } from "./packages/server/src/middleware/r
 import { createDuelRouter } from "./packages/server/src/duel/duelRoutes.js";
 import { DuelManager } from "./packages/server/src/duel/duelManager.js";
 import { attachDuelWsServer } from "./packages/server/src/duel/duelSocket.js";
+import { createRoomRouter } from "./packages/server/src/room/roomRouter.js";
+import { createRoomWss } from "./packages/server/src/room/roomSocket.js";
+import { attachUpgradeRouter } from "./packages/server/src/wsUpgradeRouter.js";
 import type {
   DuelEngineFactory,
   DuelEngineReplay,
@@ -168,7 +171,16 @@ app.use("/api/cards", requireSession(db), createCardsRouter(catalog));
 app.use("/api/decks", requireSession(db), createDecksRouter(db, catalog));
 app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
 
-// Duel routes — requires session
+// Pre-duel room routes. MUST be mounted before the duel router below: both live
+// at /api/duels, the room router is checked first, and unmatched paths fall
+// through. It applies its own per-route session guards rather than sitting behind
+// one, because GET /api/duels/join/:joinToken is deliberately callable
+// unauthenticated — that is what lets a logged-out invitee see who challenged
+// them. Mounting this behind requireSession would 401 that route and break the
+// public landing. Mirrors packages/server/src/app.ts.
+app.use("/api/duels", createRoomRouter(db, duelManager, catalog));
+
+// Duel board routes (active-duel relay) — requires session
 app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
 
 // /api/* that didn't match → JSON 404
@@ -180,7 +192,17 @@ app.use("/api", (_req, res) => {
 // HTTP server (wraps Express so the WS server can share the same port)
 // ---------------------------------------------------------------------------
 const httpServer = createServer(app);
-attachDuelWsServer(httpServer, db, duelManager);
+
+// Both WS servers are created with noServer: true and have NO upgrade listener of
+// their own — a single dispatcher routes /api/duels/:id/room/ws to the room server
+// and /api/duels/:id/ws to the board server. Discarding attachDuelWsServer's
+// return value and omitting attachUpgradeRouter leaves NOTHING listening for
+// upgrades, which silently kills every WebSocket while HTTP stays perfectly
+// healthy. That is exactly what shipped here, and it took the live duel board
+// down alongside the absent room. Mirrors packages/server/src/index.ts.
+const boardWss = attachDuelWsServer(httpServer, db, duelManager);
+const roomWss = createRoomWss();
+attachUpgradeRouter(httpServer, db, boardWss, roomWss);
 
 httpServer.listen(PORT, () => {
   console.log(`Yu-Gi-Oh API listening on port ${PORT} (NODE_ENV=${process.env["NODE_ENV"]})`);
