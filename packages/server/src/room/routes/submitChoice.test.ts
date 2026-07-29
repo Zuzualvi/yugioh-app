@@ -271,6 +271,39 @@ describe("POST /api/duels/:id/room/choice", () => {
     expect(deck1.main[0]).toBe(creatorDeck.main[0]);
   });
 
+  it("decks are reordered by seat: choice=first → deck0=winner(creator), deck1=opponent (AC2)", async () => {
+    const setup = await setupRoom();
+    // Distinct decks: first card differs so a swap is detectable
+    const creatorDeck = {
+      main: [UNLIMITED_MAIN_CARDS[0]!, ...Array(39).fill(UNLIMITED_MAIN_CARDS[1])],
+      extra: [],
+    };
+    const opponentDeck = {
+      main: [UNLIMITED_MAIN_CARDS[2]!, ...Array(39).fill(UNLIMITED_MAIN_CARDS[3])],
+      extra: [],
+    };
+    db.prepare(
+      "UPDATE duel_room SET creator_deck_json = ?, opponent_deck_json = ? WHERE id = ?",
+    ).run(JSON.stringify(creatorDeck), JSON.stringify(opponentDeck), setup.roomId);
+
+    // creator = flip winner, choice=first → creator=seat0
+    const res = await request(app)
+      .post(`/api/duels/${setup.roomId}/room/choice`)
+      .set("Cookie", `sid=${setup.flipWinnerSid}`)
+      .send({ choice: "first" });
+
+    expect(res.status).toBe(200);
+    const duelRow = db
+      .prepare("SELECT deck0_json, deck1_json FROM duel WHERE id = ?")
+      .get(setup.roomId) as { deck0_json: string; deck1_json: string } | undefined;
+    const deck0 = JSON.parse(duelRow!.deck0_json) as { main: number[] };
+    const deck1 = JSON.parse(duelRow!.deck1_json) as { main: number[] };
+    // seat0=creator(winner) → deck0=creatorDeck
+    expect(deck0.main[0]).toBe(creatorDeck.main[0]);
+    // seat1=opponent → deck1=opponentDeck
+    expect(deck1.main[0]).toBe(opponentDeck.main[0]);
+  });
+
   it("duel row has NULL deadline_at and NULL on_clock_seat at insert time (AC2, AC3)", async () => {
     const setup = await setupRoom();
 
