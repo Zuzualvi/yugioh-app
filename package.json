@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --project tsconfig.root-entrypoints.json",
     "lint": "eslint . && prettier --check .",
     "arch:check": "depcruise packages --config .dependency-cruiser.cjs",
     "test": "vitest run",
