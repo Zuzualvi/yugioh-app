@@ -52,6 +52,45 @@ jobs:
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+  # ── The gate that watches what actually ships ──────────────────────────────
+  # `verify` above exercises packages/server/src/app.ts. NOTHING DEPLOYS app.ts:
+  # the Dockerfile bundles prod-server.ts with esbuild, which neither typechecks
+  # nor executes it. On 2026-07-28 that gap took production down while every gate
+  # in this repo was green.
+  #
+  # This job builds the real bundle, boots it, and asserts its full route table
+  # plus both WebSocket upgrade paths. deploy-backend below NEEDS it, so a bundle
+  # that does not serve its routes cannot reach api.zuhayr.io. Running this only
+  # as a PR check would leave master free to deploy a broken artifact and report
+  # the failure afterwards — which is exactly what happened.
+  artifact-smoke:
+    name: artifact smoke (boots the shipped bundle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      # No WASM needed: the engine is bundled but only loads its WASM once a duel
+      # actually starts, so the bundle boots and serves every route without it.
+      - run: npm run smoke:artifact
+      - name: Notify Discord on artifact smoke failure
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **ARTIFACT SMOKE FAILED** on `master` — backend deploy BLOCKED
+            The shipped bundle does not serve its expected routes.
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
   accuracy:
     name: accuracy (Edison full parity matrix)
     runs-on: ubuntu-latest
@@ -105,7 +144,7 @@ jobs:
 
   deploy-backend:
     name: deploy backend (Fly · api.zuhayr.io)
-    needs: [verify, accuracy]
+    needs: [verify, artifact-smoke, accuracy]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
