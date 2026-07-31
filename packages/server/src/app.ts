@@ -21,58 +21,83 @@ export function createApp(
   db: InstanceType<typeof Database>,
   catalog: LoadedCatalog,
   duelManager?: DuelManager,
-  opts?: { webDistPath?: string },
+  opts?: { webDistPath?: string; imagesPath?: string },
 ): express.Application {
   const app = express();
 
+  // 1. CORS must be FIRST — before body parsing so preflight OPTIONS is answered immediately
   app.use(corsMiddleware(allowedOriginsFromEnv()));
+
+  // 2. Body parsers
   app.use(express.json());
-  // Accept raw text body for .ydk import
+  // 3. Accept raw text body for .ydk import
   app.use(express.text({ type: "text/plain", limit: "1mb" }));
+  // 4. Cookie parser
   app.use(cookieParser());
 
-  // Auth routes (no session required)
+  // 5. Service identity
+  app.get("/", (_req, res) => {
+    res.json({ service: "yugioh-edison-api" });
+  });
+
+  // 6. Health check (no auth required, used by Fly.io health check every 30s)
+  app.get("/healthz", (_req, res) => {
+    res.json({ status: "ok", cards: catalog.catalog.cards.length });
+  });
+
+  // 7. Card images — only mounted when imagesPath is supplied
+  if (opts?.imagesPath) {
+    app.use("/images", express.static(opts.imagesPath));
+  }
+
+  // 8. Auth routes (no session required)
   app.use("/api/auth", createAuthRouter(db));
 
-  // /api/me — requires session
+  // 9. /api/me — requires session
   app.use("/api/me", requireSession(db), createMeRouter(db));
 
-  // Card routes — requires session
+  // 10. Card routes — requires session
   app.use("/api/cards", requireSession(db), createCardsRouter(catalog));
 
-  // Deck routes — requires session
+  // 11. Deck routes — requires session
   app.use("/api/decks", requireSession(db), createDecksRouter(db, catalog));
 
-  // Admin routes — requires session + admin role
+  // 12. Admin routes — requires session + admin role
   app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
 
-  // Room router — handles pre-duel room lifecycle (ZUH-26).
-  // Mounted at /api/duels. The GET /join/:token route is unauthenticated-capable;
-  // per-route session guards are applied inside the router.
+  // 13. Room router — handles pre-duel room lifecycle.
+  // Mounted at /api/duels BEFORE the duel router: both mount at /api/duels,
+  // the room router is checked first, and unmatched paths fall through.
+  // Applies per-route session guards (not a global one) because
+  // GET /api/duels/join/:joinToken must answer unauthenticated.
   app.use("/api/duels", createRoomRouter(db, duelManager, catalog));
 
-  // Duel board routes (active-duel relay) — also mounted at /api/duels.
+  // 14. Duel board routes (active-duel relay) — also mounted at /api/duels.
   // The room router is checked first; unmatched paths fall through here.
   if (duelManager) {
     app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
   }
 
+  // 15. /api/* that didn't match → JSON 404
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
+  });
+
+  // 16. SPA static files + fallback (only when webDistPath is supplied)
   if (opts?.webDistPath) {
     const webDist = opts.webDistPath;
-    app.use("/api", (_req, res) => {
-      res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
-    });
     app.use(express.static(webDist));
     app.use((req, res, next) => {
       if (req.method !== "GET") return next();
       if (req.path.startsWith("/api") || req.path.startsWith("/ws")) return next();
       res.sendFile(join(webDist, "index.html"));
     });
-  } else {
-    app.use((_req, res) => {
-      res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
-    });
   }
+
+  // 17. Terminal JSON 404 — catches anything not matched above
+  app.use((_req, res) => {
+    res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
+  });
 
   return app;
 }
