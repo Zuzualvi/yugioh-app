@@ -20,7 +20,8 @@
     "build:all": "npm run build:web && npm run build:server",
     "test:e2e": "npm run build:web && playwright test e2e/playwright/duel.spec.ts",
     "prepare": "husky",
-    "docs:check": "node scripts/check-docs-placement.mjs"
+    "docs:check": "node scripts/check-docs-placement.mjs",
+    "smoke:artifact": "node scripts/smoke-artifact.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
