@@ -20,31 +20,16 @@
  *   EDISON_OVERRIDES_DIR    — Override path to edison-overrides directory
  */
 
-import express from "express";
-import cookieParser from "cookie-parser";
 import { createServer } from "node:http";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
 
-// CORS middleware (Stream A — packages/server/src/middleware/cors.ts)
-import { corsMiddleware, allowedOriginsFromEnv } from "./packages/server/src/middleware/cors.js";
-
-// Server internals (imported directly — not modifying packages/**)
 import { openDb } from "./packages/server/src/db/openDb.js";
 import { bootstrapAdmin } from "./packages/server/src/db/bootstrapAdmin.js";
-import {
-  createAuthRouter,
-  createMeRouter,
-  createAdminRouter,
-} from "./packages/server/src/routes/auth.js";
-import { createCardsRouter } from "./packages/server/src/routes/cards.js";
-import { createDecksRouter } from "./packages/server/src/routes/decks.js";
-import { requireSession, requireAdmin } from "./packages/server/src/middleware/requireSession.js";
-import { createDuelRouter } from "./packages/server/src/duel/duelRoutes.js";
+import { createApp } from "./packages/server/src/app.js";
 import { DuelManager } from "./packages/server/src/duel/duelManager.js";
 import { attachDuelWsServer } from "./packages/server/src/duel/duelSocket.js";
-import { createRoomRouter } from "./packages/server/src/room/roomRouter.js";
 import { createRoomWss } from "./packages/server/src/room/roomSocket.js";
 import { attachUpgradeRouter } from "./packages/server/src/wsUpgradeRouter.js";
 import type {
@@ -54,7 +39,6 @@ import type {
 import type { LoadedCatalog } from "./packages/server/src/catalog/loadCatalog.js";
 import type { CardDTO, CardCatalog } from "@yugioh-app/contracts";
 
-// Engine — provides the WASM-backed Edison duel factory
 import { createEdisonDuel, replayEdisonDuel } from "@yugioh-app/engine";
 
 // ---------------------------------------------------------------------------
@@ -140,53 +124,9 @@ const replay: DuelEngineReplay = (seed, deck0, deck1, log) =>
 const duelManager = new DuelManager(factory, replay);
 
 // ---------------------------------------------------------------------------
-// Express app
+// Express app — all wiring lives in createApp()
 // ---------------------------------------------------------------------------
-const app = express();
-
-// CORS must be FIRST — before express.json() so preflight OPTIONS is handled immediately
-app.use(corsMiddleware(allowedOriginsFromEnv()));
-
-app.use(express.json());
-app.use(express.text({ type: "text/plain", limit: "1mb" }));
-app.use(cookieParser());
-
-// Service identity (not the app — Vercel serves the SPA)
-app.get("/", (_req, res) => {
-  res.json({ service: "yugioh-edison-api" });
-});
-
-// Health check (no auth required, used by Fly.io health check)
-app.get("/healthz", (_req, res) => {
-  res.json({ status: "ok", cards: catalog.catalog.cards.length });
-});
-
-// Card images from mounted volume (/data/images)
-app.use("/images", express.static(IMAGES_PATH));
-
-// API routes
-app.use("/api/auth", createAuthRouter(db));
-app.use("/api/me", requireSession(db), createMeRouter(db));
-app.use("/api/cards", requireSession(db), createCardsRouter(catalog));
-app.use("/api/decks", requireSession(db), createDecksRouter(db, catalog));
-app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
-
-// Pre-duel room routes. MUST be mounted before the duel router below: both live
-// at /api/duels, the room router is checked first, and unmatched paths fall
-// through. It applies its own per-route session guards rather than sitting behind
-// one, because GET /api/duels/join/:joinToken is deliberately callable
-// unauthenticated — that is what lets a logged-out invitee see who challenged
-// them. Mounting this behind requireSession would 401 that route and break the
-// public landing. Mirrors packages/server/src/app.ts.
-app.use("/api/duels", createRoomRouter(db, duelManager, catalog));
-
-// Duel board routes (active-duel relay) — requires session
-app.use("/api/duels", requireSession(db), createDuelRouter(db, catalog, duelManager));
-
-// /api/* that didn't match → JSON 404
-app.use("/api", (_req, res) => {
-  res.status(404).json({ error: { code: "not_found", message: "Route not found." } });
-});
+const app = createApp(db, catalog, duelManager, { imagesPath: IMAGES_PATH });
 
 // ---------------------------------------------------------------------------
 // HTTP server (wraps Express so the WS server can share the same port)
