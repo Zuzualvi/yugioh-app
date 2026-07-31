@@ -2,7 +2,7 @@ name: CI
 
 # Verify gate for pull requests. Pushes to master are gated by the `verify` job
 # in deploy.yml (merge=deploy), so this workflow only runs on PRs to avoid
-# duplicate runs. Same steps as `npm run verify`.
+# duplicate runs. Same steps as `npm run verify`, plus the artifact smoke.
 
 on:
   pull_request:
@@ -10,12 +10,11 @@ on:
     # silently: a PR with no checks looks much like a PR with passing ones. So any
     # new integration branch must be added here in the same change that creates it.
     #
-    # integration/duel-room: the pre-duel room is not incrementally shippable —
-    # its first slice replaces two live screens with placeholders and deletes the
-    # endpoints their replacements have not shipped yet, so half of it on master
-    # would take creating and joining a duel out of production. The four slices
-    # target this branch and it merges to master once the feature works end to end.
-    branches: [master, integration/duel-room]
+    # integration/* is a glob so a future integration branch is covered
+    # automatically and cannot be forgotten. It replaces an explicit
+    # integration/duel-room entry (that feature has shipped); e2e.yml already
+    # uses the glob and the two allowlists should not drift apart.
+    branches: [master, "integration/*"]
     # `edited` matters: without it, fixing a PR body to add the missing Linear
     # reference would not re-run the check, and the PR would stay red forever.
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
@@ -85,6 +84,57 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           content: |
             ❌ **CI FAILED** on PR #${{ github.event.pull_request.number }}
+            Branch: `${{ github.head_ref }}`
+            Commit: `${{ github.sha }}` by ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # ── The gate that watches what actually ships ──────────────────────────────
+  # Every other gate in this repo exercises packages/server/src/app.ts via
+  # createApp(). NOTHING DEPLOYS app.ts. The Dockerfile bundles prod-server.ts
+  # with esbuild, and esbuild does not typecheck or execute anything.
+  #
+  # On 2026-07-28 that gap took production down: prod-server.ts was missing the
+  # room router mount and the WebSocket upgrade dispatcher, while 1181 unit
+  # tests, a 53/53 acceptance suite, 6/6 Playwright runs and an independent QA
+  # pass on a clean clone were all green. Every gate we owned passed. None of
+  # them executed the file that ships.
+  #
+  # This job closes that: it builds the real bundle with the same `build:server`
+  # esbuild invocation the Dockerfile uses, boots it, and asserts its full route
+  # table plus both WS upgrade paths against a checked-in manifest
+  # (scripts/artifact-routes.json). The manifest is static ON PURPOSE — a gate
+  # that derives its own expectations from the running server cannot fail.
+  #
+  # Verified by reproducing the outage: commenting out the createRoomRouter
+  # mount fails this job, and so does removing attachUpgradeRouter.
+  #
+  # It is deliberately NOT part of `npm run verify`: it needs a build and a
+  # process boot, which does not belong in the local lint-speed gate.
+  artifact-smoke:
+    name: artifact smoke (boots the shipped bundle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # `secrets` context is NOT allowed in `if:` — hoist to job env, gate on env.
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      # No WASM needed: the engine is bundled but only loads its WASM once a duel
+      # actually starts, so the bundle boots and serves every route without it.
+      - run: npm run smoke:artifact
+      - name: Notify Discord on artifact smoke failure
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
+        uses: tsickert/discord-webhook@v6.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          content: |
+            ❌ **ARTIFACT SMOKE FAILED** on PR #${{ github.event.pull_request.number }}
+            The shipped bundle does not serve its expected routes.
             Branch: `${{ github.head_ref }}`
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

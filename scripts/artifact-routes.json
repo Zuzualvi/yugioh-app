@@ -1,0 +1,151 @@
+[
+  { "method": "GET", "path": "/", "expectedStatus": 200, "note": "service identity" },
+  { "method": "GET", "path": "/healthz", "expectedStatus": 200, "note": "health check" },
+  {
+    "method": "GET",
+    "path": "/api/does-not-exist",
+    "expectedStatus": 404,
+    "note": "unmatched /api/* catch-all"
+  },
+
+  {
+    "method": "POST",
+    "path": "/api/auth/redeem-invite",
+    "expectedStatus": 400,
+    "note": "unauthenticated; fails validation (empty body)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "expectedStatus": 401,
+    "note": "unauthenticated; invalid credentials"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "expectedStatus": 204,
+    "note": "logout always clears cookie"
+  },
+  { "method": "GET", "path": "/api/me", "expectedStatus": 401, "note": "requireSession guard" },
+  {
+    "method": "POST",
+    "path": "/api/admin/invites",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+
+  { "method": "GET", "path": "/api/cards", "expectedStatus": 401, "note": "requireSession guard" },
+  {
+    "method": "GET",
+    "path": "/api/cards/32864",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+
+  { "method": "GET", "path": "/api/decks", "expectedStatus": 401, "note": "requireSession guard" },
+  { "method": "POST", "path": "/api/decks", "expectedStatus": 401, "note": "requireSession guard" },
+  {
+    "method": "POST",
+    "path": "/api/decks/import",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/decks/export",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+  {
+    "method": "GET",
+    "path": "/api/decks/test-deck-id",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/decks/test-deck-id",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/decks/test-deck-id",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/decks/test-deck-id/duplicate",
+    "expectedStatus": 401,
+    "note": "requireSession guard"
+  },
+
+  {
+    "method": "POST",
+    "path": "/api/duels",
+    "expectedStatus": 401,
+    "note": "room router: createRoom, requireSession guard"
+  },
+  {
+    "method": "GET",
+    "path": "/api/duels/join/bad-token",
+    "expectedStatus": 404,
+    "note": "room router: ONLY unauthenticated route; 404 for bad token"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/join",
+    "expectedStatus": 401,
+    "note": "room router: claimRoom, requireSession guard"
+  },
+  {
+    "method": "GET",
+    "path": "/api/duels/test-duel-id/room",
+    "expectedStatus": 401,
+    "note": "room router: getRoomSnapshot, requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/test-duel-id/room/deck",
+    "expectedStatus": 401,
+    "note": "room router: pickDeck, requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/test-duel-id/room/ready",
+    "expectedStatus": 401,
+    "note": "room router: ready, requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/test-duel-id/room/unready",
+    "expectedStatus": 401,
+    "note": "room router: unready, requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/test-duel-id/room/choice",
+    "expectedStatus": 401,
+    "note": "room router: submitChoice, requireSession guard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/duels/test-duel-id/room/leave",
+    "expectedStatus": 401,
+    "note": "room router: leave, requireSession guard"
+  },
+  {
+    "method": "GET",
+    "path": "/api/duels/test-duel-id/seat",
+    "expectedStatus": 401,
+    "note": "room router: getSeatCredential, requireSession guard"
+  },
+
+  {
+    "method": "GET",
+    "path": "/api/duels/test-duel-id",
+    "expectedStatus": 401,
+    "note": "duel board router: requireSession guard"
+  }
+]
