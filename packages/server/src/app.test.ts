@@ -79,11 +79,21 @@ describe("createApp — imagesPath option", () => {
   it("does not mount /images when imagesPath is omitted", async () => {
     const db = openDb(":memory:");
     const catalog = makeTestCatalog();
+
+    // Create a real file — if /images were mounted it would return 200.
+    // Passing no imagesPath means express.static is never registered, so the
+    // request falls through to the terminal JSON 404 handler instead.
+    const dir = mkdtempSync(join(tmpdir(), "yugioh-images-"));
+    writeFileSync(join(dir, "present.txt"), "card-image");
+
+    // Deliberately do NOT pass imagesPath
     const app = createApp(db, catalog);
 
-    // Without imagesPath, /images/* falls through to the terminal 404
-    const res = await request(app).get("/images/anything.jpg");
+    const res = await request(app).get("/images/present.txt");
+    // The file exists on disk but /images is not mounted — must be 404
     expect(res.status).toBe(404);
+    // Body comes from our terminal JSON handler, not express.static
+    expect(res.body).toMatchObject({ error: { code: "not_found" } });
 
     db.close();
   });
