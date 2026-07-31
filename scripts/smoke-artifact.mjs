@@ -3,15 +3,29 @@
  * smoke-artifact.mjs — Boots the esbuild bundle (dist/server.mjs) and asserts
  * the full route table plus both WebSocket upgrade paths.
  *
- * Usage: node scripts/smoke-artifact.mjs
+ * Local mode  (default):
+ *   node scripts/smoke-artifact.mjs
+ *   Builds the bundle, stages catalog files, boots it locally, probes localhost.
+ *
+ * Remote mode:
+ *   SMOKE_TARGET=https://api.zuhayr.io node scripts/smoke-artifact.mjs
+ *   Skips build/boot entirely and probes the given host.
+ *   SMOKE_ORIGIN=https://app.zuhayr.io  — override the "valid" CORS origin used
+ *     for the room-WS no-session assertion. Defaults to replacing the first
+ *     hostname segment: api.zuhayr.io → app.zuhayr.io.
  *
  * Exit 0 = all assertions passed.
  * Exit 1 = build failed, boot timed out, or one or more assertions failed.
+ *
+ * Output is deterministic and diffable: per-assertion lines carry no timestamps,
+ * durations, or run IDs so two clean runs produce identical output.
  */
 
 import { execSync, spawn } from "node:child_process";
 import { mkdtempSync, rmSync, mkdirSync, copyFileSync, existsSync, readFileSync } from "node:fs";
 import { createServer, connect as netConnect } from "node:net";
+import { connect as tlsConnect } from "node:tls";
+import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -52,11 +66,11 @@ function getFreePort() {
 }
 
 /** Poll /healthz until it responds 200 or timeout. */
-async function waitForHealthz(port, timeoutMs = 20_000) {
+async function waitForHealthz(baseUrl, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/healthz`);
+      const res = await fetch(`${baseUrl}/healthz`);
       if (res.ok) return true;
     } catch {
       // not ready yet
@@ -78,19 +92,20 @@ async function request(method, url, opts = {}) {
 }
 
 /**
- * Raw HTTP/1.1 upgrade request — returns the numeric HTTP status of the
- * server's response (e.g. 101, 401, 403).
+ * Raw WebSocket upgrade request over plain TCP or TLS — returns the HTTP status.
  *
- * NOTE: --http1.1 is implicit here because we use a raw TCP socket, so
- * HTTP/2 negotiation cannot occur. This keeps assertions correct even if
- * someone points the script at a TLS host.
+ * TLS path uses ALPNProtocols: ['http/1.1'] to prevent HTTP/2 negotiation.
+ * HTTP/2 ignores the Upgrade header, which would cause false results.
+ * Plain TCP is used for localhost (never HTTP/2).
+ *
+ * Sec-WebSocket-Key is exactly 16 random bytes, base64-encoded, as the RFC requires.
  */
-function rawUpgrade(port, path, extraHeaders) {
+function rawUpgrade(host, port, path, extraHeaders, useTls) {
   return new Promise((resolve) => {
-    const wsKey = Buffer.from("smoketest12345678901").toString("base64");
+    const wsKey = randomBytes(16).toString("base64");
     const headerLines = [
       `GET ${path} HTTP/1.1`,
-      `Host: 127.0.0.1:${port}`,
+      `Host: ${host}${port === 443 || port === 80 ? "" : `:${port}`}`,
       "Connection: Upgrade",
       "Upgrade: websocket",
       `Sec-WebSocket-Key: ${wsKey}`,
@@ -100,9 +115,13 @@ function rawUpgrade(port, path, extraHeaders) {
       "",
     ].join("\r\n");
 
-    const socket = netConnect({ host: "127.0.0.1", port }, () => {
-      socket.write(headerLines);
-    });
+    const connectOpts = useTls
+      ? { host, port, servername: host, ALPNProtocols: ["http/1.1"] }
+      : { host, port };
+
+    const socket = useTls
+      ? tlsConnect(connectOpts, () => socket.write(headerLines))
+      : netConnect(connectOpts, () => socket.write(headerLines));
 
     let data = "";
     socket.on("data", (chunk) => {
@@ -118,18 +137,16 @@ function rawUpgrade(port, path, extraHeaders) {
     setTimeout(() => {
       socket.destroy();
       resolve(null);
-    }, 4000);
+    }, 8000);
   });
 }
 
 /** WebSocket upgrade that expects 101 + reads first text frame. */
-function wsUpgrade101(port, path, origin) {
+function wsUpgrade101(wsUrl, origin) {
   const WebSocket = req(join(ROOT, "node_modules", "ws", "index.js"));
 
   return new Promise((resolve) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`, {
-      headers: { Origin: origin },
-    });
+    const ws = new WebSocket(wsUrl, { headers: { Origin: origin } });
     const result = { upgraded: false, firstFrame: null };
     ws.on("open", () => {
       result.upgraded = true;
@@ -143,73 +160,111 @@ function wsUpgrade101(port, path, origin) {
     setTimeout(() => {
       ws.terminate();
       resolve(result);
-    }, 5000);
+    }, 8000);
   });
 }
 
 // ---------------------------------------------------------------------------
-// Build + stage
+// Mode: local (default) vs remote (SMOKE_TARGET set)
 // ---------------------------------------------------------------------------
-info("Building bundle: npm run build:server");
-try {
-  execSync("npm run build:server", { cwd: ROOT, stdio: "inherit" });
-} catch {
-  console.error(`${RED}Build failed — aborting.${RESET}`);
-  process.exit(1);
-}
+const smokeTarget = process.env["SMOKE_TARGET"];
+const isRemote = Boolean(smokeTarget);
 
-info("Staging catalog files into dist/packages/card-data/out/");
-const catalogDest = join(ROOT, "dist", "packages", "card-data", "out");
-mkdirSync(catalogDest, { recursive: true });
-for (const file of ["edison-card-catalog.json", "alias-index.json"]) {
-  const src = join(ROOT, "packages", "card-data", "out", file);
-  if (!existsSync(src)) {
-    console.error(`${RED}Missing catalog file: ${src}${RESET}`);
-    process.exit(1);
-  }
-  copyFileSync(src, join(catalogDest, file));
-}
-
-// ---------------------------------------------------------------------------
-// Boot the bundle
-// ---------------------------------------------------------------------------
-const port = await getFreePort();
-const tmpDir = mkdtempSync(join(tmpdir(), "smoke-"));
-const dbPath = join(tmpDir, "smoke.db");
-const imagesPath = tmpDir;
-const origin = `http://127.0.0.1:${port}`;
-
-info(`Booting dist/server.mjs on port ${port}`);
-const child = spawn("node", [join(ROOT, "dist", "server.mjs")], {
-  env: {
-    ...process.env,
-    PORT: String(port),
-    DB_PATH: dbPath,
-    IMAGES_PATH: imagesPath,
-    NODE_ENV: "production",
-    CORS_ALLOWED_ORIGINS: origin,
-  },
-  stdio: ["ignore", "pipe", "pipe"],
-});
-child.stdout.on("data", () => {}); // drain
-child.stderr.on("data", () => {}); // drain
+let baseUrl;
+let wsScheme;
+let wsHost;
+let wsPort;
+let useTls;
+let validOrigin;
+let child = null;
+let tmpDir = null;
 
 function cleanup() {
-  try {
-    child.kill("SIGTERM");
-  } catch {}
-  try {
-    rmSync(tmpDir, { recursive: true, force: true });
-  } catch {}
+  if (child) {
+    try {
+      child.kill("SIGTERM");
+    } catch {}
+  }
+  if (tmpDir) {
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {}
+  }
 }
 
-const alive = await waitForHealthz(port);
-if (!alive) {
-  cleanup();
-  console.error(`${RED}Server did not become healthy within 20 s — aborting.${RESET}`);
-  process.exit(1);
+if (isRemote) {
+  // ---- Remote mode ----
+  const targetUrl = new URL(smokeTarget);
+  baseUrl = smokeTarget.replace(/\/$/, "");
+  useTls = targetUrl.protocol === "https:";
+  wsScheme = useTls ? "wss" : "ws";
+  wsHost = targetUrl.hostname;
+  wsPort = targetUrl.port ? parseInt(targetUrl.port, 10) : useTls ? 443 : 80;
+
+  // Derive valid CORS origin: default replaces first hostname segment (api.→app.)
+  const defaultOrigin = useTls
+    ? `https://${wsHost.replace(/^[^.]+\./, "app.")}`
+    : `http://${wsHost.replace(/^[^.]+\./, "app.")}`;
+  validOrigin = process.env["SMOKE_ORIGIN"] ?? defaultOrigin;
+
+  info(`Remote mode: target=${baseUrl}`);
+  info(`Valid CORS origin for WS assertions: ${validOrigin}`);
+} else {
+  // ---- Local mode: build, stage, boot ----
+  info("Building bundle: npm run build:server");
+  try {
+    execSync("npm run build:server", { cwd: ROOT, stdio: "inherit" });
+  } catch {
+    console.error(`${RED}Build failed — aborting.${RESET}`);
+    process.exit(1);
+  }
+
+  info("Staging catalog files into dist/packages/card-data/out/");
+  const catalogDest = join(ROOT, "dist", "packages", "card-data", "out");
+  mkdirSync(catalogDest, { recursive: true });
+  for (const file of ["edison-card-catalog.json", "alias-index.json"]) {
+    const src = join(ROOT, "packages", "card-data", "out", file);
+    if (!existsSync(src)) {
+      console.error(`${RED}Missing catalog file: ${src}${RESET}`);
+      process.exit(1);
+    }
+    copyFileSync(src, join(catalogDest, file));
+  }
+
+  const port = await getFreePort();
+  tmpDir = mkdtempSync(join(tmpdir(), "smoke-"));
+  const dbPath = join(tmpDir, "smoke.db");
+  const imagesPath = tmpDir;
+  validOrigin = `http://127.0.0.1:${port}`;
+  baseUrl = validOrigin;
+  wsScheme = "ws";
+  wsHost = "127.0.0.1";
+  wsPort = port;
+  useTls = false;
+
+  info(`Booting dist/server.mjs on port ${port}`);
+  child = spawn("node", [join(ROOT, "dist", "server.mjs")], {
+    env: {
+      ...process.env,
+      PORT: String(port),
+      DB_PATH: dbPath,
+      IMAGES_PATH: imagesPath,
+      NODE_ENV: "production",
+      CORS_ALLOWED_ORIGINS: validOrigin,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  child.stdout.on("data", () => {}); // drain
+  child.stderr.on("data", () => {}); // drain
+
+  const alive = await waitForHealthz(baseUrl);
+  if (!alive) {
+    cleanup();
+    console.error(`${RED}Server did not become healthy within 20 s — aborting.${RESET}`);
+    process.exit(1);
+  }
+  info(`Server healthy at ${baseUrl}/healthz`);
 }
-info(`Server healthy at ${origin}/healthz`);
 
 // ---------------------------------------------------------------------------
 // Route assertions
@@ -220,7 +275,7 @@ const failures = [];
 info(`Checking ${routes.length} routes from artifact-routes.json …`);
 
 for (const route of routes) {
-  const url = `http://127.0.0.1:${port}${route.path}`;
+  const url = `${baseUrl}${route.path}`;
   let body;
   const headers = {};
   if (route.method === "POST" || route.method === "PUT") {
@@ -245,7 +300,8 @@ for (const route of routes) {
 info("Checking WebSocket upgrade paths …");
 
 // 1. Board WS — valid origin → must upgrade (101) + deliver an error frame for nonexistent duel
-const boardResult = await wsUpgrade101(port, "/api/duels/test-duel-id/ws", origin);
+const boardWsUrl = `${wsScheme}://${wsHost}${wsPort === 443 || wsPort === 80 ? "" : `:${wsPort}`}/api/duels/test-duel-id/ws`;
+const boardResult = await wsUpgrade101(boardWsUrl, validOrigin);
 if (boardResult.upgraded) {
   ok(`Board WS (valid origin) → 101 Upgrade accepted`);
   if (boardResult.firstFrame) {
@@ -269,9 +325,14 @@ if (boardResult.upgraded) {
 }
 
 // 2. Room WS — bad origin → must return 403 (CORS rejection at upgrade router level)
-const roomBadOriginStatus = await rawUpgrade(port, "/api/duels/test-duel-id/room/ws", {
-  Origin: "http://evil.example.com",
-});
+//    Raw TCP/TLS socket forces HTTP/1.1 — no ALPN negotiation to HTTP/2.
+const roomBadOriginStatus = await rawUpgrade(
+  wsHost,
+  wsPort,
+  "/api/duels/test-duel-id/room/ws",
+  { Origin: "http://evil.example.com" },
+  useTls,
+);
 if (roomBadOriginStatus === 403) {
   ok(`Room WS (bad origin) → 403 Forbidden`);
 } else {
@@ -283,9 +344,13 @@ if (roomBadOriginStatus === 403) {
 }
 
 // 3. Room WS — valid origin, no session → must return 401
-const roomNoSessionStatus = await rawUpgrade(port, "/api/duels/test-duel-id/room/ws", {
-  Origin: origin,
-});
+const roomNoSessionStatus = await rawUpgrade(
+  wsHost,
+  wsPort,
+  "/api/duels/test-duel-id/room/ws",
+  { Origin: validOrigin },
+  useTls,
+);
 if (roomNoSessionStatus === 401) {
   ok(`Room WS (valid origin, no session) → 401 Unauthorized`);
 } else {
