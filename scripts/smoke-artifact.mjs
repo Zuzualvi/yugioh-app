@@ -214,9 +214,7 @@ info(`Server healthy at ${origin}/healthz`);
 // ---------------------------------------------------------------------------
 // Route assertions
 // ---------------------------------------------------------------------------
-const routes = JSON.parse(
-  readFileSync(join(ROOT, "scripts", "artifact-routes.json"), "utf-8"),
-);
+const routes = JSON.parse(readFileSync(join(ROOT, "scripts", "artifact-routes.json"), "utf-8"));
 
 const failures = [];
 info(`Checking ${routes.length} routes from artifact-routes.json …`);
@@ -254,14 +252,20 @@ if (boardResult.upgraded) {
     ok(`Board WS first frame: ${boardResult.firstFrame.slice(0, 100)}`);
   } else {
     fail("Board WS upgraded but received no message frame within timeout");
-    failures.push({ route: { method: "WS", path: "/api/duels/:id/ws", expectedStatus: "frame" }, actual: "no frame" });
+    failures.push({
+      route: { method: "WS", path: "/api/duels/:id/ws", expectedStatus: "frame" },
+      actual: "no frame",
+    });
   }
 } else {
   fail(
     "Board WS (valid origin) → did NOT upgrade to 101. " +
       "Is attachUpgradeRouter wired in prod-server.ts?",
   );
-  failures.push({ route: { method: "WS", path: "/api/duels/:id/ws", expectedStatus: 101 }, actual: "no upgrade" });
+  failures.push({
+    route: { method: "WS", path: "/api/duels/:id/ws", expectedStatus: 101 },
+    actual: "no upgrade",
+  });
 }
 
 // 2. Room WS — bad origin → must return 403 (CORS rejection at upgrade router level)
@@ -302,12 +306,12 @@ if (failures.length > 0) {
   console.error(`${RED}SMOKE FAILED — ${failures.length} assertion(s) failed:${RESET}`);
   for (const f of failures) {
     const r = f.route;
-    console.error(
-      `  ${r.method} ${r.path}: expected ${r.expectedStatus ?? "?"}, got ${f.actual}`,
-    );
+    console.error(`  ${r.method} ${r.path}: expected ${r.expectedStatus ?? "?"}, got ${f.actual}`);
   }
   process.exit(1);
 } else {
-  console.log(`${GREEN}All smoke assertions passed (${routes.length} routes + 3 WS checks).${RESET}`);
+  console.log(
+    `${GREEN}All smoke assertions passed (${routes.length} routes + 3 WS checks).${RESET}`,
+  );
   process.exit(0);
 }
