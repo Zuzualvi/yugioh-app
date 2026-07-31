@@ -3,6 +3,12 @@
   { "method": "GET", "path": "/healthz", "expectedStatus": 200, "note": "health check" },
   {
     "method": "GET",
+    "path": "/images/does-not-exist.jpg",
+    "expectedStatus": 404,
+    "note": "images static mount; status 404 for missing file — body is HTML today, will become JSON after createApp refactor; assert status only"
+  },
+  {
+    "method": "GET",
     "path": "/api/does-not-exist",
     "expectedStatus": 404,
     "note": "unmatched /api/* catch-all"
