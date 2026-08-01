@@ -83,16 +83,24 @@ negotiates `http/1.1`).
 
 The two TLS-layer assertions in `scripts/smoke-artifact.mjs` (remote mode)
 **detect egress interception before running** by comparing the TLS peer
-certificate issuer for the smoke target against the issuer for `example.com`.
-A legitimate public CA issues certificates for specific domains; an intercepting
-proxy signs both with the same internal CA. When the issuers match, both
-assertions report **CANNOT VERIFY** instead of a result.
+certificate issuer (`O + CN`) for the smoke target against the issuer for
+`example.com`. Public CAs are publicly known, audited organisations with
+well-known intermediate CN strings (`"R11"`, `"DigiCert TLS RSA SHA256 2020
+CA1"`, etc.) that do not collide with each other across different CAs. An
+intercepting proxy signing for both `api.zuhayr.io` and `example.com` is
+identified by its non-public issuer CN (`"Egress Gateway SDS Issuing CA
+(production)"`) appearing identically on both certificates. When the `O|CN`
+strings match, both assertions report **CANNOT VERIFY** instead of a result.
+
+**Limitation (false negative):** a gateway that forged per-host issuer fields
+to mimic a real public CA's `O` and `CN` would evade this detection entirely.
+The check is a best-effort heuristic, not a guarantee.
 
 The detection logic:
 
 ```js
 const [targetIssuer, exampleIssuer] = await Promise.all([
-  getTlsIssuer(wsHost),        // e.g. api.zuhayr.io
+  getTlsIssuer(wsHost),        // returns "O|CN" string, e.g. api.zuhayr.io
   getTlsIssuer("example.com"),
 ]);
 const intercepted = targetIssuer !== null

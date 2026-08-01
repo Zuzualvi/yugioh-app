@@ -397,14 +397,21 @@ if (roomNoSessionStatus === 401) {
 // See docs/adr/0005-alpn-guard-cannot-run-behind-intercepting-egress.md.
 // ---------------------------------------------------------------------------
 
-/** Get the issuer Organisation (or CN if O absent) of the TLS cert for host:443. */
+/** Get a canonical "O|CN" string from the TLS peer certificate issuer for host:443.
+ *  Comparing both fields narrows the false-positive window: public CA intermediate
+ *  CNs are well-known strings ("R11", "DigiCert TLS RSA SHA256 2020 CA1", …) that
+ *  will not accidentally collide with each other, while a gateway's CN is distinctly
+ *  non-public ("Egress Gateway SDS Issuing CA (production)").
+ */
 function getTlsIssuer(host) {
   return new Promise((resolve) => {
     const s = tlsConnect({ host, port: 443, servername: host }, () => {
       const cert = s.getPeerCertificate(true);
       s.destroy();
       const issuer = cert?.issuer ?? {};
-      resolve(issuer.O ?? issuer.CN ?? null);
+      const o = issuer.O ?? "";
+      const cn = issuer.CN ?? "";
+      resolve(o || cn ? `${o}|${cn}` : null);
     });
     s.on("error", () => resolve(null));
     setTimeout(() => {
