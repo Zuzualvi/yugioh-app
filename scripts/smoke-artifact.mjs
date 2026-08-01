@@ -14,11 +14,21 @@
  *     for the room-WS no-session assertion. Defaults to replacing the first
  *     hostname segment: api.zuhayr.io → app.zuhayr.io.
  *
- * Exit 0 = all assertions passed.
- * Exit 1 = build failed, boot timed out, or one or more assertions failed.
+ * Exit 0 = all route/WS assertions passed (even if TLS-layer checks report
+ *          CANNOT VERIFY due to egress interception — see below).
+ * Exit 1 = build failed, boot timed out, or one or more route/WS assertions failed.
  *
  * Output is deterministic and diffable: per-assertion lines carry no timestamps,
  * durations, or run IDs so two clean runs produce identical output.
+ *
+ * ⚠ TLS-LAYER ASSERTIONS AND EGRESS INTERCEPTION:
+ * Agent containers (e.g. Anthropic sandboxes) route outbound TLS through an
+ * intercepting proxy that presents its own certificate for every host. ALPN
+ * negotiation and HTTP/2 SETTINGS frames observed from inside such a container
+ * belong to the proxy, not to the target server. The two ALPN/h2 checks below
+ * detect this condition and report CANNOT VERIFY rather than a false pass or
+ * false fail. HTTP status codes and WebSocket upgrade responses are forwarded
+ * faithfully by the proxy and are trustworthy. See ADR 0005.
  */
 
 import { execSync, spawn } from "node:child_process";
@@ -376,99 +386,156 @@ if (roomNoSessionStatus === 401) {
 // negotiation. If someone removes those two lines, duels break in browsers and
 // nothing catches it until a player reports it. This gate does.
 // See docs/adr/0004-fly-edge-serves-http1-only.md.
+//
+// INTERCEPTION DETECTION: egress TLS proxies (present in agent containers)
+// terminate TLS before it reaches the target server, so ALPN negotiation and
+// HTTP/2 SETTINGS frames reflect the proxy's config, not the target's. We
+// detect this by comparing the TLS peer certificate issuer for the target and
+// for example.com. A legitimate CA issues certs for one domain at a time; a
+// transparent proxy signs both with the same issuer. When detected, these two
+// checks report CANNOT VERIFY instead of a false pass or false fail.
+// See docs/adr/0005-alpn-guard-cannot-run-behind-intercepting-egress.md.
 // ---------------------------------------------------------------------------
-if (isRemote && useTls) {
-  info("Checking edge TLS ALPN (remote only) …");
 
-  // 1. ALPN must negotiate http/1.1, NOT h2.
-  const alpnResult = await new Promise((resolve) => {
-    const s = tlsConnect(
-      { host: wsHost, port: wsPort, servername: wsHost, ALPNProtocols: ["h2", "http/1.1"] },
-      () => {
-        const proto = s.alpnProtocol;
-        s.destroy();
-        resolve(proto);
-      },
-    );
+/** Get a canonical "O|CN" string from the TLS peer certificate issuer for host:443.
+ *  Comparing both fields narrows the false-positive window: public CA intermediate
+ *  CNs are well-known strings ("R11", "DigiCert TLS RSA SHA256 2020 CA1", …) that
+ *  will not accidentally collide with each other, while a gateway's CN is distinctly
+ *  non-public ("Egress Gateway SDS Issuing CA (production)").
+ */
+function getTlsIssuer(host) {
+  return new Promise((resolve) => {
+    const s = tlsConnect({ host, port: 443, servername: host }, () => {
+      const cert = s.getPeerCertificate(true);
+      s.destroy();
+      const issuer = cert?.issuer ?? {};
+      const o = issuer.O ?? "";
+      const cn = issuer.CN ?? "";
+      resolve(o || cn ? `${o}|${cn}` : null);
+    });
     s.on("error", () => resolve(null));
     setTimeout(() => {
       s.destroy();
       resolve(null);
     }, 8000);
   });
+}
 
-  if (alpnResult === "http/1.1") {
-    ok(`Edge ALPN → http/1.1 (h2 not negotiated)`);
+const cannotVerify = []; // TLS-layer checks that could not run
+
+if (isRemote && useTls) {
+  // ---- Interception detection ----
+  info("Detecting egress TLS interception …");
+  const [targetIssuer, exampleIssuer] = await Promise.all([
+    getTlsIssuer(wsHost),
+    getTlsIssuer("example.com"),
+  ]);
+  const intercepted =
+    targetIssuer !== null && exampleIssuer !== null && targetIssuer === exampleIssuer;
+
+  if (intercepted) {
+    const ORANGE = "\x1b[33m";
+    console.warn(
+      `${ORANGE}  ⚠ CANNOT VERIFY${RESET} Edge TLS ALPN — egress TLS is intercepted by "${targetIssuer}". ` +
+        `ALPN negotiation and HTTP/2 SETTINGS observed here belong to the intercepting proxy, ` +
+        `not to ${wsHost}. These checks must be run from an un-intercepted network. ` +
+        `See docs/adr/0005-alpn-guard-cannot-run-behind-intercepting-egress.md.`,
+    );
+    console.warn(
+      `${ORANGE}  ⚠ CANNOT VERIFY${RESET} HTTP/2 SETTINGS_ENABLE_CONNECT_PROTOCOL — same reason.`,
+    );
+    cannotVerify.push("TLS ALPN negotiation", "HTTP/2 SETTINGS_ENABLE_CONNECT_PROTOCOL");
   } else {
-    fail(
-      `Edge ALPN → ${alpnResult ?? "null"} — expected http/1.1. ` +
-        `The edge is offering HTTP/2. Chrome 121+ will use RFC 8441 extended CONNECT for wss:// ` +
-        `and Fly returns 502, so duels will not load in any browser. ` +
-        `Fix: set [http_service.tls_options] alpn = ["http/1.1"] in fly.toml and redeploy. ` +
-        `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
-    );
-    failures.push({
-      route: { method: "TLS", path: "ALPN negotiation", expectedStatus: "http/1.1" },
-      actual: alpnResult ?? "null",
-    });
-  }
+    info(`No TLS interception detected (target issuer: ${targetIssuer ?? "unknown"})`);
 
-  // 2. HTTP/2 extended CONNECT must NOT succeed. Connect with h2 (no ALPN
-  //    restriction so h2 is available if the edge offers it), then check
-  //    remoteSettings.enableConnectProtocol. If h2 was not negotiated (because
-  //    the ALPN fix is in place), the session will not establish at all.
-  info("Checking HTTP/2 extended CONNECT availability (remote only) …");
-
-  const h2Check = await new Promise((resolve) => {
-    let settled = false;
-    const client = http2.connect(`https://${wsHost}`, { rejectUnauthorized: true });
-
-    client.on("remoteSettings", (settings) => {
-      if (settled) return;
-      settled = true;
-      const enabled = Boolean(settings.enableConnectProtocol);
-      client.destroy();
-      resolve({ connected: true, enableConnectProtocol: enabled });
+    // 1. ALPN must negotiate http/1.1, NOT h2.
+    info("Checking edge TLS ALPN …");
+    const alpnResult = await new Promise((resolve) => {
+      const s = tlsConnect(
+        { host: wsHost, port: wsPort, servername: wsHost, ALPNProtocols: ["h2", "http/1.1"] },
+        () => {
+          const proto = s.alpnProtocol;
+          s.destroy();
+          resolve(proto);
+        },
+      );
+      s.on("error", () => resolve(null));
+      setTimeout(() => {
+        s.destroy();
+        resolve(null);
+      }, 8000);
     });
 
-    client.on("error", () => {
-      if (settled) return;
-      settled = true;
-      // Error connecting means h2 was not offered — good.
-      resolve({ connected: false, enableConnectProtocol: false });
+    if (alpnResult === "http/1.1") {
+      ok(`Edge ALPN → http/1.1 (h2 not negotiated)`);
+    } else {
+      fail(
+        `Edge ALPN → ${alpnResult ?? "null"} — expected http/1.1. ` +
+          `The edge is offering HTTP/2. Chrome 121+ will use RFC 8441 extended CONNECT for wss:// ` +
+          `and Fly returns 502, so duels will not load in any browser. ` +
+          `Fix: set [http_service.tls_options] alpn = ["http/1.1"] in fly.toml and redeploy. ` +
+          `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
+      );
+      failures.push({
+        route: { method: "TLS", path: "ALPN negotiation", expectedStatus: "http/1.1" },
+        actual: alpnResult ?? "null",
+      });
+    }
+
+    // 2. HTTP/2 extended CONNECT must NOT succeed. Connect with h2 (no ALPN
+    //    restriction so h2 is available if the edge offers it), then check
+    //    remoteSettings.enableConnectProtocol. If h2 was not negotiated (because
+    //    the ALPN fix is in place), the session will not establish at all.
+    info("Checking HTTP/2 SETTINGS_ENABLE_CONNECT_PROTOCOL …");
+    const h2Check = await new Promise((resolve) => {
+      let settled = false;
+      const client = http2.connect(`https://${wsHost}`, { rejectUnauthorized: true });
+
+      client.on("remoteSettings", (settings) => {
+        if (settled) return;
+        settled = true;
+        const enabled = Boolean(settings.enableConnectProtocol);
+        client.destroy();
+        resolve({ connected: true, enableConnectProtocol: enabled });
+      });
+
+      client.on("error", () => {
+        if (settled) return;
+        settled = true;
+        resolve({ connected: false, enableConnectProtocol: false });
+      });
+
+      setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        client.destroy();
+        resolve({ connected: false, enableConnectProtocol: false });
+      }, 8000);
     });
 
-    setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      client.destroy();
-      // Timeout with no remoteSettings means h2 was not negotiated — good.
-      resolve({ connected: false, enableConnectProtocol: false });
-    }, 8000);
-  });
-
-  if (!h2Check.connected) {
-    ok(`HTTP/2 not negotiated → extended CONNECT unavailable (expected)`);
-  } else if (!h2Check.enableConnectProtocol) {
-    ok(
-      `HTTP/2 connected but SETTINGS_ENABLE_CONNECT_PROTOCOL is false → extended CONNECT unavailable`,
-    );
-  } else {
-    fail(
-      `HTTP/2 connected and SETTINGS_ENABLE_CONNECT_PROTOCOL is true. ` +
-        `Chrome 121+ will attempt extended CONNECT for wss:// and Fly will return 502, ` +
-        `breaking duels in every browser that has an open h2 session to this host. ` +
-        `Fix: [http_service.tls_options] alpn = ["http/1.1"] in fly.toml. ` +
-        `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
-    );
-    failures.push({
-      route: {
-        method: "H2",
-        path: "SETTINGS_ENABLE_CONNECT_PROTOCOL",
-        expectedStatus: "false",
-      },
-      actual: "true",
-    });
+    if (!h2Check.connected) {
+      ok(`HTTP/2 not negotiated → extended CONNECT unavailable (expected)`);
+    } else if (!h2Check.enableConnectProtocol) {
+      ok(
+        `HTTP/2 connected but SETTINGS_ENABLE_CONNECT_PROTOCOL is false → extended CONNECT unavailable`,
+      );
+    } else {
+      fail(
+        `HTTP/2 connected and SETTINGS_ENABLE_CONNECT_PROTOCOL is true. ` +
+          `Chrome 121+ will attempt extended CONNECT for wss:// and Fly will return 502, ` +
+          `breaking duels in every browser that has an open h2 session to this host. ` +
+          `Fix: [http_service.tls_options] alpn = ["http/1.1"] in fly.toml. ` +
+          `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
+      );
+      failures.push({
+        route: {
+          method: "H2",
+          path: "SETTINGS_ENABLE_CONNECT_PROTOCOL",
+          expectedStatus: "false",
+        },
+        actual: "true",
+      });
+    }
   }
 }
 
@@ -477,17 +544,41 @@ if (isRemote && useTls) {
 // ---------------------------------------------------------------------------
 cleanup();
 
+const wsCheckCount = 3;
+const tlsCheckCount = isRemote && useTls ? 2 : 0;
+const totalPassed = routes.length + wsCheckCount - failures.length;
+
 console.log("");
 if (failures.length > 0) {
-  console.error(`${RED}SMOKE FAILED — ${failures.length} assertion(s) failed:${RESET}`);
+  console.error(
+    `${RED}SMOKE FAILED — ${failures.length} assertion(s) failed, ` +
+      `${totalPassed} passed` +
+      (cannotVerify.length ? `, ${cannotVerify.length} cannot-verify (TLS intercepted)` : "") +
+      `.${RESET}`,
+  );
   for (const f of failures) {
     const r = f.route;
     console.error(`  ${r.method} ${r.path}: expected ${r.expectedStatus ?? "?"}, got ${f.actual}`);
   }
   process.exit(1);
-} else {
+} else if (cannotVerify.length > 0) {
   console.log(
-    `${GREEN}All smoke assertions passed (${routes.length} routes + 3 WS checks).${RESET}`,
+    `${GREEN}Routes and WS assertions passed (${routes.length} routes + ${wsCheckCount} WS checks).${RESET}`,
+  );
+  console.warn(
+    `\x1b[33m${cannotVerify.length} TLS-layer assertion(s) could not run (egress TLS intercepted): ` +
+      cannotVerify.join(", ") +
+      `.\x1b[0m`,
+  );
+  console.warn(
+    `\x1b[33mRun from an un-intercepted network to verify ALPN and extended CONNECT. ` +
+      `See docs/adr/0005-alpn-guard-cannot-run-behind-intercepting-egress.md.\x1b[0m`,
+  );
+  process.exit(0);
+} else {
+  const tlsLine = tlsCheckCount > 0 ? ` + ${tlsCheckCount} TLS checks` : "";
+  console.log(
+    `${GREEN}All smoke assertions passed (${routes.length} routes + ${wsCheckCount} WS checks${tlsLine}).${RESET}`,
   );
   process.exit(0);
 }
