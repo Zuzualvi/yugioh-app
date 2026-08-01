@@ -9,6 +9,13 @@
 Tag legend: `OBSERVED` = ran the exact command shown and saw this output.
 `UNVERIFIED` = inferred from code inspection, could not run.
 
+> **⚠ READ THE CORRECTION AT THE END OF THIS FILE BEFORE TRUSTING ANY TLS-LAYER CLAIM HERE.**
+> Everything in this document was captured from an agent sandbox whose egress **intercepts TLS**.
+> HTTP status codes and response bodies are trustworthy — the gateway forwards HTTP/1.1 faithfully.
+> **ALPN, HTTP/2 settings, and the WebSocket 502 are NOT.** They describe the intercepting proxy,
+> not `api.zuhayr.io`. The 502-based conclusion recorded below in the 2026-08-01 authenticated
+> pass has been **retracted**. See "Correction — 2026-08-01 (2)".
+
 ---
 
 ## Part 0 — Network reachability
@@ -366,3 +373,97 @@ Same 502 pattern. Board renders `"Duel (connecting…) ⚠ Connection error — 
 
 - `wss://` WebSocket connections from browsers return 502 from Fly.io (both endpoints). This blocks the live duel experience in production. Root cause is HTTP/2 ALPN negotiation — the fix is either Fly.io configuration (`[http_service] force_https = true` + an `http_options` ALPN setting) or a server-side implementation of RFC 8441 (WebSocket over HTTP/2). **This needs investigation and a fix before the duel board is usable in production.**
 - Four rooms and one active duel remain in production from this QA session. Accounts `qa-alice` and `qa-bob` remain registered.
+
+---
+
+## Correction — 2026-08-01 (2)
+
+Added by the CTO after the CEO re-ran the checks **from a real machine outside the sandbox**. This
+section supersedes any conflicting claim above.
+
+### The instrument was wrong
+
+Agent containers egress through a TLS-intercepting gateway:
+
+```
+api.zuhayr.io   issuer=O = Anthropic, CN = Egress Gateway SDS Issuing CA (production)
+example.com     issuer=O = Anthropic, CN = Egress Gateway SDS Issuing CA (production)
+```
+
+**OBSERVED:** every host probed from the sandbox — `api.zuhayr.io`, `example.com`, `www.iana.org`,
+`cloudflare.com`, `github.com` — presents a certificate from that same issuer and reports
+`enableConnectProtocol = true`. That is the gateway's configuration, not a property of any of
+those servers. TLS terminates at the gateway, and ALPN is negotiated during the TLS handshake, so
+**no ALPN or HTTP/2 observation made from a sandbox describes the real origin.**
+
+The tell was present from the first capture and was misread as noise: Playwright needed
+`ignoreHTTPSErrors: true` to load `app.zuhayr.io` (filed as ZUH-51). That is an interception
+notice.
+
+### What is retracted
+
+- The `502` on both WebSocket upgrades, and the conclusion that **"duels cannot be played in a
+  browser on production."** The 502 came from the gateway, which terminates HTTP/2 and cannot
+  forward RFC 8441 extended CONNECT upstream. Chrome inside the sandbox negotiated h2 with the
+  *gateway*, saw extended CONNECT advertised, used it, and failed. Fly was never shown to be at
+  fault.
+- Every ALPN reading and every `enableConnectProtocol` reading in this document.
+- The 3-second polling fallback measurements: real, but they were the client correctly reacting
+  to a gateway-induced failure, not to a production one.
+
+### What survives
+
+All HTTP status codes and bodies; the unauthenticated route matrix; board WS reaching `101` and
+room WS returning `403` on bad Origin / raw `401` for a valid Origin with no session, when probed
+over HTTP/1.1; and the fact that `useRoom` has a polling fallback while the duel board has none
+(read from source, not measured).
+
+### R11 — RESOLVED, and it passes
+
+**The question:** does the `sid` session cookie reach the cross-origin WebSocket upgrade on the
+deployed split-origin stack (`app.zuhayr.io` → `wss://api.zuhayr.io`)? Open since the room
+shipped; never validly observable until now.
+
+**OBSERVED by the CEO, real browser, real network, 2026-08-01.** Full flow completed: room
+created, joined from a second account in incognito, both decks picked, coin flip, seat choice,
+board loaded with cards. No errors. DevTools with Preserve log, 24 requests total:
+
+- Two WebSockets, **both `101`**.
+- One with a bare `ws` name — open ~1.2 min, closed on leaving the room.
+- One `ws?token=…` — still open on the board.
+- **Zero `/room` requests in the entire log.**
+
+**Mapping confirmed from source** (the CEO flagged it as inferred; verified rather than assumed):
+
+- `packages/web/src/api/roomSocket.ts:31` → `${wsBase}/api/duels/${roomId}/room/ws` — **no query
+  string**. DevTools shows the final path segment, so this renders as a bare `ws`.
+- `packages/web/src/api/duelSocket.ts:41` → `${wsBase}/api/duels/${duelId}/ws?token=…` — the board
+  socket **always** carries `?token=`.
+
+So the bare `ws` is the room socket, and it reached `101`.
+
+**Independently corroborated, and this holds even if the name mapping were wrong:** polling is
+enabled only by `setUsePolling(true)` inside the `onUnavailable` callback
+(`packages/web/src/hooks/useRoom.ts:79`), which `openRoomSocket` fires only after three
+consecutive failed connects. Zero `/room` requests means `onUnavailable` never fired, which means
+the room socket connected.
+
+**Conclusion: the session cookie DOES reach the cross-origin WebSocket upgrade in production.**
+The ws-ticket contingency in implementation spec §5.5 is moot and should not be built.
+
+### Fly edge ALPN
+
+`fly.toml` restricts the edge to `alpn = ["http/1.1"]` (ADR 0004; evidence corrected by ADR 0005).
+**OBSERVED by the CEO from a real network:** offering `h2,http/1.1` negotiates `http/1.1`;
+offering `h2` alone gets "No ALPN negotiated"; `curl` to `/healthz` uses HTTP/1.1 and returns 200.
+The setting is applied and honoured.
+
+**UNVERIFIED and now unknowable:** whether the restriction was ever *needed*. Nobody measured the
+pre-change state from a clean network. CEO decision: keep it — it works, it is harmless, and no
+further time is to be spent establishing whether it was necessary.
+
+### Production artefacts still present
+
+Accounts `qa-alice` and `qa-bob`, four rooms and one active duel remain on production. CEO chose
+to leave them. There is no way to delete a user, room or duel through the app at all — parked as
+ZUH-60.
