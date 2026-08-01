@@ -3,7 +3,21 @@
 **Status:** Accepted  
 **Date:** 2026-08-01  
 **Decided by:** CTO, with CEO notified.  
-**Relates to:** `fly.toml`, `scripts/smoke-artifact.mjs`
+**Relates to:** `fly.toml`, `scripts/smoke-artifact.mjs`  
+**Superseded in part by:** [ADR 0005](0005-alpn-guard-cannot-run-behind-intercepting-egress.md)
+
+> ⚠️ **THE DECISION BELOW STANDS. THE EVIDENCE FOR IT DOES NOT — read ADR 0005 first.**
+> Every measurement in the Context section was taken from an agent container whose outbound TLS is
+> terminated by an intercepting egress gateway. ALPN and the HTTP/2 SETTINGS frame are negotiated at
+> that gateway, so those readings describe the gateway and **not** `api.zuhayr.io`. Three specific
+> claims in this file are therefore withdrawn: that Fly advertises RFC 8441 extended CONNECT, that
+> Fly returns 502 when it is used, and that duels failed "for every Chrome and Firefox user on a
+> modern version" — the CEO subsequently played a full duel in a real browser. The regression guard
+> described under Consequences no longer fails on these conditions; it reports **CANNOT VERIFY**
+> whenever it detects interception (PR #23).
+>
+> Whether the ALPN restriction was ever *needed* is now unknowable — no one measured the pre-change
+> state from an un-intercepted network, and that window has closed. It is harmless and it stays.
 
 ---
 
