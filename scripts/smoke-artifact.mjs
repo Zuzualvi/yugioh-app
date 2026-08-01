@@ -25,6 +25,7 @@ import { execSync, spawn } from "node:child_process";
 import { mkdtempSync, rmSync, mkdirSync, copyFileSync, existsSync, readFileSync } from "node:fs";
 import { createServer, connect as netConnect } from "node:net";
 import { connect as tlsConnect } from "node:tls";
+import http2 from "node:http2";
 import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
@@ -359,6 +360,116 @@ if (roomNoSessionStatus === 401) {
     route: { method: "WS", path: "/api/duels/:id/room/ws (no session)", expectedStatus: 401 },
     actual: roomNoSessionStatus,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Remote-only: ALPN + HTTP/2 extended CONNECT guards
+//
+// These assertions are skipped entirely in local mode: a locally-booted bundle
+// does not go through Fly's TLS edge, so ALPN and extended CONNECT are not
+// meaningful properties of it. They are properties of the deployed edge only.
+//
+// WHY THIS MATTERS: Chrome 121+ (Jan 2024) uses RFC 8441 extended CONNECT for
+// wss:// when the server advertises SETTINGS_ENABLE_CONNECT_PROTOCOL. Fly's
+// proxy advertises it under HTTP/2 but returns 502 when used. The fix is
+// fly.toml [http_service.tls_options] alpn = ["http/1.1"], which prevents h2
+// negotiation. If someone removes those two lines, duels break in browsers and
+// nothing catches it until a player reports it. This gate does.
+// See docs/adr/0004-fly-edge-serves-http1-only.md.
+// ---------------------------------------------------------------------------
+if (isRemote && useTls) {
+  info("Checking edge TLS ALPN (remote only) …");
+
+  // 1. ALPN must negotiate http/1.1, NOT h2.
+  const alpnResult = await new Promise((resolve) => {
+    const s = tlsConnect(
+      { host: wsHost, port: wsPort, servername: wsHost, ALPNProtocols: ["h2", "http/1.1"] },
+      () => {
+        const proto = s.alpnProtocol;
+        s.destroy();
+        resolve(proto);
+      },
+    );
+    s.on("error", () => resolve(null));
+    setTimeout(() => {
+      s.destroy();
+      resolve(null);
+    }, 8000);
+  });
+
+  if (alpnResult === "http/1.1") {
+    ok(`Edge ALPN → http/1.1 (h2 not negotiated)`);
+  } else {
+    fail(
+      `Edge ALPN → ${alpnResult ?? "null"} — expected http/1.1. ` +
+        `The edge is offering HTTP/2. Chrome 121+ will use RFC 8441 extended CONNECT for wss:// ` +
+        `and Fly returns 502, so duels will not load in any browser. ` +
+        `Fix: set [http_service.tls_options] alpn = ["http/1.1"] in fly.toml and redeploy. ` +
+        `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
+    );
+    failures.push({
+      route: { method: "TLS", path: "ALPN negotiation", expectedStatus: "http/1.1" },
+      actual: alpnResult ?? "null",
+    });
+  }
+
+  // 2. HTTP/2 extended CONNECT must NOT succeed. Connect with h2 (no ALPN
+  //    restriction so h2 is available if the edge offers it), then check
+  //    remoteSettings.enableConnectProtocol. If h2 was not negotiated (because
+  //    the ALPN fix is in place), the session will not establish at all.
+  info("Checking HTTP/2 extended CONNECT availability (remote only) …");
+
+  const h2Check = await new Promise((resolve) => {
+    let settled = false;
+    const client = http2.connect(`https://${wsHost}`, { rejectUnauthorized: true });
+
+    client.on("remoteSettings", (settings) => {
+      if (settled) return;
+      settled = true;
+      const enabled = Boolean(settings.enableConnectProtocol);
+      client.destroy();
+      resolve({ connected: true, enableConnectProtocol: enabled });
+    });
+
+    client.on("error", () => {
+      if (settled) return;
+      settled = true;
+      // Error connecting means h2 was not offered — good.
+      resolve({ connected: false, enableConnectProtocol: false });
+    });
+
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      client.destroy();
+      // Timeout with no remoteSettings means h2 was not negotiated — good.
+      resolve({ connected: false, enableConnectProtocol: false });
+    }, 8000);
+  });
+
+  if (!h2Check.connected) {
+    ok(`HTTP/2 not negotiated → extended CONNECT unavailable (expected)`);
+  } else if (!h2Check.enableConnectProtocol) {
+    ok(
+      `HTTP/2 connected but SETTINGS_ENABLE_CONNECT_PROTOCOL is false → extended CONNECT unavailable`,
+    );
+  } else {
+    fail(
+      `HTTP/2 connected and SETTINGS_ENABLE_CONNECT_PROTOCOL is true. ` +
+        `Chrome 121+ will attempt extended CONNECT for wss:// and Fly will return 502, ` +
+        `breaking duels in every browser that has an open h2 session to this host. ` +
+        `Fix: [http_service.tls_options] alpn = ["http/1.1"] in fly.toml. ` +
+        `See docs/adr/0004-fly-edge-serves-http1-only.md.`,
+    );
+    failures.push({
+      route: {
+        method: "H2",
+        path: "SETTINGS_ENABLE_CONNECT_PROTOCOL",
+        expectedStatus: "false",
+      },
+      actual: "true",
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

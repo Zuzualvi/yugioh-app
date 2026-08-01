@@ -51,6 +51,17 @@ primary_region = "ord"      # Chicago — where the provisioned volume/machine l
   auto_start_machines  = true
   min_machines_running = 1
 
+# Restrict edge TLS to HTTP/1.1 only — do NOT add "h2" here.
+# Chrome 121+ uses RFC 8441 extended CONNECT for wss:// when the server
+# advertises SETTINGS_ENABLE_CONNECT_PROTOCOL (which Fly does under h2).
+# Fly's proxy does not fulfil that tunnel and returns 502, so duels fail
+# silently in every Chrome and Firefox session that has an open h2 connection
+# to this host. Restricting ALPN prevents h2 negotiation entirely.
+# See docs/adr/0004-fly-edge-serves-http1-only.md and the regression guard
+# in scripts/smoke-artifact.mjs (remote mode).
+[http_service.tls_options]
+  alpn = ["http/1.1"]
+
   [[http_service.checks]]
     grace_period  = "10s"
     interval      = "30s"
