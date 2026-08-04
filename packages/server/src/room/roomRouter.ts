@@ -18,6 +18,7 @@ import { unready } from "./routes/unready.js";
 import { leave } from "./routes/leave.js";
 import { submitChoice } from "./routes/submitChoice.js";
 import { getSeatCredential } from "./routes/getSeatCredential.js";
+import { listActiveDuels } from "./routes/listActiveDuels.js";
 
 export function createRoomRouter(
   db: InstanceType<typeof Database>,
@@ -35,6 +36,10 @@ export function createRoomRouter(
 
   // POST /api/duels/join — claim room (S1)
   router.post("/join", requireSession(db), claimRoom(db));
+
+  // GET /api/duels/active — list non-ended duels for the caller (Slice E / ZUH-72)
+  // Registered BEFORE /:id routes so the literal "active" is not captured by a param.
+  router.get("/active", requireSession(db), listActiveDuels(db));
 
   // All :id routes require session
   router.get("/:id/room", requireSession(db), getRoomSnapshot(db));

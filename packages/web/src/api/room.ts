@@ -12,6 +12,7 @@ import type {
   PickDeckBody,
   SubmitChoiceBody,
   SeatCredential,
+  ActiveDuelsResponse,
 } from "@yugioh-app/contracts";
 import { get, post } from "./client";
 
@@ -63,4 +64,9 @@ export function submitChoice(roomId: string, body: SubmitChoiceBody): Promise<Ro
 /** GET /api/duels/:id/seat — retrieve seat credential after room reaches starting. */
 export function getSeatCredential(roomId: string): Promise<SeatCredential> {
   return get<SeatCredential>(`/api/duels/${roomId}/seat`);
+}
+
+/** GET /api/duels/active — list the caller's non-ended duels. */
+export function listActiveDuels(): Promise<ActiveDuelsResponse> {
+  return get<ActiveDuelsResponse>("/api/duels/active");
 }

@@ -7,17 +7,16 @@
  *
  * FINDINGS:
  *
- * Scenario 1 + 2: Fresh tab to /duel/:id with an authenticated session and
+ * Scenarios 1 + 2: Fresh tab to /duel/:id with an authenticated session and
  * empty location.state. DuelScreen.tsx:74-97 already calls getSeatCredential()
  * when location.state.seatToken is absent. The server endpoint (getSeatCredential.ts)
  * imposes NO status restriction — any authenticated seat holder gets their
  * token back regardless of duel status. Both scenarios recover today.
  *
- * Scenario 3: From Home/post-login with no URL in hand. HomeScreen has NO
- * affordance to return to an in-progress duel. The seam comment
- * ("Your move queue — SEAM for Slice 3") renders nothing. This is the REAL
- * gap: once the URL is lost, the app offers no path back. Mechanism decision
- * deferred to CTO (spec §C0: STOP AND REPORT before building).
+ * Scenario 3 (gap, now closed): HomeScreen previously offered no path back to
+ * an in-progress duel. That gap was filled by Slice E (ZUH-72/74): Home now
+ * fetches GET /api/duels/active and renders a link per entry. The href
+ * assertions live in HomeScreen.test.ts where the coverage belongs.
  *
  * PRD claims confirmed already fixed:
  *   - useMock is explicit-only (DuelScreen header R32/R43) — CONFIRMED
@@ -111,32 +110,5 @@ describe("C0 Scenario 1+2: fresh tab recovery via getSeatCredential", () => {
       expect(document.querySelector("[role=alert]")).toBeTruthy();
     });
     expect(mockOpenDuelSocket).not.toHaveBeenCalled();
-  });
-});
-
-/**
- * Scenario 3: No resume path from Home — the REAL gap.
- * This test documents the gap without implementing a fix.
- * Mechanism decision deferred to CTO per spec §C0.
- */
-describe("C0 Scenario 3: no resume path from Home (documented gap)", () => {
-  it("HomeScreen has no link to any in-progress duel", async () => {
-    vi.doMock("../context/AuthContext", () => ({
-      useAuth: () => ({ user: { displayName: "Alice", role: "member" }, logout: vi.fn() }),
-    }));
-    vi.doMock("../context/ToastContext", () => ({
-      useToast: () => ({ addToast: vi.fn() }),
-    }));
-    vi.doMock("../api/admin", () => ({ createInvite: vi.fn() }));
-
-    const { HomeScreen } = await import("./HomeScreen");
-    render(React.createElement(MemoryRouter, null, React.createElement(HomeScreen)));
-
-    const hrefs = Array.from(document.querySelectorAll("a[href]")).map(
-      (a) => (a as HTMLAnchorElement).getAttribute("href") ?? "",
-    );
-    const inProgressLinks = hrefs.filter((h) => h.startsWith("/duel/") && h !== "/duel/new");
-    // Confirms the gap: no path back to an in-progress duel from Home
-    expect(inProgressLinks).toHaveLength(0);
   });
 });

@@ -507,6 +507,113 @@ file — sequenced after A merges, not parallel to it).
 
 ---
 
+## Slice E — a route back to an in-progress duel (§4.1, the real gap)
+
+**Owner:** Full-Stack Engineer. **Branch:** `feat/resume-active-duel`.
+
+**Files owned (exclusively):** `packages/server/src/room/routes/listActiveDuels.ts`
+(new), `packages/server/src/room/roomRouter.ts`, `packages/contracts/src/duel.ts`,
+`packages/web/src/screens/HomeScreen.tsx`, `packages/web/src/api/room.ts`, and the
+test files for each.
+
+**Explicitly NOT owned:** `packages/web/src/screens/DuelScreen.tsx`,
+`packages/web/src/screens/room/**`, `scripts/**`, any workflow file, anything
+under `packages/server/src/routes/`.
+
+### Why this exists, and what it is NOT
+
+Slice C's investigation refuted most of what the PRD claimed about §4.1. Both
+halves the PRD worried about are already fixed:
+
+* `DuelScreen.tsx:52` — `useMock` is explicit-only (R32/R43), so no mock board
+  renders on a missing credential.
+* `DuelScreen.tsx:74-97` — the screen already falls back to
+  `getSeatCredential(duelId)`, and `getSeatCredential.ts` imposes no status
+  restriction, so **a new tab opened on `/duel/:duelId` already recovers the
+  seat**, on any device, after the duel has left `waiting`.
+
+The residual gap is narrower and purely navigational: **closing the tab loses the
+URL, and nothing in the app links back to an in-progress duel.** `HomeScreen`
+renders only a seam comment where the queue should be.
+
+So this slice does **not** persist the seat token. `localStorage` is the strictly
+weaker mechanism — it does not survive a device change, and it would put a live
+credential in storage where the session cookie already does the job better. The
+fix is discovery, not storage.
+
+### Contract (locked)
+
+**`GET /api/duels/active`** — session-authenticated, same `requireSession(db)` as
+its siblings in `roomRouter`. Returns the caller's in-progress duels:
+
+```json
+{ "duels": [
+  { "duelId": "…", "status": "active", "mySeat": 0,
+    "opponentDisplayName": "…", "onClockSeat": null,
+    "deadlineAt": null, "createdAt": 1754000000 }
+  ],
+  "rooms": [
+    { "roomId": "…", "status": "open", "myRole": "creator",
+      "opponentDisplayName": null, "roomDeadlineAt": 1754000000,
+      "createdAt": 1754000000 }
+  ] }
+```
+
+**Duels** (`duels` array):
+
+* "In progress" is `duel.status != 'ended'` — that is, `waiting_for_opponent` and
+  `active`. Derive the terminal set from the existing code rather than inventing
+  one; `duelStore.ts:147` is the only place `'ended'` is written.
+* A duel where the caller holds **either** seat. `mySeat` is the caller's seat.
+* `opponentDisplayName` is `null` when the other seat is unfilled.
+* `onClockSeat` and `deadlineAt` are **nullable** — both columns are `NULL` in
+  SQLite until the engine starts the first move clock (`duel.on_clock_seat`,
+  `duel.deadline_at` in migration 2). A duel in `waiting_for_opponent` will
+  always return `null` for both.
+* Ordered by `createdAt` **descending**. Capped at 20.
+* **Returns no credentials.** No `seat0_token`, no `seat1_token`, no
+  `join_token`. The client navigates to `/duel/:duelId` and the existing
+  `getSeatCredential` flow supplies the token.
+* Empty result is `200` with `[]`, never 404.
+
+**Rooms** (`rooms` array) — ZUH-74:
+
+* "In progress" for a room is `status NOT IN ('closed', 'starting')` — derived
+  from `isTerminal()` in `roomState.ts`, which returns `true` for `'closed'` and
+  `'starting'`. The terminal set is two values: `'closed'` (ended/expired/left)
+  and `'starting'` (duel engine being created — room's job is done; a duel row
+  already exists). Active statuses are `'open'`, `'filled'`, `'awaiting_choice'`.
+* Room expiry is lazy in this codebase: a room whose `room_deadline_at` has passed
+  but whose `status` has not yet been written `'closed'` will appear in the list.
+  The player navigates to it, the next request evaluates the expiry, and they see
+  the result. `status` is the authority — do not filter on `room_deadline_at`.
+* `myRole` is `"creator"` or `"opponent"` depending on which user-ID column
+  matches the caller (`creator_user_id` / `opponent_user_id`).
+* `opponentDisplayName` is `null` when the other side is unfilled.
+* **No `join_token` in the payload, ever, and no deck JSON.** `join_token` is a
+  live credential — it is the whole security of the invite link.
+* Ordered by `createdAt` **descending**. Capped at 20. Empty is `[]`, never 404.
+
+⚠️ **Route registration order.** `roomRouter` already carries parameterised
+routes such as `/:id/seat`. Register `/active` **before** any route that could
+capture it, or the literal will be swallowed by a parameter.
+
+### UI
+
+Fill the existing seam in `HomeScreen.tsx`. Render both duels and rooms as a
+combined list (one section, one empty state). Each entry links to `/duel/:roomId`
+or `/duel/:duelId`. The empty state (`"No games in progress."`) shows only when
+**both** arrays are empty. Use the components and patterns already in
+`HomeScreen`; this is a list with links, not a new design system.
+
+### Done means
+
+`npm run verify` and `npm run test:e2e` pass. Tests cover: the endpoint excludes
+ended duels and terminal rooms; it returns entries for both seat/role positions;
+it never returns a token or deck-JSON field; ordering and the cap hold; an
+unauthenticated call is rejected; Home renders a working link for each active
+duel and room, and the empty state only when both arrays are empty.
+
 ## Sequencing
 
 1. **Slice A merges first** (A1 at minimum). Nothing else merges into a CI whose
