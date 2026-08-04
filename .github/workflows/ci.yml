@@ -20,6 +20,15 @@ on:
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   workflow_dispatch:
 
+# Supersede in-flight runs for the same ref. Without this, every push to a PR
+# paid for a full run of work already obsolete — including the 30-minute
+# accuracy job below. Keyed by workflow+ref so master and each PR queue
+# independently. Note deploy.yml is deliberately NOT given this treatment: a
+# cancelled deploy is worse than a queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Work state lives in Linear, and Linear's GitHub integration moves an issue
   # In Progress -> In Review -> Done from PR events — but ONLY when it can find
@@ -70,7 +79,17 @@ jobs:
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
+      # fetch-depth: 0 is LOAD-BEARING, not a performance detail.
+      # `npm run verify` runs scripts/check-docs-placement.mjs, which resolves its
+      # diff base against origin/master. At the default depth of 1 that ref does
+      # not exist, the diff throws, and every new-file rule was silently skipped
+      # while the script printed its success line and exited 0 — verified in a
+      # PASSING run. The script now fails loudly when it cannot resolve its base,
+      # so removing this line reds the pipeline rather than hiding the gate again.
+      # Only jobs that run `verify` need the history; the others stay shallow.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -104,6 +123,9 @@ jobs:
   # table plus both WS upgrade paths against a checked-in manifest
   # (scripts/artifact-routes.json). The manifest is static ON PURPOSE — a gate
   # that derives its own expectations from the running server cannot fail.
+  # Since ZUH-61 the Dockerfile calls `npm run build:server` rather than keeping
+  # its own copy of the esbuild flags, and scripts/check-build-single-source.mjs
+  # fails `verify` if the two ever drift apart again.
   #
   # Verified by reproducing the outage: commenting out the createRoomRouter
   # mount fails this job, and so does removing attachUpgradeRouter.
