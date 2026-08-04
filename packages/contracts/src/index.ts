@@ -117,6 +117,24 @@ export {
   BattleCommandAction,
 } from "./duelDecision.js";
 
+// Ops API types — ZUH-62 / Slice B
+export type {
+  OpsMigrationRow,
+  OpsMigrationsResponse,
+  OpsCountsResponse,
+  OpsUserSummary,
+  OpsUsersResponse,
+  OpsUserDetail,
+  OpsUserResponse,
+  OpsDuelDetail,
+  OpsDuelResponse,
+  OpsRoomDetail,
+  OpsRoomResponse,
+  OpsDeleteDuelResponse,
+  OpsDeleteRoomResponse,
+  OpsDeleteUserResponse,
+} from "./ops.js";
+
 // Room contracts — ZUH-26 / S0
 export type {
   RoomStatus,

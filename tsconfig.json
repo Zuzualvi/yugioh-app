@@ -1,4 +1,10 @@
 {
-  "extends": "./tsconfig.base.json",
-  "include": ["packages/*/src/**/*"]
+  "files": [],
+  "references": [
+    { "path": "packages/card-data" },
+    { "path": "packages/contracts" },
+    { "path": "packages/engine" },
+    { "path": "packages/server" },
+    { "path": "packages/web" }
+  ]
 }
