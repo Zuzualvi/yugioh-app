@@ -225,6 +225,17 @@ Runs: `typecheck → lint → arch:check → actionlint → docs:check → test`
 steps as the GitHub Actions pipeline. All must be green before any push or PR. Run it
 whole; see "The gate is the WHOLE repo" above for why a scoped run is not a gate.
 
+**`npx tsc` from the repo root typechecks NOTHING — do not use it as a check.** The
+root `tsconfig.json` is solution-style (`{"files": [], "references": [...]}`) so that a
+bare `tsc` no longer emits ~904 stray `.js`/`.d.ts`/`.map` files across the workspace,
+which it used to, and whose only cleanup (`git clean -f`) also deleted gitignored
+`packages/engine/assets/` and broke the next E2E run. The referenced projects do not set
+`composite: true`, so those references are inert: `npx tsc` exits 0 having checked
+nothing. That is an acceptable trade for killing the stray-emit trap, but it means a
+green `npx tsc` is not evidence of anything. **`npm run typecheck` is the real
+typecheck** — it runs each workspace's own `typecheck` script plus the root
+entrypoints project, and it is what `verify` and CI run.
+
 **GitHub Actions** (`.github/workflows/ci.yml`) is the remote gate. See
 `ci/README.md` for the one-time step to enable it — requires a token with
 `workflow` scope.
