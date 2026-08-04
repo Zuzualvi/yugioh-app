@@ -13,7 +13,7 @@
     "lint": "eslint . && prettier --check .",
     "arch:check": "depcruise packages --config .dependency-cruiser.cjs",
     "test": "vitest run",
-    "actionlint": "node scripts/run-actionlint-isolated.mjs",
+    "actionlint": "node scripts/run-actionlint.mjs",
     "build:check": "node scripts/check-build-single-source.mjs",
     "verify": "npm run typecheck && npm run lint && npm run arch:check && npm run actionlint && npm run docs:check && npm run build:check && npm test",
     "build:web": "npm run build --workspace @yugioh-app/web",

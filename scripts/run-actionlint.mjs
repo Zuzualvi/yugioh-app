@@ -7,6 +7,12 @@
  *
  * Catches invalid-workflow classes that GitHub Actions itself would reject but
  * that git push can't detect (e.g. `secrets` context used in `if:` conditions).
+ *
+ * Each file gets its own createLinter() call (fresh WASM instance). The WASM
+ * allocates a fixed-size arena and does not reclaim memory between linter()
+ * calls on the same instance; after a large file, the remaining heap is
+ * insufficient for the next large file, producing RuntimeError: unreachable.
+ * Resetting per file avoids that accumulation. ZUH-69 tracks the upstream fix.
  */
 import { createLinter } from "actionlint";
 import { readdir, readFile } from "node:fs/promises";
@@ -23,12 +29,13 @@ if (yamlFiles.length === 0) {
   process.exit(0);
 }
 
-const linter = await createLinter();
 let totalErrors = 0;
 
 for (const file of yamlFiles) {
   const filePath = join(WORKFLOW_DIR, file);
   const content = await readFile(filePath, "utf8");
+  // Fresh instance per file: resets the WASM arena so file sizes don't accumulate.
+  const linter = await createLinter();
   const results = linter(content, filePath);
   for (const result of results) {
     console.error(
