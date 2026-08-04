@@ -108,6 +108,24 @@ export const DuelStateSnapshotSchema = z.object({
 });
 export type DuelStateSnapshot = z.infer<typeof DuelStateSnapshotSchema>;
 
+// ── Active duels list — GET /api/duels/active ────────────────────────────────
+
+export const ActiveDuelEntrySchema = z.object({
+  duelId: z.string(),
+  status: z.enum(["waiting_for_opponent", "active"]),
+  mySeat: SeatSchema,
+  opponentDisplayName: z.string().nullable(),
+  onClockSeat: SeatSchema.nullable(),
+  deadlineAt: z.number().nullable(),
+  createdAt: z.number(),
+});
+export type ActiveDuelEntry = z.infer<typeof ActiveDuelEntrySchema>;
+
+export const ActiveDuelsResponseSchema = z.object({
+  duels: z.array(ActiveDuelEntrySchema),
+});
+export type ActiveDuelsResponse = z.infer<typeof ActiveDuelsResponseSchema>;
+
 // ── DuelEndReason ─────────────────────────────────────────────────────────────
 
 export const DuelEndReasonSchema = z.enum(["normal", "timeout", "resign"]);

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createInvite } from "../api/admin";
+import { listActiveDuels } from "../api/room";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import type { ActiveDuelEntry } from "@yugioh-app/contracts";
 
 export function HomeScreen() {
   const { user, logout } = useAuth();
@@ -11,6 +13,15 @@ export function HomeScreen() {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteExpiry, setInviteExpiry] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [activeDuels, setActiveDuels] = useState<ActiveDuelEntry[]>([]);
+
+  useEffect(() => {
+    listActiveDuels()
+      .then(({ duels }) => setActiveDuels(duels))
+      .catch(() => {
+        // silently ignore — queue stays empty
+      });
+  }, []);
 
   async function handleLogout() {
     await logout();
@@ -98,11 +109,64 @@ export function HomeScreen() {
           padding: "32px 20px",
         }}
       >
-        {/* Your move queue — SEAM for Slice 3 (duel queue placeholder) */}
-        {/* When the duel system is live, this section will render the
-            in-progress duels awaiting this player's move. */}
-        <div style={{ marginBottom: 40 }} aria-label="Your move queue (not yet available)">
-          {/* Slice 3 seam: empty state — no queue to show yet */}
+        {/* Your active duels */}
+        <div style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>Your active duels</h2>
+          {activeDuels.length === 0 ? (
+            <p style={{ color: "var(--text-1)", fontSize: "0.9375rem" }}>No duels in progress.</p>
+          ) : (
+            <ul
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              {activeDuels.map((duel) => (
+                <li key={duel.duelId}>
+                  <Link
+                    to={`/duel/${duel.duelId}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      background: "var(--bg-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      textDecoration: "none",
+                      color: "inherit",
+                      minHeight: 44,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                    }}
+                  >
+                    <span style={{ fontSize: "0.9375rem" }}>
+                      {duel.opponentDisplayName
+                        ? `vs ${duel.opponentDisplayName}`
+                        : "Waiting for opponent"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "var(--text-1)",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {duel.status === "waiting_for_opponent" ? "waiting" : "active"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Page title */}

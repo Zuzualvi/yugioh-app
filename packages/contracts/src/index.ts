@@ -35,6 +35,8 @@ export type {
   DuelEndReason,
   DuelServerMessage,
   DuelClientMessage,
+  ActiveDuelEntry,
+  ActiveDuelsResponse,
 } from "./duel.js";
 export {
   SeatSchema,
@@ -50,6 +52,8 @@ export {
   DuelEndReasonSchema,
   DuelServerMessageSchema,
   DuelClientMessageSchema,
+  ActiveDuelEntrySchema,
+  ActiveDuelsResponseSchema,
 } from "./duel.js";
 
 export type {
