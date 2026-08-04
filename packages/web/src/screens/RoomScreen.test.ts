@@ -91,7 +91,9 @@ describe("RoomScreen phase switch", () => {
   it("shows RoomWaiting for open status", async () => {
     setup(makeSnapshot({ status: "open" }));
     await renderRoomScreen();
-    expect(screen.getByText(/Waiting Room/i)).toBeTruthy();
+    // RoomWaiting renders a section[aria-label="Duel room"] with a ready button
+    expect(screen.getByRole("region", { name: /duel room/i })).toBeTruthy();
+    expect(screen.getByTestId("room-ready-btn")).toBeTruthy();
   });
 
   it("shows RoomWaiting for filled status", async () => {
@@ -109,7 +111,9 @@ describe("RoomScreen phase switch", () => {
       }),
     );
     await renderRoomScreen();
-    expect(screen.getByText(/Waiting Room/i)).toBeTruthy();
+    // RoomWaiting renders a section[aria-label="Duel room"] with a ready button
+    expect(screen.getByRole("region", { name: /duel room/i })).toBeTruthy();
+    expect(screen.getByTestId("room-ready-btn")).toBeTruthy();
   });
 
   it("shows RoomChoice for awaiting_choice with flip (no choice yet)", async () => {
