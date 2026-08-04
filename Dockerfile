@@ -36,18 +36,9 @@ COPY packages/ packages/
 COPY prod-server.ts ./
 
 # Bundle production server (TypeScript → single ESM file).
-# --banner:js provides createRequire so CJS packages (express, body-parser, debug)
-# can use require() for Node.js built-ins inside the ESM bundle.
-# External: native modules that must be installed in runtime stage.
-RUN node_modules/.bin/esbuild prod-server.ts \
-  --bundle \
-  --platform=node \
-  --target=node22 \
-  --format=esm \
-  --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
-  --external:better-sqlite3 \
-  --external:"@node-rs/argon2" \
-  --outfile=dist/server.mjs \
+# Build flags live in package.json's build:server script and are guarded by
+# scripts/check-build-single-source.mjs — do not add an inline esbuild invocation here.
+RUN npm run build:server \
   && echo "Bundle size: $(du -sh dist/server.mjs | cut -f1)"
 
 # ---- Stage 2: runtime --------------------------------------
