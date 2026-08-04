@@ -281,9 +281,6 @@ export function RoomWaiting({ snapshot }: Props) {
 
   return (
     <section aria-label="Duel room">
-      {/* Screen-reader heading (also used by tests) */}
-      <h2 className="sr-only">Waiting Room</h2>
-
       {/* Inline error */}
       {inlineError && (
         <div
