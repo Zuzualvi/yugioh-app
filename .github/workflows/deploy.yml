@@ -11,7 +11,7 @@ name: Deploy
 #     22/22 across this project's deployment history. The CLI + VERCEL_TOKEN is
 #     the sole deployer. The build runs on the GH runner deliberately — see the deploy-frontend
 #     job for why a remote build made the deploy's outcome unobservable.
-# Secrets: FLY_API_TOKEN + BOOTSTRAP_ADMIN_* (backend), VERCEL_TOKEN + VERCEL_ORG_ID +
+# Secrets: FLY_API_TOKEN + BOOTSTRAP_ADMIN_* + OPS_ADMIN_TOKEN (backend), VERCEL_TOKEN + VERCEL_ORG_ID +
 # VERCEL_PROJECT_ID (frontend). All set in repo Settings → Secrets (provision + CEO).
 
 on:
@@ -35,7 +35,17 @@ jobs:
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
+      # fetch-depth: 0 is LOAD-BEARING, not a performance detail.
+      # `npm run verify` runs scripts/check-docs-placement.mjs, which resolves its
+      # diff base against origin/master. At the default depth of 1 that ref does
+      # not exist, the diff throws, and every new-file rule was silently skipped
+      # while the script printed its success line and exited 0 — verified in a
+      # PASSING run. The script now fails loudly when it cannot resolve its base,
+      # so removing this line reds the pipeline rather than hiding the gate again.
+      # Only jobs that run `verify` need the history; the others stay shallow.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -207,6 +217,19 @@ jobs:
               BOOTSTRAP_ADMIN_PASSWORD="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}"
           else
             echo "WARN: BOOTSTRAP_ADMIN_* secrets not set — skipping secrets staging (set them in repo Settings → Secrets)"
+          fi
+
+      - name: Stage OPS_ADMIN_TOKEN secret (applied on next deploy)
+        # Best-effort: OPS_ADMIN_TOKEN may not be set in the repo yet (the CEO
+        # provisions it). flyctl rejects empty values, so we guard on non-empty.
+        # A missing secret leaves the pipeline green; the server treats an unset
+        # token as "ops disabled". Never echo the value.
+        run: |
+          if [ -n "${{ secrets.OPS_ADMIN_TOKEN }}" ]; then
+            flyctl secrets set --stage --app yugioh-app \
+              OPS_ADMIN_TOKEN="${{ secrets.OPS_ADMIN_TOKEN }}"
+          else
+            echo "WARN: OPS_ADMIN_TOKEN secret not set — skipping (set it in repo Settings → Secrets)"
           fi
 
       # Preflight diagnostics (non-fatal) — surfaces flyctl version + app/machine

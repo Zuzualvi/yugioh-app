@@ -31,6 +31,15 @@ on:
       - "**/*.md"
   workflow_dispatch:
 
+# Supersede in-flight runs for the same ref. Without this, every push to a PR
+# paid for a full run of work already obsolete — including the 30-minute
+# accuracy job in ci.yml. Keyed by workflow+ref so master and each PR queue
+# independently. Note deploy.yml is deliberately NOT given this treatment: a
+# cancelled deploy is worse than a queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e:
     name: e2e (live duel backbone · Playwright)
