@@ -121,6 +121,9 @@ const MIGRATIONS: string[] = [
   `,
 ];
 
+// Exported so ops endpoints can report the expected migration count without drift.
+export const MIGRATION_COUNT = MIGRATIONS.length;
+
 export function runMigrations(db: InstanceType<typeof Database>): void {
   // Ensure migrations table exists first (bootstrap)
   db.exec(`
