@@ -36,6 +36,7 @@ export type {
   DuelServerMessage,
   DuelClientMessage,
   ActiveDuelEntry,
+  ActiveRoomEntry,
   ActiveDuelsResponse,
 } from "./duel.js";
 export {
@@ -53,6 +54,7 @@ export {
   DuelServerMessageSchema,
   DuelClientMessageSchema,
   ActiveDuelEntrySchema,
+  ActiveRoomEntrySchema,
   ActiveDuelsResponseSchema,
 } from "./duel.js";
 

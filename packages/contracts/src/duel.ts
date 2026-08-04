@@ -121,8 +121,19 @@ export const ActiveDuelEntrySchema = z.object({
 });
 export type ActiveDuelEntry = z.infer<typeof ActiveDuelEntrySchema>;
 
+export const ActiveRoomEntrySchema = z.object({
+  roomId: z.string(),
+  status: z.enum(["open", "filled", "awaiting_choice"]),
+  myRole: z.enum(["creator", "opponent"]),
+  opponentDisplayName: z.string().nullable(),
+  roomDeadlineAt: z.number(),
+  createdAt: z.number(),
+});
+export type ActiveRoomEntry = z.infer<typeof ActiveRoomEntrySchema>;
+
 export const ActiveDuelsResponseSchema = z.object({
   duels: z.array(ActiveDuelEntrySchema),
+  rooms: z.array(ActiveRoomEntrySchema),
 });
 export type ActiveDuelsResponse = z.infer<typeof ActiveDuelsResponseSchema>;
 

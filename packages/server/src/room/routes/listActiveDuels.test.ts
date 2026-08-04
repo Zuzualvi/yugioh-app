@@ -1,16 +1,26 @@
 // ---------------------------------------------------------------------------
-// Integration tests for GET /api/duels/active (Slice E / ZUH-72)
+// Integration tests for GET /api/duels/active (Slice E / ZUH-72, ZUH-74)
 //
-// Covers:
+// Covers duels:
 //   - Returns 401 for unauthenticated requests
-//   - Returns 200 with empty array when caller has no active duels
+//   - Returns 200 with empty arrays when caller has nothing active
 //   - Returns duels where caller is seat 0
 //   - Returns duels where caller is seat 1
 //   - Excludes ended duels
 //   - opponentDisplayName is null when seat 1 is unfilled (waiting_for_opponent)
 //   - Never returns credential fields (seat0_token, seat1_token, join_token)
-//   - Results ordered by createdAt DESC
-//   - Capped at 20 results
+//   - Duel results ordered by createdAt DESC
+//   - Duel results capped at 20
+//
+// Covers rooms:
+//   - Returns room where caller is creator
+//   - Returns room where caller is opponent
+//   - Excludes closed rooms
+//   - Excludes starting rooms (terminal — duel already created)
+//   - opponentDisplayName null when opponent_user_id is null
+//   - Never returns join_token or deck JSON
+//   - Room results ordered by createdAt DESC
+//   - Room results capped at 20
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -97,19 +107,46 @@ function insertDuel(
   return duelId;
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+function insertRoom(
+  creatorUserId: string,
+  opponentUserId: string | null,
+  status: "open" | "filled" | "awaiting_choice" | "starting" | "closed",
+  createdAt: number = Date.now(),
+): string {
+  const roomId = randomUUID();
+  db.prepare(
+    `INSERT INTO duel_room
+       (id, join_token, creator_user_id, opponent_user_id,
+        timer_per_move_seconds, seed_json,
+        room_deadline_at, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    roomId,
+    randomUUID(), // join_token — must NOT appear in response
+    creatorUserId,
+    opponentUserId,
+    300,
+    '"0"',
+    Date.now() + 30 * 60 * 1000,
+    status,
+    createdAt,
+  );
+  return roomId;
+}
 
-describe("GET /api/duels/active", () => {
+// ── Duel tests ────────────────────────────────────────────────────────────────
+
+describe("GET /api/duels/active — duels", () => {
   it("returns 401 for unauthenticated requests", async () => {
     const res = await request(app).get("/api/duels/active");
     expect(res.status).toBe(401);
   });
 
-  it("returns 200 with empty array when caller has no active duels", async () => {
+  it("returns 200 with empty arrays when caller has nothing active", async () => {
     const { sid } = await seedUser("Alice");
     const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ duels: [] });
+    expect(res.body).toEqual({ duels: [], rooms: [] });
   });
 
   it("returns a duel where caller is seat 0", async () => {
@@ -165,7 +202,7 @@ describe("GET /api/duels/active", () => {
     expect(res.body.duels[0].status).toBe("waiting_for_opponent");
   });
 
-  it("never returns credential fields", async () => {
+  it("never returns credential fields in duel entries", async () => {
     const { userId: u0, sid: s0 } = await seedUser("Alice");
     const { userId: u1 } = await seedUser("Bob");
     insertDuel(u0, u1, "active");
@@ -180,7 +217,7 @@ describe("GET /api/duels/active", () => {
     expect(duel["seatToken"]).toBeUndefined();
   });
 
-  it("orders results by createdAt descending", async () => {
+  it("orders duel results by createdAt descending", async () => {
     const { userId: u0, sid: s0 } = await seedUser("Alice");
     const { userId: u1 } = await seedUser("Bob");
     const older = insertDuel(u0, u1, "active", Date.now() - 10_000);
@@ -193,7 +230,7 @@ describe("GET /api/duels/active", () => {
     expect(res.body.duels[1].duelId).toBe(older);
   });
 
-  it("caps results at 20", async () => {
+  it("caps duel results at 20", async () => {
     const { userId: u0, sid: s0 } = await seedUser("Alice");
     const { userId: u1 } = await seedUser("Bob");
     for (let i = 0; i < 25; i++) {
@@ -204,5 +241,112 @@ describe("GET /api/duels/active", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.duels).toHaveLength(20);
+  });
+});
+
+// ── Room tests ────────────────────────────────────────────────────────────────
+
+describe("GET /api/duels/active — rooms", () => {
+  it("returns a room where caller is creator", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    const roomId = insertRoom(creator, opponent, "filled");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(1);
+    expect(res.body.rooms[0].roomId).toBe(roomId);
+    expect(res.body.rooms[0].myRole).toBe("creator");
+    expect(res.body.rooms[0].opponentDisplayName).toBe("Bob");
+    expect(res.body.rooms[0].status).toBe("filled");
+  });
+
+  it("returns a room where caller is opponent", async () => {
+    const { userId: creator } = await seedUser("Alice");
+    const { userId: opponent, sid } = await seedUser("Bob");
+    const roomId = insertRoom(creator, opponent, "filled");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(1);
+    expect(res.body.rooms[0].roomId).toBe(roomId);
+    expect(res.body.rooms[0].myRole).toBe("opponent");
+    expect(res.body.rooms[0].opponentDisplayName).toBe("Alice");
+  });
+
+  it("excludes closed rooms", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    insertRoom(creator, opponent, "closed");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(0);
+  });
+
+  it("excludes starting rooms (duel already created — terminal)", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    insertRoom(creator, opponent, "starting");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(0);
+  });
+
+  it("returns null opponentDisplayName when opponent_user_id is null", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const roomId = insertRoom(creator, null, "open");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(1);
+    expect(res.body.rooms[0].roomId).toBe(roomId);
+    expect(res.body.rooms[0].opponentDisplayName).toBeNull();
+  });
+
+  it("never returns join_token or deck JSON in room entries", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    insertRoom(creator, opponent, "filled");
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    const room = res.body.rooms[0] as Record<string, unknown>;
+    expect(room["join_token"]).toBeUndefined();
+    expect(room["creator_deck_json"]).toBeUndefined();
+    expect(room["opponent_deck_json"]).toBeUndefined();
+  });
+
+  it("orders room results by createdAt descending", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    const older = insertRoom(creator, opponent, "open", Date.now() - 10_000);
+    const newer = insertRoom(creator, opponent, "open", Date.now());
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms[0].roomId).toBe(newer);
+    expect(res.body.rooms[1].roomId).toBe(older);
+  });
+
+  it("caps room results at 20", async () => {
+    const { userId: creator, sid } = await seedUser("Alice");
+    const { userId: opponent } = await seedUser("Bob");
+    for (let i = 0; i < 25; i++) {
+      insertRoom(creator, opponent, "open", Date.now() - i * 1000);
+    }
+
+    const res = await request(app).get("/api/duels/active").set("Cookie", `sid=${sid}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.rooms).toHaveLength(20);
   });
 });

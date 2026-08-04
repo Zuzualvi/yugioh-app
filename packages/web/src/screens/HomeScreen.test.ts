@@ -4,7 +4,7 @@ import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../types/contracts";
-import type { ActiveDuelEntry } from "@yugioh-app/contracts";
+import type { ActiveDuelEntry, ActiveRoomEntry } from "@yugioh-app/contracts";
 
 afterEach(() => {
   cleanup();
@@ -12,7 +12,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function setupMocks(user: User, activeDuels: ActiveDuelEntry[] = []) {
+function setupMocks(
+  user: User,
+  activeDuels: ActiveDuelEntry[] = [],
+  activeRooms: ActiveRoomEntry[] = [],
+) {
   vi.doMock("../context/AuthContext", () => ({
     useAuth: () => ({ user, logout: vi.fn() }),
   }));
@@ -26,7 +30,7 @@ function setupMocks(user: User, activeDuels: ActiveDuelEntry[] = []) {
     }),
   }));
   vi.doMock("../api/room", () => ({
-    listActiveDuels: vi.fn().mockResolvedValue({ duels: activeDuels }),
+    listActiveDuels: vi.fn().mockResolvedValue({ duels: activeDuels, rooms: activeRooms }),
   }));
 }
 
@@ -53,14 +57,14 @@ describe("HomeScreen — admin invite section", () => {
   });
 });
 
-describe("HomeScreen — active duels queue", () => {
-  it("shows empty state when there are no active duels", async () => {
-    setupMocks(memberUser, []);
+describe("HomeScreen — active games queue", () => {
+  it("shows empty state when both duels and rooms are empty", async () => {
+    setupMocks(memberUser, [], []);
 
     const { HomeScreen } = await import("./HomeScreen");
     render(React.createElement(MemoryRouter, null, React.createElement(HomeScreen)));
 
-    expect(screen.getByText("No duels in progress.")).toBeTruthy();
+    expect(screen.getByText("No games in progress.")).toBeTruthy();
   });
 
   it("renders a link for each active duel", async () => {
@@ -84,6 +88,50 @@ describe("HomeScreen — active duels queue", () => {
 
     const link = await findByRole("link", { name: /vs Bob/ });
     expect(link.getAttribute("href")).toBe("/duel/duel-abc");
+  });
+
+  it("renders a link for each active room", async () => {
+    const rooms: ActiveRoomEntry[] = [
+      {
+        roomId: "room-xyz",
+        status: "open",
+        myRole: "creator",
+        opponentDisplayName: null,
+        roomDeadlineAt: Date.now() + 1800_000,
+        createdAt: Date.now(),
+      },
+    ];
+    setupMocks(memberUser, [], rooms);
+
+    const { HomeScreen } = await import("./HomeScreen");
+    const { findByRole } = render(
+      React.createElement(MemoryRouter, null, React.createElement(HomeScreen)),
+    );
+
+    const link = await findByRole("link", { name: /Waiting for opponent/ });
+    expect(link.getAttribute("href")).toBe("/duel/room-xyz");
+  });
+
+  it("does not show empty state when only rooms are present", async () => {
+    const rooms: ActiveRoomEntry[] = [
+      {
+        roomId: "room-xyz",
+        status: "filled",
+        myRole: "opponent",
+        opponentDisplayName: "Alice",
+        roomDeadlineAt: Date.now() + 1800_000,
+        createdAt: Date.now(),
+      },
+    ];
+    setupMocks(memberUser, [], rooms);
+
+    const { HomeScreen } = await import("./HomeScreen");
+    const { findByRole } = render(
+      React.createElement(MemoryRouter, null, React.createElement(HomeScreen)),
+    );
+
+    await findByRole("link", { name: /vs Alice/ });
+    expect(screen.queryByText("No games in progress.")).toBeNull();
   });
 
   it("shows 'Waiting for opponent' when opponentDisplayName is null", async () => {

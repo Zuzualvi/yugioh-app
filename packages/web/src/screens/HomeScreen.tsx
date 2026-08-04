@@ -4,7 +4,7 @@ import { createInvite } from "../api/admin";
 import { listActiveDuels } from "../api/room";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import type { ActiveDuelEntry } from "@yugioh-app/contracts";
+import type { ActiveDuelEntry, ActiveRoomEntry } from "@yugioh-app/contracts";
 
 export function HomeScreen() {
   const { user, logout } = useAuth();
@@ -14,10 +14,14 @@ export function HomeScreen() {
   const [inviteExpiry, setInviteExpiry] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [activeDuels, setActiveDuels] = useState<ActiveDuelEntry[]>([]);
+  const [activeRooms, setActiveRooms] = useState<ActiveRoomEntry[]>([]);
 
   useEffect(() => {
     listActiveDuels()
-      .then(({ duels }) => setActiveDuels(duels))
+      .then(({ duels, rooms }) => {
+        setActiveDuels(duels);
+        setActiveRooms(rooms);
+      })
       .catch(() => {
         // silently ignore — queue stays empty
       });
@@ -109,11 +113,11 @@ export function HomeScreen() {
           padding: "32px 20px",
         }}
       >
-        {/* Your active duels */}
+        {/* Your active games — duels and rooms */}
         <div style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>Your active duels</h2>
-          {activeDuels.length === 0 ? (
-            <p style={{ color: "var(--text-1)", fontSize: "0.9375rem" }}>No duels in progress.</p>
+          <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>Your active games</h2>
+          {activeDuels.length === 0 && activeRooms.length === 0 ? (
+            <p style={{ color: "var(--text-1)", fontSize: "0.9375rem" }}>No games in progress.</p>
           ) : (
             <ul
               style={{
@@ -161,6 +165,46 @@ export function HomeScreen() {
                       }}
                     >
                       {duel.status === "waiting_for_opponent" ? "waiting" : "active"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              {activeRooms.map((room) => (
+                <li key={room.roomId}>
+                  <Link
+                    to={`/duel/${room.roomId}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      background: "var(--bg-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      textDecoration: "none",
+                      color: "inherit",
+                      minHeight: 44,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                    }}
+                  >
+                    <span style={{ fontSize: "0.9375rem" }}>
+                      {room.opponentDisplayName
+                        ? `vs ${room.opponentDisplayName}`
+                        : "Waiting for opponent"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "var(--text-1)",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      room
                     </span>
                   </Link>
                 </li>
