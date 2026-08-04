@@ -61,6 +61,18 @@ Types and schemas in `packages/contracts/` must reflect what the specs say,
 not what feels convenient. If you need a new message shape, update the spec
 first and have it reviewed, then update contracts. Do not invent wire formats.
 
+**Deleting a shared contract is not a slice-local change.** `packages/contracts/` is
+imported by every other package, so removing an export breaks files no single slice
+owns. A spec that deletes one must either **list the collateral-damage files by path**
+or **define a deprecation shim** that keeps the old export working until the last
+consumer is gone. If you are implementing and you find a deletion the spec did not
+enumerate, that is a **stop-and-ask**, not something to work around.
+
+This exists because it happened: deleting `CreateDuelResultSchema`,
+`JoinDuelResultSchema` and `PreJoinDuelInfoSchema` broke four files the slice did not
+own, and the engineer stubbed them to get green — which destroyed working UI. The
+build passed. The product did not.
+
 ---
 
 ## How to add a new package
@@ -79,9 +91,24 @@ first and have it reviewed, then update contracts. Do not invent wire formats.
 
 ## Git / push protocol (one checkout per writer)
 
+**Clone from GitHub. There is exactly one source:**
+
+```sh
+git clone https://github.com/Zuzualvi/yugioh-app.git
+```
+
+**Never clone a local path.** Not `/workspace/yugioh-app`, not a sibling agent's
+directory, not a path someone mentioned in a brief. A clone of a local checkout gets a
+local `origin`, and every push then lands in a directory on the machine while
+reporting success — including the verification in step 5 below, which compared SHAs
+against whatever `origin` happened to be. An engineer on this repo reported
+`SHA pushed, VERIFIED (remote == local)` for 984 green tests that existed only inside
+its own container. The branch was never on GitHub. Nothing in the check was wrong; the
+check was pointed at a mirror.
+
 **Work in your OWN clone.** Do not build in a checkout that another agent is also
-working in. Clone the repo to your own directory, `npm install` there, and stay there
-for the whole task.
+working in. Clone to your own directory, `npm install` there, and stay there for the
+whole task.
 
 This rule replaces an earlier "shared working tree" protocol, and it was written
 after that protocol failed in a way nothing caught. Two specialists ran concurrently
@@ -109,13 +136,28 @@ the review round that catches this, and far cheaper than the one that doesn't.
    uncommitted changes you did not account for.
 4. Push your branch and open a PR. On network error, retry with exponential back-off:
    2 s → 4 s → 8 s → 16 s.
-5. Verify remote == local:
+5. **Proof of delivery — verify the remote is GitHub, then that it has your commit.**
+   Both halves, in this order. The first is the one that was missing:
    ```sh
+   branch=$(git rev-parse --abbrev-ref HEAD)
+   url=$(git remote get-url origin)
+   case "$url" in
+     https://github.com/*|git@github.com:*) ;;
+     *) echo "NOT DELIVERED: origin is $url, not a github.com remote"; exit 1 ;;
+   esac
    local=$(git rev-parse HEAD)
-   remote=$(git ls-remote origin <your-branch> | awk '{print $1}')
-   [ "$local" = "$remote" ] && echo VERIFIED || echo MISMATCH
+   remote=$(git ls-remote "$url" "$branch" | awk '{print $1}')
+   [ "$local" = "$remote" ] && echo "VERIFIED $local on $url" || echo MISMATCH
    ```
-6. Report the pushed SHA as proof of delivery in your task report.
+   Copy it as-is — it reads your current branch itself. It deliberately contains no
+   `<placeholder>`: bash parses `<` as a redirection, so a snippet with one in it dies
+   on a syntax error, and a verification step that errors out is a verification step
+   nobody runs twice.
+   Note that `ls-remote` is given the URL, not the name `origin` — a check that can
+   pass against a local mirror is not a check, and this one silently did.
+6. Report the pushed SHA **and the remote URL you verified it against** as proof of
+   delivery in your task report. A SHA on its own is not proof of anything: it is
+   equally consistent with a commit that reached GitHub and one that reached a folder.
 
 ### The gate is the WHOLE repo, not your package
 
@@ -182,6 +224,17 @@ npm run verify
 Runs: `typecheck → lint → arch:check → actionlint → docs:check → test` — the same
 steps as the GitHub Actions pipeline. All must be green before any push or PR. Run it
 whole; see "The gate is the WHOLE repo" above for why a scoped run is not a gate.
+
+**`npx tsc` from the repo root typechecks NOTHING — do not use it as a check.** The
+root `tsconfig.json` is solution-style (`{"files": [], "references": [...]}`) so that a
+bare `tsc` no longer emits ~904 stray `.js`/`.d.ts`/`.map` files across the workspace,
+which it used to, and whose only cleanup (`git clean -f`) also deleted gitignored
+`packages/engine/assets/` and broke the next E2E run. The referenced projects do not set
+`composite: true`, so those references are inert: `npx tsc` exits 0 having checked
+nothing. That is an acceptable trade for killing the stray-emit trap, but it means a
+green `npx tsc` is not evidence of anything. **`npm run typecheck` is the real
+typecheck** — it runs each workspace's own `typecheck` script plus the root
+entrypoints project, and it is what `verify` and CI run.
 
 **GitHub Actions** (`.github/workflows/ci.yml`) is the remote gate. See
 `ci/README.md` for the one-time step to enable it — requires a token with
