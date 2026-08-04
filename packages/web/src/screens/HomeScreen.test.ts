@@ -67,7 +67,7 @@ describe("HomeScreen — active games queue", () => {
     expect(screen.getByText("No games in progress.")).toBeTruthy();
   });
 
-  it("renders a link for each active duel", async () => {
+  it("renders a link for each active duel pointing at /duel/:duelId", async () => {
     const duels: ActiveDuelEntry[] = [
       {
         duelId: "duel-abc",
@@ -90,7 +90,7 @@ describe("HomeScreen — active games queue", () => {
     expect(link.getAttribute("href")).toBe("/duel/duel-abc");
   });
 
-  it("renders a link for each active room", async () => {
+  it("renders a link for each active room pointing at /duel/:roomId/room", async () => {
     const rooms: ActiveRoomEntry[] = [
       {
         roomId: "room-xyz",
@@ -109,7 +109,7 @@ describe("HomeScreen — active games queue", () => {
     );
 
     const link = await findByRole("link", { name: /Waiting for opponent/ });
-    expect(link.getAttribute("href")).toBe("/duel/room-xyz");
+    expect(link.getAttribute("href")).toBe("/duel/room-xyz/room");
   });
 
   it("does not show empty state when only rooms are present", async () => {
@@ -131,6 +131,29 @@ describe("HomeScreen — active games queue", () => {
     );
 
     await findByRole("link", { name: /vs Alice/ });
+    expect(screen.queryByText("No games in progress.")).toBeNull();
+  });
+
+  it("does not show empty state when only duels are present", async () => {
+    const duels: ActiveDuelEntry[] = [
+      {
+        duelId: "duel-abc",
+        status: "active",
+        mySeat: 0,
+        opponentDisplayName: "Carol",
+        onClockSeat: null,
+        deadlineAt: null,
+        createdAt: Date.now(),
+      },
+    ];
+    setupMocks(memberUser, duels, []);
+
+    const { HomeScreen } = await import("./HomeScreen");
+    const { findByRole } = render(
+      React.createElement(MemoryRouter, null, React.createElement(HomeScreen)),
+    );
+
+    await findByRole("link", { name: /vs Carol/ });
     expect(screen.queryByText("No games in progress.")).toBeNull();
   });
 

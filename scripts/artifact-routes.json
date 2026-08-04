@@ -95,6 +95,12 @@
   },
   {
     "method": "GET",
+    "path": "/api/duels/active",
+    "expectedStatus": 401,
+    "note": "room router: listActiveDuels, requireSession guard"
+  },
+  {
+    "method": "GET",
     "path": "/api/duels/join/bad-token",
     "expectedStatus": 404,
     "note": "room router: ONLY unauthenticated route; 404 for bad token"

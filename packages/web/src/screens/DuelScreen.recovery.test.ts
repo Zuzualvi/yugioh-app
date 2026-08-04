@@ -74,6 +74,7 @@ describe("C0 Scenario 1+2: fresh tab recovery via getSeatCredential", () => {
   beforeEach(() => {
     vi.doMock("../api/room", () => ({
       getSeatCredential: vi.fn().mockResolvedValue({ seat: 0, seatToken: "recovered-token" }),
+      listActiveDuels: vi.fn().mockResolvedValue({ duels: [], rooms: [] }),
     }));
   });
 
@@ -128,6 +129,9 @@ describe("C0 Scenario 3: no resume path from Home (documented gap)", () => {
       useToast: () => ({ addToast: vi.fn() }),
     }));
     vi.doMock("../api/admin", () => ({ createInvite: vi.fn() }));
+    vi.doMock("../api/room", () => ({
+      listActiveDuels: vi.fn().mockResolvedValue({ duels: [], rooms: [] }),
+    }));
 
     const { HomeScreen } = await import("./HomeScreen");
     render(React.createElement(MemoryRouter, null, React.createElement(HomeScreen)));

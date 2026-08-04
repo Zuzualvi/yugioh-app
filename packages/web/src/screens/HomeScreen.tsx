@@ -172,7 +172,7 @@ export function HomeScreen() {
               {activeRooms.map((room) => (
                 <li key={room.roomId}>
                   <Link
-                    to={`/duel/${room.roomId}`}
+                    to={`/duel/${room.roomId}/room`}
                     style={{
                       display: "flex",
                       alignItems: "center",
