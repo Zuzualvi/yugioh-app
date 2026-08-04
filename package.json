@@ -9,7 +9,10 @@
     "packages/*"
   ],
   "scripts": {
+    "generate:docs": "node packages/web/scripts/buildDocsManifest.mjs",
+    "pretypecheck": "npm run generate:docs",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc --project tsconfig.root-entrypoints.json",
+    "pretest": "npm run generate:docs",
     "lint": "eslint . && prettier --check .",
     "arch:check": "depcruise packages --config .dependency-cruiser.cjs",
     "test": "vitest run",
