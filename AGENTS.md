@@ -139,15 +139,20 @@ the review round that catches this, and far cheaper than the one that doesn't.
 5. **Proof of delivery — verify the remote is GitHub, then that it has your commit.**
    Both halves, in this order. The first is the one that was missing:
    ```sh
+   branch=$(git rev-parse --abbrev-ref HEAD)
    url=$(git remote get-url origin)
    case "$url" in
      https://github.com/*|git@github.com:*) ;;
      *) echo "NOT DELIVERED: origin is $url, not a github.com remote"; exit 1 ;;
    esac
    local=$(git rev-parse HEAD)
-   remote=$(git ls-remote "$url" <your-branch> | awk '{print $1}')
-   [ "$local" = "$remote" ] && echo "VERIFIED on $url" || echo MISMATCH
+   remote=$(git ls-remote "$url" "$branch" | awk '{print $1}')
+   [ "$local" = "$remote" ] && echo "VERIFIED $local on $url" || echo MISMATCH
    ```
+   Copy it as-is — it reads your current branch itself. It deliberately contains no
+   `<placeholder>`: bash parses `<` as a redirection, so a snippet with one in it dies
+   on a syntax error, and a verification step that errors out is a verification step
+   nobody runs twice.
    Note that `ls-remote` is given the URL, not the name `origin` — a check that can
    pass against a local mirror is not a check, and this one silently did.
 6. Report the pushed SHA **and the remote URL you verified it against** as proof of
