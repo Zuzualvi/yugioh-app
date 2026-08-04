@@ -6,7 +6,9 @@ import type { LoadedCatalog } from "./catalog/loadCatalog.js";
 import { createAuthRouter, createMeRouter, createAdminRouter } from "./routes/auth.js";
 import { createCardsRouter } from "./routes/cards.js";
 import { createDecksRouter } from "./routes/decks.js";
+import { createOpsRouter } from "./routes/ops.js";
 import { requireSession, requireAdmin } from "./middleware/requireSession.js";
+import { requireOpsToken } from "./middleware/requireOpsToken.js";
 import { corsMiddleware, allowedOriginsFromEnv } from "./middleware/cors.js";
 import { createDuelRouter } from "./duel/duelRoutes.js";
 import { createRoomRouter } from "./room/roomRouter.js";
@@ -64,6 +66,11 @@ export function createApp(
 
   // 12. Admin routes — requires session + admin role
   app.use("/api/admin", requireSession(db), requireAdmin, createAdminRouter(db));
+
+  // 12b. Ops routes — bearer-token authenticated, separate mount from /api/admin.
+  // No session, no cookie, no role check — the token is the whole credential.
+  // Mounted here (test harness) AND in prod-server.ts (shipped bundle).
+  app.use("/api/ops", requireOpsToken, createOpsRouter(db));
 
   // 13. Room router — handles pre-duel room lifecycle.
   // Mounted at /api/duels BEFORE the duel router: both mount at /api/duels,

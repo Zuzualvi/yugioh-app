@@ -153,5 +153,60 @@
     "path": "/api/duels/test-duel-id",
     "expectedStatus": 401,
     "note": "duel board router: requireSession guard"
+  },
+
+  {
+    "method": "GET",
+    "path": "/api/ops/migrations",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ops/counts",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ops/users",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ops/user/test-user-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ops/duel/test-duel-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ops/room/test-room-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ops/duel/test-duel-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ops/room/test-room-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ops/user/test-user-id",
+    "expectedStatus": 503,
+    "note": "ops API: no OPS_ADMIN_TOKEN set → ops_disabled"
   }
 ]
