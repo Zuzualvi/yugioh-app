@@ -153,22 +153,33 @@ export function DuelScreen() {
     if (credentialLoading) return; // wait for credential fetch to complete
 
     if (useMock) {
-      const seat: Seat = locationState.seat ?? 0;
-      import("../mock/duelSession")
-        .then(({ createMockDuelSession }) => {
-          const session = createMockDuelSession(seat, handleServerMessage);
-          mockSessionRef.current = session;
-          setConnected(true);
-          setMySeat(seat);
-          session.start();
-        })
-        .catch(() => {
-          setError("Failed to load mock session");
-        });
-      return () => {
-        mockSessionRef.current?.stop();
-        mockSessionRef.current = null;
-      };
+      // C1: The import() lives inside if (import.meta.env.DEV) so Rollup replaces
+      // that condition with if (false) in production builds, eliminating the chunk.
+      // In production useMock=true renders the credential-error path (ZUH-21).
+      if (import.meta.env.DEV) {
+        const seat: Seat = locationState.seat ?? 0;
+        import("../mock/duelSession")
+          .then(({ createMockDuelSession }) => {
+            const session = createMockDuelSession(seat, handleServerMessage);
+            mockSessionRef.current = session;
+            setConnected(true);
+            setMySeat(seat);
+            session.start();
+          })
+          .catch(() => {
+            setError("Failed to load mock session");
+          });
+        return () => {
+          mockSessionRef.current?.stop();
+          mockSessionRef.current = null;
+        };
+      }
+      // Production: mock unavailable — same hard error as a credential failure,
+      // never a silent fake board.
+      setCredentialError(
+        "Mock duel is not available. Please join a real duel from the home screen.",
+      );
+      return;
     }
 
     if (!seatToken) return; // credential fetch failed — handled by credentialError state
