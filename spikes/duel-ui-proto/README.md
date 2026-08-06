@@ -48,6 +48,14 @@ npm run build    # → dist/index.html
 3. **Attack with everything** — targets picked on the board; `attacks[]` re-indexed between cycles.
 4. **Waiting · clock · forfeit** — the off-clock screen, clock escalation, timeout forfeit.
 
+## Known scripting simplifications
+
+Each scenario scripts **one** line of play. Consequences a reviewer will notice:
+- Choosing a different tribute/target than the scripted one still advances the scripted outcome
+  (e.g. Card Trooper is always the monster that goes to the graveyard).
+- Picking a legal verb the scenario does not script shows a toast rather than branching.
+Neither is a design statement. Both are the cost of fixtures instead of an engine.
+
 ## Prototype-only chrome
 
 The three controls left of the `│` in the top bar do not exist in the product:
