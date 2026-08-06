@@ -4,19 +4,33 @@ linear_project: Duel UI Rebuild
 
 # Duel screen — design deliverable (surface inventory · flows · component contract · usability findings · answer-outcome matrix)
 
-**Date:** 2026-08-06 · **Discovery issue:** ZUH-81 · **Revision 4** (adds the card-provenance badge and the deferred-findings register)
-**Companions:** `docs/reference/2026-08-05-duel-ui-competitor-teardown.md` (visual baseline) · `docs/specs/2026-08-05-duel-ui-intent-model-and-backend-delta.md` (intent/protocol disagreements and the backend delta)
-**Prototype:** branch `proto/duel-ui`, commit `7e71813ff0d681cad5b0d9ad090bcaedb7734283`, code in `spikes/duel-ui-proto/`. A **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable; what survives is this document, the fixtures, and the backend deltas.
+**Date:** 2026-08-06 · **Discovery issue:** ZUH-81 · **Revision 5** (relocates the fixtures and the F14 reference test off the disposable prototype branch)
+**Companions:** `docs/reference/2026-08-05-duel-ui-competitor-teardown.md` (visual baseline) · `docs/specs/2026-08-05-duel-ui-intent-model-and-backend-delta.md` (intent/protocol disagreements and the backend delta) · **`docs/specs/2026-08-06-duel-ui-fixtures/`** (the fixtures and the F14 reference test — read its README before porting them)
 
-This is the artifact engineering builds from. Five parts: **surface inventory** · **flows** · **component contract** (§0a and §13a are normative) · **usability findings** with the fixed/deferred triage · **answer-outcome matrix**.
+**Prototype:** branch `proto/duel-ui`, commit `7e71813ff0d681cad5b0d9ad090bcaedb7734283`, code in `spikes/duel-ui-proto/`. A **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable.
+
+## What survives the prototype, and where each part lives
+
+The prototype dies. Three things do not, and **all three now have a home on `master`** — this revision exists because two of them did not:
+
+| Survives | Lives at |
+| --- | --- |
+| **This document** — the component contract engineering builds from | `docs/specs/2026-08-06-duel-ui-design.md` |
+| **The fixtures** — visual-regression baselines and the data the acceptance criteria are written against | `docs/specs/2026-08-06-duel-ui-fixtures/` |
+| **`answer-matrix.py`** — the reference implementation of requirement **F14**, a permanent gate | `docs/specs/2026-08-06-duel-ui-fixtures/answer-matrix.py` |
+| The backend deltas | §12 below, and the companion spec |
+
+⚠️ **The fixtures are typed against copied shapes with the MH-1 delta already applied, so they will not typecheck against the real contracts until MH-1 ships.** That is why they sit in `docs/` rather than under `packages/`. Engineering ports them into the test tree when MH-1 lands — the README in that folder says exactly how, and warns against reshaping a fixture to fit a contract that disagrees with it.
 
 ## The two rules this document exists to enforce
 
-**1 · The answer-fidelity invariant (§0a).** The action performed must be the action the confirming control named, and for any decision with more than one legal answer, distinct answers must produce distinct observable outcomes. **Test by enumeration, never by sample.** This is here because the same defect was found and reported fixed three times — tribute selection ignored, decline-equals-confirm, and a chain prompt whose button read `Activate "Book of Moon"` while the engine resolved Solemn Judgment and charged its pay-half-your-LP cost. The single root cause was two continuation mechanisms plus an implicit hardcoded fall-through keyed to the *step*, so it could not vary with the answer; replaced with one `branch(answer) => Step[]` that every path goes through. `answer-matrix.py` on the prototype branch is the reference implementation and exits non-zero on any collision. **Enumeration immediately found a bug sampling would not have:** a single pre-selected candidate deselected on click and dead-ended the step.
+**1 · The answer-fidelity invariant (§0a).** The action performed must be the action the confirming control named, and for any decision with more than one legal answer, distinct answers must produce distinct observable outcomes. **Test by enumeration, never by sample.** This is here because the same defect was found and reported fixed three times — tribute selection ignored, decline-equals-confirm, and a chain prompt whose button read `Activate "Book of Moon"` while the engine resolved Solemn Judgment and charged its pay-half-your-LP cost. The single root cause was two continuation mechanisms plus an implicit hardcoded fall-through keyed to the *step*, so it could not vary with the answer; replaced with one `branch(answer) => Step[]` that every path goes through. **Enumeration immediately found a bug sampling would not have:** a single pre-selected candidate deselected on click and dead-ended the step.
 
 **2 · State causes, never generate them (§13a, PRD requirement H).** Where the engine states a cause, the screen may state it. Where it does not, the screen says nothing — a fabricated cause in a rules-enforcing client is a rules claim. Three usability findings are **deferred under this rule with their unblocking capability named**, not rejected: a computed activation cost needs a structured cost on the wire; a generated reason for an absent option needs an omission reason on the wire; the LP-polarity label waits on evidence rather than on a delta.
 
-**What the rule does not forbid — stating facts about our own data.** The images are modern post-errata card faces; our rendered text is the pre-errata 2010 text the engine enforces. 36 cards disagree (`docs/reference/2026-07-13-preerrata-desc-overrides.json`). The **provenance badge** — copy fixed at `Edison text differs from this printing`, one clause, no second clause — appears **wherever a card image and our rendered effect text are shown together**, which today is the inspector alone. Keyed off set membership, so a 37th entry badges itself with no UI change. **No printing visible, no badge:** if art is loading or failed, the badge is suppressed, because it would otherwise assert a difference from something the player cannot see.
+**What the rule does not forbid — stating facts about our own data.** The images are modern post-errata card faces; our rendered text is the pre-errata 2010 text the engine enforces. 36 cards disagree (`docs/reference/2026-07-13-preerrata-desc-overrides.json`). The **provenance badge** — copy fixed at `Edison text differs from this printing`, one clause — appears **wherever a card image and our rendered effect text are shown together**, which today is the inspector alone. Keyed off set membership, so a 37th entry badges itself with no UI change. **No printing visible, no badge:** if art is loading or failed, the badge is suppressed rather than asserting a difference the player cannot see.
+
+**A warning that generalises beyond the badge.** During the badge work, one fixture's pre-errata text was found to be the designer's own paraphrase rather than the corpus's verbatim string. A badge asserting that our text is authoritative over the printed card, sitting above invented text, would have been worse than no badge at all — it is exactly the failure rule 2 exists to prevent, and it was in the one place nobody thought to check. Every reachable card was then verified against the corpus: zero mismatches. **Do not hand-edit those strings.**
 
 ## Verified independently by the Product Lead, not accepted on report
 
@@ -1367,7 +1381,7 @@ one answer cannot detect that — the one path you check is the one path that wo
    selection object you are about to send. Do not build it from a parallel source.
 3. **Test by enumeration, never by sample.** For each decision under test, loop over *every* legal
    answer including the decline, drive to a settled state, fingerprint the observable result, and
-   assert pairwise distinctness. `spikes/duel-ui-proto/answer-matrix.py` is a working reference
+   assert pairwise distinctness. `docs/specs/2026-08-06-duel-ui-fixtures/answer-matrix.py` is a working reference
    implementation, and `answer-outcome-matrix.md` is its output.
 4. **A pair that legitimately converges must be named and justified.** Some answers genuinely reach
    the same place — a Book of Moon flip before a Torrential Tribute resolves is inconsequential to
@@ -1390,7 +1404,7 @@ one answer cannot detect that — the one path you check is the one path that wo
       the step. (Found by the enumerating test, not by a human.)
 
 This is what engineering builds. The prototype dies; this, the fixtures in
-`spikes/duel-ui-proto/src/fixtures/`, and the backend deltas in §12 do not.
+`docs/specs/2026-08-06-duel-ui-fixtures/`, and the backend deltas in §12 do not.
 
 ---
 
@@ -2316,7 +2330,7 @@ anything else is a product bug, not a style choice.
 - [ ] Every auto-answered decision renders an `AutoAnswerReceipt` (§2b) — never a `QuestionBar`.
       [B1][M2]
 - [ ] `chooseZones: true` disables `SelectZone` auto-answering except when `zones.length === 1`.
-- [ ] Every auto-answer is unit-tested against a fixture in `spikes/duel-ui-proto/src/fixtures/`.
+- [ ] Every auto-answer is unit-tested against a fixture in `docs/specs/2026-08-06-duel-ui-fixtures/`.
 
 ---
 
@@ -2868,7 +2882,7 @@ Two buckets, and the distinction is the one that matters:
 
 # Answer × outcome matrix — the distinct-outcomes invariant
 
-**Generated by** `spikes/duel-ui-proto/answer-matrix.py` on the built prototype,
+**Generated by** `docs/specs/2026-08-06-duel-ui-fixtures/answer-matrix.py` on the built prototype,
 real mouse events at real coordinates.
 
 **Invariant:** for any decision with more than one legal answer, distinct answers must
