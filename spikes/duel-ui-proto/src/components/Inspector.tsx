@@ -1,4 +1,5 @@
 import { card } from "../fixtures/cards";
+import { CardArt } from "./CardArt";
 import { frameClass } from "./CardTile";
 
 interface Props {
@@ -40,6 +41,9 @@ export function Inspector({ code, pushed, pinned, onClose }: Props) {
   return (
     <div className={`inspector${pinned ? " pinned" : ""}`} data-testid="inspector">
       {pushed && <span className="pushtag">AUTO-PUSHED</span>}
+      {/* Recognition first. If the image never arrives CardArt renders nothing, and the
+          panel is exactly what it was before art existed. */}
+      <CardArt code={code} width={228} className="inspector-art" eager />
       <div
         className={`frame ${frameClass(code)}`}
         style={{ height: 4, marginBottom: 8, borderRadius: 2 }}

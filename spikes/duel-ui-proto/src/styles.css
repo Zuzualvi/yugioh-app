@@ -1451,3 +1451,79 @@ kbd {
   color: var(--warn);
   font-size: 12px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Card art. Three states; `failed` renders nothing at all, so every surface below
+   degrades to exactly the text-only layout it had before art existed.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.cardart {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  flex: 0 0 auto;
+  /* loading placeholder: holds the aspect ratio so nothing jumps when the image lands */
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+}
+.cardart.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 80%
+  );
+  animation: artshimmer 1.1s linear infinite;
+}
+@keyframes artshimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.cardart img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.cardart.ok img {
+  opacity: 1;
+}
+
+/* inspector — the primary visual, above the rendered text */
+.inspector-art {
+  margin: 0 auto 10px;
+  border: 1px solid var(--border);
+}
+
+/* board / hand / answer-space tiles — art fills the tile, our own overlays sit on top */
+.cardart.fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  z-index: 0;
+}
+.card .frame,
+.card .nm,
+.card .st,
+.card .tick,
+.card .corner {
+  position: relative;
+  z-index: 1;
+}
+/* the name and stat strips need to stay legible over artwork */
+.card:has(.cardart.ok) .nm {
+  background: linear-gradient(180deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0.72));
+  text-shadow: 0 1px 2px #000;
+}
+.card:has(.cardart.ok) .st {
+  background: rgba(9, 11, 15, 0.86);
+  text-shadow: 0 1px 2px #000;
+}

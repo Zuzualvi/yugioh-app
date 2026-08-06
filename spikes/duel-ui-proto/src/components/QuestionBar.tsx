@@ -21,6 +21,7 @@
 import { card, cardName } from "../fixtures/cards";
 import type { CardEntry, ChainLink, DuelDecision, LocationCode, Seat } from "../fixtures/types";
 import type { CardRef } from "../fixtures/scenarios";
+import { CardArt } from "./CardArt";
 import { frameClass } from "./CardTile";
 
 const LOC_LABEL: Record<LocationCode, string> = {
@@ -95,6 +96,7 @@ function Thumb({
         aria-pressed={selected}
         style={{ cursor: "pointer" }}
       >
+        <CardArt code={e.code} width={0} fill />
         <div className={`frame ${frameClass(e.code)}`} />
         <div className="nm">{c?.name ?? (e.code === 0 ? "Set card" : e.name || `#${e.code}`)}</div>
         <div className="st">

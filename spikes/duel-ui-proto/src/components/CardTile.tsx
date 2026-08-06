@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { card } from "../fixtures/cards";
 import type { Seat, ZoneCard } from "../fixtures/types";
 import { POS_FACEDOWN_ATK, POS_FACEDOWN_DEF, POS_FACEUP_DEF } from "../fixtures/board";
+import { CardArt } from "./CardArt";
 
 export function frameClass(code: number): string {
   const c = card(code);
@@ -81,6 +82,7 @@ export function CardTile({
       onMouseLeave={() => onHover?.(null)}
       title={c?.name ?? `Card ${zc.code}`}
     >
+      <CardArt code={zc.code} width={0} fill />
       <div className={`frame ${frameClass(zc.code)}`} />
       <div className="nm">{c?.name ?? `#${zc.code}`}</div>
       <div className="st">
