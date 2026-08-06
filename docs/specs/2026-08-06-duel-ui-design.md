@@ -4,36 +4,25 @@ linear_project: Duel UI Rebuild
 
 # Duel screen — design deliverable (surface inventory · flows · component contract · usability findings · answer-outcome matrix)
 
-**Date:** 2026-08-06 · **Discovery issue:** ZUH-81
+**Date:** 2026-08-06 · **Discovery issue:** ZUH-81 · **Revision 4** (adds the card-provenance badge and the deferred-findings register)
 **Companions:** `docs/reference/2026-08-05-duel-ui-competitor-teardown.md` (visual baseline) · `docs/specs/2026-08-05-duel-ui-intent-model-and-backend-delta.md` (intent/protocol disagreements and the backend delta)
-**Prototype:** branch `proto/duel-ui`, commit `4d7ced1190688f682af9c626c7261b7ddf70e397`, code in `spikes/duel-ui-proto/`. That is a **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable; what survives is this document.
+**Prototype:** branch `proto/duel-ui`, commit `7e71813ff0d681cad5b0d9ad090bcaedb7734283`, code in `spikes/duel-ui-proto/`. A **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable; what survives is this document, the fixtures, and the backend deltas.
 
-This is the artifact engineering builds from. Five parts:
+This is the artifact engineering builds from. Five parts: **surface inventory** · **flows** · **component contract** (§0a and §13a are normative) · **usability findings** with the fixed/deferred triage · **answer-outcome matrix**.
 
-1. **Surface inventory** — every panel, overlay and sheet, the job each does, its entry and exit points, and its required states.
-2. **Flows** — the plays that happen every game, the decision sequence the engine actually emits for each, failure modes and recovery.
-3. **Component contract** — component tree, props, variants, every state, interactions, data bindings, acceptance criteria, backend delta, and where the code contradicted the design brief. **§0a is the answer-fidelity invariant and is normative.**
-4. **Usability findings** — an independent pass by a fresh evaluator that had not seen the design rationale: 5 blockers, 13 major, 18 minor, 2 cosmetic, with the triage of what was fixed and what was **rejected with reasons**. Nothing was dropped silently.
-5. **Answer-outcome matrix** — 8 decision points, 24 answers, enumerated rather than sampled.
+## The two rules this document exists to enforce
 
-## The one rule this document exists to enforce
+**1 · The answer-fidelity invariant (§0a).** The action performed must be the action the confirming control named, and for any decision with more than one legal answer, distinct answers must produce distinct observable outcomes. **Test by enumeration, never by sample.** This is here because the same defect was found and reported fixed three times — tribute selection ignored, decline-equals-confirm, and a chain prompt whose button read `Activate "Book of Moon"` while the engine resolved Solemn Judgment and charged its pay-half-your-LP cost. The single root cause was two continuation mechanisms plus an implicit hardcoded fall-through keyed to the *step*, so it could not vary with the answer; replaced with one `branch(answer) => Step[]` that every path goes through. `answer-matrix.py` on the prototype branch is the reference implementation and exits non-zero on any collision. **Enumeration immediately found a bug sampling would not have:** a single pre-selected candidate deselected on click and dead-ended the step.
 
-**The answer-fidelity invariant (§0a).** The action performed must be the action the confirming control named, and for any decision with more than one legal answer, distinct answers must produce distinct observable outcomes. Test it **by enumeration, never by sample.**
+**2 · State causes, never generate them (§13a, PRD requirement H).** Where the engine states a cause, the screen may state it. Where it does not, the screen says nothing — a fabricated cause in a rules-enforcing client is a rules claim. Three usability findings are **deferred under this rule with their unblocking capability named**, not rejected: a computed activation cost needs a structured cost on the wire; a generated reason for an absent option needs an omission reason on the wire; the LP-polarity label waits on evidence rather than on a delta.
 
-This is here because the same defect was found and reported fixed **three times** — tribute selection ignored, decline-equals-confirm, and a chain prompt whose button read `Activate "Book of Moon"` while the engine resolved Solemn Judgment and charged its pay-half-your-LP cost. That last one was found by the CEO. The single root cause was two continuation mechanisms plus an implicit hardcoded fall-through, and the fall-through was keyed to the *step*, so it could not vary with the answer. It was replaced with one mechanism (`branch(answer) => Step[]`) that every path goes through, including the client's own auto-answers, with board states as functions of the accumulated choices rather than snapshots. `answer-matrix.py` on the prototype branch is the reference implementation and exits non-zero on any collision.
-
-**Enumeration found a bug that sampling would not have:** with a single pre-selected candidate, clicking it deselected and dead-ended the step by disabling the only enabled control.
+**What the rule does not forbid — stating facts about our own data.** The images are modern post-errata card faces; our rendered text is the pre-errata 2010 text the engine enforces. 36 cards disagree (`docs/reference/2026-07-13-preerrata-desc-overrides.json`). The **provenance badge** — copy fixed at `Edison text differs from this printing`, one clause, no second clause — appears **wherever a card image and our rendered effect text are shown together**, which today is the inspector alone. Keyed off set membership, so a 37th entry badges itself with no UI change. **No printing visible, no badge:** if art is loading or failed, the badge is suppressed, because it would otherwise assert a difference from something the player cannot see.
 
 ## Verified independently by the Product Lead, not accepted on report
 
-Re-driven by hand with real mouse events at real coordinates, on the shipped static build:
+Re-driven by hand with real mouse events on the shipped static build: the flagship tribute summon completes with zero console errors and **the chosen tribute is the card that dies**; every visible control returns itself from `document.elementFromPoint`; **four pairwise-distinguishable clock states** and a **timeout forfeit at t+38.3s** naming its cause; **three chain branches producing three distinct rules-correct outcomes** (Book of Moon → no cost, Torrential still resolves · Solemn Judgment → LP 8000→4000, Torrential negated, monsters survive · decline → both traps still set); **art loads with zero broken images and degrades to the exact pre-art layout when the host is blocked**; **badge present on Sangan, absent on Caius, absent when art fails.**
 
-- Flagship tribute summon completes end to end, zero console errors; **the chosen tribute is the card that dies** (picked Sangan → Sangan died, Card Trooper and Junk Synchron survived, Caius reached the field).
-- Every visible control returns itself from `document.elementFromPoint` at its own centre.
-- **Four pairwise-distinguishable clock states** (banked → ≤60s → ≤30s → ≤10s alarm); **timeout forfeit fires** with a result naming the cause.
-- **The three chain branches produce three distinct, rules-correct outcomes:** Book of Moon → no LP cost, asks for a target, Torrential still resolves and clears the monsters, Book to graveyard, Solemn still set · Solemn Judgment → **LP 8000→4000**, Torrential negated, **all monsters survive**, Book still set · decline → no cost, Torrential resolves, both traps still set.
-
-⚠️ **Not assessed and therefore NOT cleared:** damage-number animation, audio, anything below 1440×900, and all timing and motion — notably the board reflow when the log opens and the beat between attack-confirm and the LP change. Simulated evaluation systematically under-detects these; they need a human look. ACT-mode card/verb combinations are not enumerated either: the prototype scripts one line and refuses the others explicitly by name, which promises nothing and so is not the defect class above.
+⚠️ **Not assessed and therefore NOT cleared:** damage-number animation, audio, anything below 1440×900, and all timing and motion — the board reflow when the log opens and the beat between attack-confirm and the LP change. Simulated evaluation systematically under-detects these; the CEO is reviewing them directly. ACT-mode card/verb combinations are not enumerated: the prototype scripts one line and refuses the others explicitly by name, which promises nothing and so is outside the §0a defect class.
 
 ---
 
@@ -464,35 +453,76 @@ per-question timer — a player would mis-scale their thinking time from it. Lab
 
 ## 8 · Surface: Card Inspector
 
-**Job:** answer "what does this card do" in zero clicks when it matters, and one click otherwise.
+**Job:** answer "what does this card do" in zero clicks when it matters, and one click
+otherwise.
 
-**Contents.** A 300px floating panel over the **left** edge of the board (never reflows the board):
-art, name, type line, ATK/DEF/Level/Attribute, full effect text, and — for a card on the field —
-its current position and whether it has attacked this turn.
+**Contents.** A 254px floating panel over the **left** edge of the board (never reflows the
+board):
+
+1. **the real card image** — the full card face, served from `VITE_IMAGE_BASE_URL`
+   (`https://api.zuhayr.io/images/<passcode>.jpg`), 813 × 1185, public static files, **no
+   backend work**;
+2. a **provenance badge**, on the 36 cards whose Edison text differs from the printing shown in
+   the image (see below);
+3. the **rendered** name, type line, ATK/DEF/Level/Attribute, full effect text, and — for a card
+   on the field — its position and whether it has attacked.
+
+**Both, not one.** The image contains the card's own text, so the obvious economy is to drop the
+rendered text. Do not. At panel width the printed text is unreadable; it is also unselectable,
+unsearchable and invisible to a screen reader, and it is a JPEG of an errata-era card rather than
+our own pre-errata corpus. **The image is for recognition, the rendered text is for reading**,
+which is what Master Duel does and why its inspector carries both. The image is marked
+`alt=""` and `aria-hidden` precisely because it duplicates text already on the page.
 
 **Three entry points, in priority order:**
 1. **Auto-push (no click):** the opponent activates a card → its text appears here immediately;
-   a chain link starts resolving → that link's text appears here. This is the cheapest available
-   win against "I can't tell what's happening", and it is copied straight from Master Duel.
+   a chain link starts resolving → that link's text appears here.
 2. **Hover** any card anywhere (150ms delay).
 3. **Click** an opponent card, or any card while the Question Bar is up.
 
 **Exit:** `Esc`, mouse-out (if hover-entered), or the next auto-push replaces it.
 
-| State | Trigger | What the player sees | What they can do |
+| State | Trigger | What the user sees | What they can do |
 |---|---|---|---|
-| default | a card is inspected | full record | scroll long text; `Esc` |
-| loading | `/api/cards` in flight | art placeholder + name from the decision + shimmer on the text block | wait / `Esc` |
+| default | a card is inspected, art loaded | full card image, then the rendered record | scroll long text; `Esc` |
+| **provenance** | the card is in the override corpus **and** art is loaded | a one-clause badge between the image and the name | read the text below it |
+| provenance, art absent | overridden card but art `loading`/`failed` | **no badge** — nothing on screen to differ from | read the record, unchanged |
+| **art loading** | image request in flight | a placeholder **holding the exact 813:1185 aspect ratio** with a slow shimmer; **all the text is already rendered and readable underneath** | read, scroll, `Esc` — nothing waits on the image |
+| **art failed / offline / unknown passcode** | `onError`, or no load within 5s | **no image, no placeholder, no broken-image icon** — the panel collapses to exactly the layout it had before art existed | everything, unchanged |
+| loading (record) | `/api/cards` in flight | art placeholder + name from the decision + shimmer on the text block | wait / `Esc` |
 | empty | nothing inspected | **panel absent**, not an empty frame | — |
-| unknown card | passcode not in the card DB | art placeholder, `Unknown card ({code})`, no text | `Esc` |
-| hidden card | `code === 0` | `Face-down card` + the location it is in; **no fabricated identity** | `Esc` |
+| unknown card | passcode not in the card DB | no art, `Unknown card ({code})`, no text | `Esc` |
+| hidden card | `code === 0` | no art (there is none we are entitled to), `Face-down card` + its location | `Esc` |
 | error | `/api/cards` failed | name + `Card text unavailable — retry` link | retry / `Esc` |
-| pinned | player clicked rather than hovered | thin blue rule on the panel edge; auto-push **queues** behind it and shows a `1 new` chip | unpin (`Esc`) to see the queued push |
+| pinned | player clicked rather than hovered | thin blue rule on the panel edge; auto-push **queues** behind it with a `1 new` chip | unpin (`Esc`) |
 
-**Pinning matters:** without it, an opponent's auto-push would rip the card you are reading out
-from under you mid-decision.
+**The provenance badge.** The image is the modern printing; our text is the 2010 text the engine
+enforces. For **36 cards** — the corpus in `packages/card-data/src/preErrataDescOverrides.json` —
+those disagree, and this panel shows both at once. Sangan is one of them and it is on the board in
+the flagship flow, so the contradiction is visible on the first thing anyone clicks.
 
----
+The badge sits **directly under the image, above the name** — at the seam between the two things
+it reconciles, so the eye path is image → badge → text. It reads:
+
+> `Edison text differs from this printing`
+
+One clause, caption weight, and that is the entire copy. It states a fact about our data and stops:
+no description of the difference, no reason, no year, no consequence. The correct text is the very
+next thing on the page. **It is gated on the image having loaded** — with no printing on screen
+there is nothing to differ from, so a badge would be a statement about something invisible.
+
+It appears **only where a card image and our rendered effect text are shown together**, which today
+means this panel alone. Not on thumbnails or board tiles (art but no effect text), and not in the
+Question Bar's text panes (effect text but no art).
+
+⚠ **The art states are the panel's first network dependency, and the failure state is the one that
+matters.** It must fail *into the current design*, not into a hole: a card whose art will not load
+is still completely usable, because everything that was there before is still there. The load
+deadline exists so a request that never resolves cannot leave a permanent grey rectangle where a
+card should be — an unbounded placeholder is the hole, not the fix.
+
+**A slow image blocks nothing.** The board, the clocks, the phase rail and the panel's own text all
+render while images are still in flight; verified with the host throttled and with it removed.
 
 ## 9 · Surface: Pile Inspector
 
@@ -500,10 +530,15 @@ from under you mid-decision.
 broadcast to the opponent.** DuelingBook broadcasts `Viewing Deck`; the community pays for
 extensions to stop it. We are automatic; there is no integrity argument. This is a day-one win.
 
-**Contents.** A grid overlay of the pile's contents (own GY/banished/extra: face-up; own deck:
-count only, cards not revealed; opponent GY/banished: face-up; opponent deck/extra: count only,
-plus whatever `isPublic` permits). Header: `Your Graveyard — 7 cards`. A filter row
-(Monster/Spell/Trap) appears at ≥ 12 cards.
+**Contents.** A grid overlay of the pile's contents **as card images** (own GY/banished/extra:
+face-up; own deck: count only, cards not revealed; opponent GY/banished: face-up; opponent
+deck/extra: count only, plus whatever `isPublic` permits). Header: `Your Graveyard — 7 cards`.
+A filter row (Monster/Spell/Trap) appears at ≥ 12 cards.
+
+**Art belongs here.** The job of this surface is scanning a pile for a card you remember by its
+picture; a grid of name-labels makes you read twenty strings instead of recognising one image.
+Tiles lazy-load and degrade to the labelled tile individually, so one missing image costs one
+tile, not the grid.
 
 **Entry:** click any pile badge, in any mode. **Exit:** `Esc`, click-away, or picking a card if
 the pile was opened *as the answer space* of a pending decision.
@@ -1292,6 +1327,14 @@ The triage of all 38 findings is recorded at the bottom of `usability-findings.m
 **Revision 3** — adds §0a, the answer-fidelity invariant. It is the durable value of a bug the
 CEO found, and it is a **QA gate**, not a nicety.
 
+**Revision 4** — card art. `CardArt` (§10a) is a new shared component; `CardInspector` gains an
+image binding and three network states. No backend delta: the images are public static files
+already served at `VITE_IMAGE_BASE_URL`.
+
+**Revision 5** — the provenance badge (§10b), backend delta **ND-6**, ND-1/ND-4/ND-5 marked
+**APPROVED**, and §13a: the three findings previously recorded as rejected are re-recorded as
+**deferred pending a named capability**.
+
 ---
 
 ## 0a · The answer-fidelity invariant — normative, and it applies to EVERY decision
@@ -2042,6 +2085,145 @@ next to a question is a lie about scope.
       the UI never lies in the player's favour.
 - [ ] The in-bar clock track is labelled with what it measures. [M9]
 
+## 10a · `CardArt` — NEW
+
+**Job:** show the real card face, and fail invisibly when it cannot.
+**Existing component?** none (new). URL resolution already exists:
+`packages/web/src/utils/cardImageUrl.ts`, which reads `VITE_IMAGE_BASE_URL` — **reuse it, do not
+hardcode a host.**
+
+### Props
+| Prop | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `code` | `number` | ✓ | — | passcode. `0` (face-down/unknown) renders nothing and is **not** a failure |
+| `width` | `number` | ✓ | — | height is derived from the ratio so the box never changes shape |
+| `fill` | `boolean` | | `false` | absolutely fill the parent tile; the tile's own overlays sit on top |
+| `eager` | `boolean` | | `false` | the inspector's art is the thing the player asked for — never defer it. Everything else lazy-loads |
+
+### Data bindings
+| Field | Source | Shape |
+|---|---|---|
+| image URL | `cardImageUrl(passcode)` → `${VITE_IMAGE_BASE_URL}/${passcode}.jpg` | public static JPEG |
+| intrinsic size | **813 × 1185** (measured from the served files) — the FULL card face, not an art crop | ratio `813/1185` |
+| passcode | `ZoneCard.code` / `CardEntry.code` / `ChainLink.code` | already on the wire |
+
+**No backend delta.** These are public static files with no auth and no CORS setup needed for
+`<img>`.
+
+### States
+| State | Trigger | What the user sees | What they can do |
+|---|---|---|---|
+| default (`ok`) | image decoded | the card face, faded in over 120ms | — |
+| loading | request in flight | a placeholder at the **exact aspect ratio**, slow shimmer. Never a spinner — the surrounding text is already readable | everything else |
+| failed | `onError`, **or no load within 5000ms** | **nothing is rendered.** No box, no icon, no gap | everything else |
+| empty | `code === 0` | nothing. A face-down card has no art we are entitled to show, and this is not an error state | — |
+| error | same as failed | — | — |
+| disabled | N/A | — | — |
+
+### Acceptance criteria
+- [ ] The intrinsic aspect ratio is reserved while loading, so no surface reflows when an image
+      lands. Verifiable: the panel's height is identical before and after load.
+- [ ] `failed` renders **zero** DOM. Verifiable: with the image host blocked, the page contains no
+      `<img>` with `naturalWidth === 0` and no art node at all.
+- [ ] A request that never resolves resolves to `failed` within 5s. **An unbounded placeholder is
+      the hole this state machine exists to prevent.**
+- [ ] An unknown passcode — which the host answers with a JSON 404, not an image — reaches
+      `failed`. A `200` is not a guarantee of a JPEG; rely on `onError`, not on the status.
+- [ ] No surface waits on an image. Board, clocks, phase rail and all text render while images are
+      in flight. Verified with the host throttled and with it removed.
+- [ ] `alt=""` and `aria-hidden`. The image duplicates text that is already on the page; naming it
+      would make a screen reader say the card twice.
+
+## 10b · `ProvenanceBadge` — NEW
+
+**Job:** tell the player, in one clause, that our rendered text is not the text printed on the
+card image they are looking at.
+**Existing component?** none (new).
+
+**Why it exists.** The card image is the **modern, post-errata printing**. Our rendered text is the
+**2010 text the engine actually enforces**. For 36 cards those disagree, and the inspector shows
+both at once — Sangan says one thing in the image's text box and another in our record, six inches
+apart, on the first screen of the flagship flow.
+
+**Why it is not a rules explanation.** It states a fact about *our data*: our text differs from
+that printing. It does not say what differs, why Edison differs, what the card does, or what to do.
+Per the CEO: *"saying our text differs from the printing is a fact about our data, not a rules
+explanation. That's the line."*
+
+### Copy — normative, and this is the hard part of the component
+> **`Edison text differs from this printing`**
+
+**One clause. If you are writing a second clause you are explaining.** The correct text is the very
+next thing on the page, so the badge does not have to carry any of it. Specifically it must not:
+name the difference, say "pre-errata" as a justification, mention the year, link to a source,
+compare the two wordings, or hint at play consequences.
+
+### Placement — normative
+**Directly beneath the image, above the name.** It sits at the *seam* between the two things it
+reconciles: it reads as a caption on the image (`this printing`) and as an introduction to the
+record below it (`Edison text`). The eye path is image → badge → text, in that order.
+
+Not on the image (it would obscure the card face, which is what the image is for) and not in the
+meta line (that line is a type/stat readout; a provenance note there mixes two kinds of information
+and is easy to miss). Caption weight, not alert weight — it is a fact, not a warning.
+
+### The rule for WHERE it appears, which is not "the inspector"
+> **The badge appears wherever a card image and our rendered effect text are shown together.**
+
+Today that is exactly one surface, the inspector. Stating the rule rather than the location tells
+engineering what to do when a future surface shows both.
+
+| Surface | Badge? | Why |
+|---|---|---|
+| `CardInspector` | **yes** | image + full rendered text, together |
+| Question Bar candidate thumbnails | no | art + name only. No effect text to contradict |
+| Question Bar `TextPane` | no | rendered effect text but **no image**. Nothing on screen to differ *from* |
+| Board / hand tiles, pile grid | no | art + name/stats. No effect text |
+| Chain strip, log rows | no | neither |
+
+### The state interaction that is easy to miss
+**No printing on screen → no badge.** If the art is `loading` or `failed`, there is no "this
+printing" for the player to see, and a badge contrasting our text with an invisible image would be
+a statement about nothing. The badge is gated on `CardArt` reporting `ok`, which is why `CardArt`
+lifts its state (§10a `onState`).
+
+### Props
+| Prop | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| — | — | — | — | The badge takes no props. Whether to render it is the caller's decision, from the data binding below |
+
+### Data bindings
+| Field | Source | Shape |
+|---|---|---|
+| is this card overridden? | **`CardDTO.preErrataText`** — see backend delta **ND-6** | `boolean` |
+| is a printing visible? | `CardArt` `onState === "ok"` | `ArtState` |
+
+**Key off set membership, never a hand-list.** The corpus is
+`packages/card-data/src/preErrataDescOverrides.json` (36 cards). A card that gains or loses an
+override must gain or lose the badge with **no UI change**. In the prototype the set is *generated*
+from that file into `src/fixtures/preErrata.ts`; in the real client it rides on the DTO.
+
+### States
+| State | Trigger | What the user sees | What they can do |
+|---|---|---|---|
+| default | overridden card **and** art `ok` | the badge | read the text below it |
+| empty | not an overridden card | nothing | — |
+| art loading | art not yet `ok` | nothing — the badge appears with the image | — |
+| art failed | no image at all | nothing. There is no printing to differ from | read the text, unchanged |
+| loading | N/A — the flag arrives with the `CardDTO` | — | — |
+| error | `CardDTO` missing the field | **nothing.** Absent flag means no badge; never guess | — |
+| disabled | N/A | — | — |
+
+### Acceptance criteria
+- [ ] The badge renders for all 36 passcodes in the override corpus and for **no others**.
+      Verifiable by iterating the corpus, not by checking a sample.
+- [ ] The badge renders **only** while `CardArt` is `ok`. With the image host blocked, an
+      overridden card shows the record with no badge.
+- [ ] The copy is one clause and contains no description of the difference.
+- [ ] Adding a 37th entry to the override corpus badges that card with no change to any component.
+- [ ] The rendered text for an overridden card is the corpus's `preErrataDescClean`, verbatim.
+      A badge asserting provenance over paraphrased text is worse than no badge.
+
 ## 10 · `CardInspector` and `PileInspector`
 
 **Existing component?** `packages/web/src/components/duel/CardInspector.tsx` (extend) /
@@ -2050,10 +2232,38 @@ next to a question is a lie about scope.
 | Prop | Type | Notes |
 |---|---|---|
 | `code` | `number \| null` | `null` → **component absent**, not an empty frame |
+| art | `<CardArt code={code} width={228} eager />` at the top, **above** the rendered record | §10a |
+| provenance | `<ProvenanceBadge />` between the art and the name, when `CardDTO.preErrataText && artState === "ok"` | §10b |
 | `source` | `"hover" \| "click" \| "autopush"` | `click` pins; `autopush` queues behind a pin |
 | `onClose` | `() => void` | |
 
 Auto-push triggers: opponent activation (`MSG_CHAINING`), and `CHAIN_SOLVING` on any link.
+
+### Image AND rendered text — the decision, and why it is not either/or
+The served image is the **full card face**, so it already contains the name, type line, stats and
+effect text. Dropping our rendered text would still be wrong:
+
+| | image | rendered text |
+|---|---|---|
+| recognise the card in <200ms | ✔ | ✖ |
+| read the effect at panel width | ✖ unreadable | ✔ |
+| select / search the text | ✖ | ✔ |
+| screen reader | ✖ | ✔ |
+| **our** pre-errata corpus rather than the printed errata | ✖ | ✔ |
+
+So: image on top for recognition, rendered record below for reading. This is Master Duel's
+inspector and it is the reason it has both.
+
+### Where art appears, and where it deliberately does not
+| Surface | Art? | Why |
+|---|---|---|
+| `CardInspector` | **yes**, primary | the surface whose whole job is "what is this card" |
+| `PileInspector` grid | **yes**, lazy | scanning a pile means recognising a picture, not reading twenty labels |
+| Question Bar **candidate thumbnails** | **yes** | this is the answer space — the place you are choosing *between* cards. The Master Duel frame we are copying (`masterduel-chain-prompt-and-log.jpg`) shows exactly this: candidates as card thumbnails with location badges |
+| Question Bar **`TextPane`** (`RESPONDING TO` / `YOU WOULD PLAY`) | **no** | it sits directly beside the thumbnail, which already carries recognition. Its job is reading, mid-decision, under a clock. Adding a second copy of the same card costs width and buys nothing |
+| Board / hand tiles | **yes, behind the tile's own overlays** | the name, ATK/DEF, position glyph, ownership outline, targeting outline and `ATK`/`USED` badge all stay on top with a scrim. Art alone at 58×82 cannot carry that state; art *plus* the overlays reads as Yu-Gi-Oh without losing a single annotation. **Revisit if the CEO wants larger tiles** — at a bigger size the stats should move off the card face, as Master Duel floats them |
+| Chain strip links | **no** | ordinal + name + owner colour is a *sequence* readout; thumbnails would make a 12-link chain unreadable |
+| Event log rows | **no** | already a dense scrolling list; the frame-coloured bar carries type at a glance |
 
 **Scope narrowed.**  [M5][M6][m3] The floating inspector is the channel for *what is happening* —
 auto-pushed opponent activations and resolving chain links. It is **not** the channel for
@@ -2076,6 +2286,10 @@ screen, ~700px from the click, and they overwrote each other.
 - [ ] Opening a pile is never broadcast to the opponent — **no client message is sent**.
 - [ ] A pile inspector opens for an empty pile and says so; the click is not swallowed.
 - [ ] An auto-push never replaces a pinned card.
+- [ ] With the image host unreachable, the inspector renders **exactly** its pre-art layout —
+      frame stripe, name, meta line, effect text, close — and every other surface keeps its
+      labelled tiles. No surface loses information when art is unavailable.
+- [ ] The pile grid degrades per-tile: one missing image costs one tile, never the grid.
 
 ---
 
@@ -2181,13 +2395,19 @@ open question 1 and must ship with the control.
 
 ### New — discovered here, not in that document
 
+**ND-1, ND-4 and ND-5 are APPROVED**, not proposed. On ND-5 the CEO: *"especially. I've got both
+clocks on my screen right now and I'd rather they were real than faked."* The two-clock panel in
+§9 is therefore confirmed product, not prototype dressing, and it needs both deadlines on the wire
+to be honest.
+
 | # | Item | Why | Must / nice | Size |
 |---|---|---|---|---|
-| **ND-1** | **Surface the tribute cost on `CardEntry` in `IdleCommand.summons[]`.** The raw `SELECT_IDLECMD` message carries `release_param` (confirmed in `decision-capture-raw.json` → `SELECT_TRIBUTE`); `messageToDecision.ts:505-515` reads it as a type alias (`:228`) and discards it | Without it the verb chip cannot read `Tribute Summon (2)` and the player learns the cost **after** committing. Part 1 R1.5 identifies the need; Part 2 does not list it as a delta | **must** | S–M. Either an additive optional `releaseCount?: number` on `CardEntry` (**additive change to a locked variant → needs a CTO ruling against ADR-0001**) or a sidecar frame alongside the decision, consistent with MH-3's recommended shape. **Sidecar is my recommendation** — same outcome, ADR untouched |
+| **ND-1** | **Surface the tribute cost on `CardEntry` in `IdleCommand.summons[]`.** The raw `SELECT_IDLECMD` message carries `release_param` (confirmed in `decision-capture-raw.json` → `SELECT_TRIBUTE`); `messageToDecision.ts:505-515` reads it as a type alias (`:228`) and discards it | Without it the verb chip cannot read `Tribute Summon (2)` and the player learns the cost **after** committing. Part 1 R1.5 identifies the need; Part 2 does not list it as a delta | **must** ✅ **APPROVED by the CEO** | S–M. Either an additive optional `releaseCount?: number` on `CardEntry` (**additive change to a locked variant → needs a CTO ruling against ADR-0001**) or a sidecar frame alongside the decision, consistent with MH-3's recommended shape. **Sidecar is my recommendation** — same outcome, ADR untouched |
 | **ND-2** | **Intent recovery on reconnect.** The pending-intent object is client-only. On reconnect the server re-sends `SEAT_ASSIGNED`+`STATE`+`CLOCK`+`DECISION` (`duelSocket.ts:311-349`) and the client can name the card but cannot know *which step of which intent* it is on | The ribbon degrades to a single-step ribbon after a reconnect mid-summon. Tolerable, but it should be a known degradation and not a bug report | nice | S. Either the client persists the intent in `sessionStorage`, or MH-3's sidecar carries an intent correlation id |
-| **ND-4** | **Damage/LP events must name the seat whose LP moved.** `MSG_DAMAGE`(91) carries `player`, but `MSG_PAY_LPCOST`(100) and the battle-damage path do not consistently identify the losing seat in a form the log can render | Without it a log row reads `Caius — Damage −1200`, which a player reads as damage *taken by Caius*. The row must read `Sakura −1200 LP` | **must** | S. Server-local, inside MH-2a's normalisation — no contracts change |
-| **ND-5** | **Both seats' deadlines must be on the wire.** `CLOCK` carries `{onClockSeat, deadlineAt}` — one deadline, the active one. The design now requires **both** clocks permanently (§9/M8) | A player off-clock cannot see their own banked time, which is the number they need to decide whether to think. With a per-handover clock this is not a nicety | **must** | S. Additive: `CLOCK` gains `deadlines: [number, number]`, or `deadlineAt` is sent per seat. `DuelServerMessage` variant is additive, so nothing breaks |
 | **ND-3** | **`IdleCommand.shuffle` is answerable but unadvertised.** `responseToOcgResponse.ts:101` maps `"shuffle"`, the raw message has `shuffle: true`, and `messageToDecision.ts:275-352` never reads it | Not needed by this design — there is no shuffle verb. Listed so it is decided rather than left as dead surface: either advertise it or drop the response value | nice | S |
+| **ND-4** | **Damage/LP events must name the seat whose LP moved.** `MSG_DAMAGE`(91) carries `player`, but `MSG_PAY_LPCOST`(100) and the battle-damage path do not consistently identify the losing seat in a form the log can render | Without it a log row reads `Caius — Damage −1200`, which a player reads as damage *taken by Caius*. The row must read `Sakura −1200 LP` | **must** ✅ **APPROVED by the CEO** | S. Server-local, inside MH-2a's normalisation — no contracts change |
+| **ND-5** | **Both seats' deadlines must be on the wire.** `CLOCK` carries `{onClockSeat, deadlineAt}` — one deadline, the active one. The design now requires **both** clocks permanently (§9/M8) | A player off-clock cannot see their own banked time, which is the number they need to decide whether to think. With a per-handover clock this is not a nicety | **must** ✅ **APPROVED by the CEO** | S. Additive: `CLOCK` gains `deadlines: [number, number]`, or `deadlineAt` is sent per seat. `DuelServerMessage` variant is additive, so nothing breaks |
+| **ND-6** | **`CardDTO` must carry a `preErrataText: boolean`.** `packages/card-data` already applies `preErrataDescOverrides.json` when it builds the catalog, so it knows which cards it overrode; today it discards that knowledge. `CardDTO` is `packages/contracts/src/card.ts` and is already returned by `GET /api/cards?passcodes=` | The provenance badge (§10b) keys off it. The only alternative is shipping the 36-passcode corpus into the web bundle, which duplicates card-data and drifts silently the moment an override is added | **must** (blocks §10b) | S. Additive optional field on an existing DTO. No duel-wire change, no new endpoint, no engine change. `web` reads it from a response it already fetches |
 
 ### Constraints inventory
 - **Live users:** near-zero usage — that is the premise of the project. There is no meaningful
@@ -2200,6 +2420,30 @@ open question 1 and must ship with the control.
   ADR-0001's 20-variant union.
 
 ---
+
+## 13a · Deferred findings, and the capability each one waits on
+
+Three findings from the usability pass were recorded as **rejected**. That was the wrong word.
+They are **deferred**, and each is waiting on a specific thing — named here so that whoever adds
+that thing knows what it unblocks, and so nobody has to reverse a decision to bring them back.
+
+### The principle they turn on — Requirement H
+> **H rules out causes we GENERATE, not causes the engine gives us.** — CEO
+
+That is the whole test. A cause we *invent* by reasoning about the rules is a rules-explanation
+layer and is out. A cause the engine, the card corpus, or the wire *hands us* is data, and
+presenting data is not explaining. The provenance badge (§10b) is on the right side of that line
+because we know for a fact that we substituted the text — it is a property of our own corpus. The
+three below are on the wrong side **today** and cross over the moment their cause reaches us.
+
+| Finding | What it asked for | Why deferred, not rejected | **Unblocks when…** |
+|---|---|---|---|
+| **M5** (part) | The confirm control should read `Activate Solemn Judgment — pay 4000 LP` | The cost is not on the wire. Producing "4000" means parsing *"Pay half your LP"* out of card text and doing the arithmetic — a cause we generate, and one that would be confidently wrong on any card whose cost we mis-parse | **an activation cost reaches the wire as data.** Concretely: an optional `cost` on `ActiveCardEntry` — `{kind:"lp"; amount}` / `{kind:"lpFraction"; denominator}` / `{kind:"discard"; count}` / `{kind:"tribute"; count}` — or the engine's own resolved cost string. Then the label states what the engine said, and it is the same class of change as ND-1 (which is approved and does exactly this for tribute cost) |
+| **M7** (part) | Clicking a card that affords nothing should say **why** | ocgcore publishes the legal list, not the reasons for omissions. Any general reason would be inferred by us. The one case we kept — *"This monster has already attacked"* — is derived from state we hold (absence from `attacks[]` during BP), not inferred | **an omission reason reaches the wire.** Concretely: a per-card reason code alongside `IdleCommand`/`BattleCommand`, or a `MSG_HINT`-carried annotation, saying why a card was excluded. At that point the message quotes the engine and H is satisfied |
+| **c1** | Stack both LP plates in one corner instead of diagonally opposite | **This one is not waiting on a wire capability, and it would be dishonest to file it as though it were.** It is a layout judgement: diagonal placement is Master Duel's polarity and makes position carry ownership without a label, which the pass's own "what passed" section credits. The cost — a long saccade to compare totals — is real but small, and the log's per-turn LP snapshot already removes the arithmetic | **evidence, not a delta.** It reopens if a usability pass shows players actually failing the LP comparison, or if the ownership colour law is ever weakened so position stops carrying the meaning on its own |
+
+**None of these needs a decision reversed.** Ship the capability and the finding returns on its own
+merits.
 
 ## 13 · Where the code contradicted the brief
 
@@ -2544,9 +2788,9 @@ Two buckets, and the distinction is the one that matters:
 | **M2** auto-answers as live questions | **DESIGN** | ✅ Same fix as B1 — `AutoAnswerReceipt`. |
 | **M3** no zone highlighted | **BOTH** | ✅ *Prototype:* `.slot.zonepick` existed in CSS and was never wired. *Design:* the contract's `ZoneSlot` state table lacked a `zone-pick` row; added, with filled tint, 2px accent border, `cursor: pointer`, hover lift, `Place here` label. |
 | **M4** defence = attack | **BOTH** | ✅ Weighed against the teardown rather than accepted flat: the intent-model doc already records this as a live defect (F3, "face-up-attack and face-up-defense look identical"), and every client in the teardown rotates the card. So it is convention *and* an existing known gap. Contract AC strengthened from "visually distinguishable" to "rotated 90°, DEF prominent, verifiable via computed `transform`". **Verified:** `matrix(0, 0.82, -0.82, 0, 0, 0)`. |
-| **M5** LP cost invisible on the route users take | **DESIGN** ◑ | ◑ Accepted in part. Accepted: the panel route now reveals card text exactly as the board route does, and the confirm button **names the card** (`Activate "Solemn Judgment"`). Rejected: computing `— pay 4000 LP` into the label. The wire carries no structured cost; deriving it means parsing card text, which is guesswork we would ship as fact. The cost is legible in the new in-bar text pane, which is now always present. Recorded in contract §2. |
+| **M5** LP cost invisible on the route users take | **DESIGN** ◑ | ◑ Accepted in part; **the unaccepted half is now DEFERRED, not rejected — see `component-contract.md` §13a.** Accepted: the panel route now reveals card text exactly as the board route does, and the confirm button **names the card** (`Activate "Solemn Judgment"`). Rejected: computing `— pay 4000 LP` into the label. The wire carries no structured cost; deriving it means parsing card text, which is guesswork we would ship as fact. The cost is legible in the new in-bar text pane, which is now always present. Recorded in contract §2. |
 | **M6** card text replaces the trigger | **DESIGN** | ✅ The best finding in the pass. A chain decision *is* a comparison, and revision 1 made the two texts mutually exclusive and put them 700px from the buttons. New `TextPane` inside the Question Bar shows both, owner-tinted, trigger first. Contract §2 structure + §10 scope narrowed. |
-| **M7** "no legal verbs" | **DESIGN** ◑ | ◑ Accepted: the message is anchored **at the card**, and "verbs" is gone. Rejected: generating a reason in the general case. ocgcore does not say *why* it omitted a card, and a fabricated reason is a rules claim — the rules-explanation layer was explicitly dropped. One exception kept because it is derivable from state we hold: a monster missing from `attacks[]` during BP reads `This monster has already attacked.` Everything else reads `Nothing you can do with this card right now.` Contract §3 "Refusal copy". |
+| **M7** "no legal verbs" | **DESIGN** ◑ | ◑ Accepted; **the unaccepted half is now DEFERRED, not rejected — see `component-contract.md` §13a.** the message is anchored **at the card**, and "verbs" is gone. Rejected: generating a reason in the general case. ocgcore does not say *why* it omitted a card, and a fabricated reason is a rules claim — the rules-explanation layer was explicitly dropped. One exception kept because it is derivable from state we hold: a monster missing from `attacks[]` during BP reads `This monster has already attacked.` Everything else reads `Nothing you can do with this card right now.` Contract §3 "Refusal copy". |
 | **M8** one unlabelled clock | **DESIGN** | ✅ Treated as blocker-grade, as you asked. Contract §9 and inventory §7 rewritten: **both** clocks always on screen, owner in text, `RUNNING`/`BANKED` in text, active row double-bordered, colour redundant only. New backend delta **ND-5** — `CLOCK` carries one deadline today, so both-clocks needs the wire to carry both. |
 | **M9** unlabelled hairline | **DESIGN** | ✅ It *was* the turn clock by design, and the evaluator is right that position made it read as per-question. Now labelled `YOUR TURN CLOCK m:ss` inside the track. Contract §9. |
 | **M10** three-state cycler | **DESIGN** | ✅ Replaced with a labelled menu: `Minimal / Standard / Every window`, each with a description, plus a standing note that mandatory effects are always offered. Kept Master Duel's semantics; changed only the labels, because `OFF` read as "off". New contract §11b. |
@@ -2581,7 +2825,7 @@ Two buckets, and the distinction is the one that matters:
 
 | # | Bucket | Disposition |
 |---|---|---|
-| c1 LP counters diagonal | — | ⛔ **Rejected.** This is Master Duel's documented polarity and it is load-bearing: position maps to ownership with no label, which is why the pass's own "what passed" section notes turn ownership is unambiguous. Stacking both plates in one corner would need a label to say which is which and would put the opponent's LP inside your own hand's reading zone. The comparison cost is real but small, and the log's per-turn LP snapshot already exists to remove the arithmetic. |
+| c1 LP counters diagonal | — | ⛔ **Held, not rejected — reopens on evidence, not on a backend delta. See `component-contract.md` §13a.** This is Master Duel's documented polarity and it is load-bearing: position maps to ownership with no label, which is why the pass's own "what passed" section notes turn ownership is unambiguous. Stacking both plates in one corner would need a label to say which is which and would put the opponent's LP inside your own hand's reading zone. The comparison cost is real but small, and the log's per-turn LP snapshot already exists to remove the arithmetic. |
 | c2 redundant location tags | **DESIGN** | ✅ The badge renders only when candidates span more than one `{controller, location}`. |
 
 ## Evaluator's open questions — answered
@@ -2814,35 +3058,3 @@ Not bugs — the domain makes the boards converge. Listed so it is visible.
 
 </details>
 
-
----
-
-## What is deliberately NOT in this matrix, and why
-
-**ACT-mode choices (which card, which verb).** Every `IdleCommand` and `BattleCommand` offers many
-legal answers — in scenario A the first decision alone affords 11 card/verb combinations. The
-prototype scripts **one line per scenario** and **refuses the others explicitly**, with an anchored
-message naming the verb: *"'Set' is legal — this prototype scripts one line per scenario."*
-
-That refusal is not the defect class this matrix exists to catch. The invariant is *never promise
-one outcome and deliver another*; an explicit refusal promises nothing. It is a fixture limitation,
-visible to the reviewer at the moment it bites, and it disappears with the prototype — in the real
-client ocgcore computes the outcome for every legal verb.
-
-**Scenario 4 (`Waiting · clock · forfeit`) has no multi-answer question at all.** Its only decisions
-are `IdleCommand` (ACT-mode, above) and the timeout, which is not a choice. Nothing to enumerate.
-
-**Answers the engine never offers.** `SelectZone` legal zones come from ocgcore's decoded
-`field_mask`; the matrix walks the three the fixture declares, which is the whole legal set for that
-board.
-
-## Reproducing this file
-
-```sh
-cd spikes/duel-ui-proto
-npm install && npm run build
-npx vite preview --port 4319 --strictPort &
-python3 answer-matrix.py http://localhost:4319/ /workspace/product/design/answer-outcome-matrix.md
-```
-
-Exit code is non-zero if any two answers to the same question collide. That is the gate.
