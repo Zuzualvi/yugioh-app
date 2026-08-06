@@ -18,8 +18,20 @@ import type {
   LocationCode,
   PendingIntent,
   Seat,
+  ZoneCard,
 } from "./types";
-import { backs, clone, emptyZones, handCard, mon, row, setCard, state } from "./board";
+import {
+  POS_FACEUP_ATK,
+  POS_FACEUP_DEF,
+  backs,
+  clone,
+  emptyZones,
+  handCard,
+  mon,
+  row,
+  setCard,
+  state,
+} from "./board";
 
 const CAIUS = 9748752;
 const TORRENTIAL = 53582587;
@@ -35,8 +47,6 @@ const BOOK = 14087893;
 const SANGAN = 26202165;
 const KREBONS = 59575539;
 const DPRISON = 70342110;
-const BRIONAC = 50321796;
-const STARDUST = 44508094;
 
 export interface CardRef {
   controller: Seat;
@@ -61,21 +71,24 @@ export interface Step {
   caption?: string;
   /** engine round-trip cost before this step appears */
   latencyMs?: number;
-  /** what the off-clock/waiting player is told while this step is being computed */
+  /** what the waiting player is told while this step is being computed */
   waitLabel?: string;
-  clockSeconds?: number;
+  /** clocks are per SEAT and per handover of control; both are always on screen */
+  myClockSeconds?: number;
+  oppClockSeconds?: number;
   onClockSeat?: Seat;
   /** board cards highlighted as candidates/targets alongside the Question Bar */
   highlight?: CardRef[];
-  /** legal zones highlighted (SelectZone with Choose Zones ON) */
-  zoneHighlight?: CardRef[];
   /**
    * Set when the CLIENT answers this decision without showing it (§15 register).
-   * The prototype flashes it so a reviewer can SEE what a player would not.
+   * The prototype renders it as a READ-ONLY RECEIPT so a reviewer can see what a
+   * player would not — never as a live question with a primary button.
    */
   autoResolved?: string;
-  /** narration chip on the chain strip, for a forced trigger auto-answered */
-  narrate?: string;
+  /** Where "No response" / "Cancel" actually goes. Never the same as confirming. */
+  declineBranch?: Step[];
+  /** Fold the player's real selection into the next step's board. */
+  applySelection?: (next: DuelStateSnapshot, selection: CardRef[]) => DuelStateSnapshot;
   end?: { winner: Seat | null; reason: "normal" | "timeout" | "resign" };
   /** a one-line note shown in the prototype's review margin (never in the real product) */
   note?: string;
@@ -90,8 +103,22 @@ export interface Scenario {
   id: string;
   title: string;
   blurb: string;
+  /** Prior turns. A log that says "the duel has not started" on turn 8 is a lie. */
+  seedLog?: Omit<DuelEvent, "id">[];
+  /** LP as at each turn BOUNDARY — not live LP repeated under every banner. */
+  lpByTurn?: Record<number, [number, number]>;
   steps: Step[];
 }
+
+const ev = (
+  engineType: number,
+  owner: Seat,
+  code: number,
+  verb: DuelEvent["verb"],
+  turnNumber: number,
+  phase: DuelEvent["phase"],
+  extra: { from?: LocationCode; to?: LocationCode; amount?: number; lpOwner?: Seat } = {},
+): Omit<DuelEvent, "id"> => ({ engineType, owner, code, verb, turnNumber, phase, ...extra });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A · Tribute Summon Caius — the flagship 2–6 decision intent
@@ -168,10 +195,55 @@ const intentA = (stepIndex: number, cancelable: boolean): PendingIntent => ({
   trailingUnknown: true,
 });
 
+/** B3 — honour the tribute the player actually picked. */
+function applyTribute(next: DuelStateSnapshot, sel: CardRef[]): DuelStateSnapshot {
+  const pick = sel.find((r) => r.location === "MZONE" && r.controller === 0);
+  if (!pick) return next;
+  const s: DuelStateSnapshot = JSON.parse(JSON.stringify(next));
+  const base = baseZonesA();
+  const tributed = base.p0_mzone[pick.sequence] as ZoneCard;
+  const mz: (ZoneCard | null)[] = base.p0_mzone.map((c) => (c ? { ...c } : null));
+  mz[pick.sequence] = { ...mon(CAIUS, pick.sequence, 2400, 1000, 6) };
+  s.zones.p0_mzone = mz;
+  s.zones.p0_grave = [
+    { code: tributed.code, sequence: 0, position: 1 },
+    { code: TREEBORN, sequence: 1, position: 1 },
+  ];
+  s.zones.p0_hand = [
+    handCard(BOOK, 0),
+    handCard(TORRENTIAL, 1),
+    handCard(CYBER, 2),
+    handCard(GORZ, 3),
+  ];
+  return s;
+}
+
+/** M4 — the chosen battle position must be visible on the board. */
+function applyPosition(next: DuelStateSnapshot, sel: CardRef[]): DuelStateSnapshot {
+  const pick = sel.find((r) => r.location === "PZONE");
+  const s: DuelStateSnapshot = JSON.parse(JSON.stringify(next));
+  const pos = pick?.sequence === 1 ? POS_FACEUP_DEF : POS_FACEUP_ATK;
+  s.zones.p0_mzone = s.zones.p0_mzone.map((c) =>
+    c && c.code === CAIUS ? { ...c, position: pos } : c,
+  );
+  return s;
+}
+
+const seedLogA: Omit<DuelEvent, "id">[] = [
+  ev(40, 0, 0, "Move", 3, "DP"),
+  ev(90, 1, 0, "Draw", 3, "DP", { from: "DECK", to: "HAND" }),
+  ev(60, 1, KREBONS, "Summon", 3, "M1", { from: "HAND", to: "MZONE" }),
+  ev(54, 1, 0, "Set", 3, "M1", { from: "HAND", to: "SZONE" }),
+  ev(54, 1, 0, "Set", 3, "M1", { from: "HAND", to: "SZONE" }),
+  ev(40, 0, 0, "Move", 4, "DP"),
+  ev(90, 0, TROOPER, "Draw", 4, "DP", { from: "DECK", to: "HAND" }),
+  ev(60, 0, JUNK, "Summon", 4, "M1", { from: "HAND", to: "MZONE" }),
+];
+
 const scenarioA: Scenario = (() => {
   const z0 = baseZonesA();
 
-  // after tributes chosen + zone committed
+  // default post-commit board (overwritten by applyTribute with the real pick)
   const z1 = clone(z0);
   z1.p0_mzone = row([
     mon(CAIUS, 0, 2400, 1000, 6),
@@ -184,7 +256,6 @@ const scenarioA: Scenario = (() => {
   ];
   z1.p0_hand = [handCard(BOOK, 0), handCard(TORRENTIAL, 1), handCard(CYBER, 2), handCard(GORZ, 3)];
 
-  // after Caius's trigger resolves — Krebons banished, 1000 damage
   const z2 = clone(z1);
   z2.p1_mzone = row([]);
   z2.p1_removed = [{ code: KREBONS, sequence: 0, position: 1 }];
@@ -194,15 +265,18 @@ const scenarioA: Scenario = (() => {
     title: "Tribute Summon Caius",
     blurb:
       "The flagship. One player intent → up to 6 engine decisions, one clock, one ribbon, and an explicit point of no return.",
+    seedLog: seedLogA,
+    lpByTurn: { 3: [8000, 8000], 4: [8000, 8000] },
     steps: [
       {
         decision: idleA,
         state: state(z0),
-        clockSeconds: 285,
+        myClockSeconds: 285,
+        oppClockSeconds: 300,
         onClockSeat: 0,
         expect: {
           ref: { controller: 0, location: "HAND", sequence: 0 },
-          verb: "Tribute Summon (1)",
+          verb: "Normal Summon — 1 tribute",
         },
         note: "IdleCommand is NOT rendered as a question. It arms the board: click Caius in your hand.",
       },
@@ -222,12 +296,14 @@ const scenarioA: Scenario = (() => {
         state: state(z0),
         intent: intentA(0, true),
         latencyMs: 160,
+        applySelection: applyTribute,
+        caption: 'Tribute 1 monster to Summon "Caius the Shadow Monarch"',
         highlight: [
           { controller: 0, location: "MZONE", sequence: 0 },
           { controller: 0, location: "MZONE", sequence: 1 },
           { controller: 0, location: "MZONE", sequence: 2 },
         ],
-        note: "Cancel is live here. The confirm button carries the lock, because the NEXT step cannot be cancelled.",
+        note: "Cancel is live here and Esc maps to it. The confirm button names the card it will destroy, because the NEXT step cannot be cancelled.",
       },
       {
         decision: {
@@ -235,7 +311,6 @@ const scenarioA: Scenario = (() => {
           player: 0,
           count: 1,
           zones: [
-            { controller: 0, location: "MZONE", sequence: 0 },
             { controller: 0, location: "MZONE", sequence: 3 },
             { controller: 0, location: "MZONE", sequence: 4 },
           ],
@@ -243,29 +318,10 @@ const scenarioA: Scenario = (() => {
         state: state(z1),
         intent: intentA(1, false),
         latencyMs: 220,
-        autoResolved:
-          "SelectZone — answered from your zone preference (leftmost free). Turn on “Choose zones” in ⚙ to be asked.",
+        autoResolved: "Zone — the freed monster zone. Turn on “Choose zones” to be asked instead.",
         events: [
-          {
-            engineType: 60,
-            owner: 0,
-            code: CAIUS,
-            verb: "Tribute Summon",
-            from: "HAND",
-            to: "MZONE",
-            turnNumber: 4,
-            phase: "M1",
-          },
-          {
-            engineType: 50,
-            owner: 0,
-            code: TROOPER,
-            verb: "Move",
-            from: "MZONE",
-            to: "GRAVE",
-            turnNumber: 4,
-            phase: "M1",
-          },
+          ev(60, 0, CAIUS, "Tribute Summon", 4, "M1", { from: "HAND", to: "MZONE" }),
+          ev(50, 0, TROOPER, "Move", 4, "M1", { from: "MZONE", to: "GRAVE" }),
         ],
       },
       {
@@ -284,7 +340,8 @@ const scenarioA: Scenario = (() => {
         state: state(z1),
         intent: intentA(2, false),
         latencyMs: 180,
-        note: "Past the lock. The ribbon says “Committed” — it does not offer a Cancel that would fail.",
+        applySelection: applyPosition,
+        note: "Past the lock. The ribbon says COMMITTED — it does not offer a Cancel that would fail. Each position tile IS the commit; there is no second Confirm click.",
       },
       {
         decision: null,
@@ -293,8 +350,7 @@ const scenarioA: Scenario = (() => {
         latencyMs: 1500,
         waitLabel: "Sakura may respond…",
         onClockSeat: 1,
-        clockSeconds: 300,
-        note: "The off-clock gap. Their clock runs; you can still inspect anything, free and silent.",
+        note: "The off-clock gap. Their clock runs, yours is banked and still on screen. You can inspect anything, free and silent.",
       },
       {
         decision: {
@@ -322,7 +378,6 @@ const scenarioA: Scenario = (() => {
           cancelable: true,
         },
         latencyMs: 260,
-        clockSeconds: 268,
         onClockSeat: 0,
         chain: [],
       },
@@ -367,56 +422,21 @@ const scenarioA: Scenario = (() => {
           { controller: 0, location: "MZONE", sequence: 0 },
           { controller: 0, location: "MZONE", sequence: 1 },
         ],
-        note: "The target set spans BOTH fields. It is picked on the board, not in a list — that is the whole point of ZoneCard.sequence (MH-1).",
+        note: "The target set spans BOTH fields. It is picked on the board, not in a list — that is what ZoneCard.sequence (MH-1) buys.",
       },
       {
         decision: idleA,
         state: state(z2, { lp: [8000, 7000] }),
         intent: null,
-        latencyMs: 700,
-        clockSeconds: 262,
+        latencyMs: 900,
+        waitLabel: "Resolving Caius…",
         onClockSeat: 0,
         chain: [],
         events: [
-          {
-            engineType: 70,
-            owner: 0,
-            code: CAIUS,
-            verb: "Chain",
-            from: "MZONE",
-            to: "MZONE",
-            turnNumber: 4,
-            phase: "M1",
-          },
-          {
-            engineType: 83,
-            owner: 1,
-            code: KREBONS,
-            verb: "Target",
-            from: "MZONE",
-            to: "MZONE",
-            turnNumber: 4,
-            phase: "M1",
-          },
-          {
-            engineType: 50,
-            owner: 1,
-            code: KREBONS,
-            verb: "Banish",
-            from: "MZONE",
-            to: "REMOVED",
-            turnNumber: 4,
-            phase: "M1",
-          },
-          {
-            engineType: 91,
-            owner: 1,
-            code: CAIUS,
-            verb: "Damage",
-            amount: 1000,
-            turnNumber: 4,
-            phase: "M1",
-          },
+          ev(70, 0, CAIUS, "Chain", 4, "M1", { from: "MZONE", to: "MZONE" }),
+          ev(83, 1, KREBONS, "Target", 4, "M1", { from: "MZONE", to: "MZONE" }),
+          ev(50, 1, KREBONS, "Banish", 4, "M1", { from: "MZONE", to: "REMOVED" }),
+          ev(91, 1, CAIUS, "Damage", 4, "M1", { amount: 1000, lpOwner: 1 }),
         ],
         note: "Intent complete. Ribbon gone, board live again, and the log says exactly what happened.",
       },
@@ -425,7 +445,7 @@ const scenarioA: Scenario = (() => {
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B · Respond to a chain — “Sakura activated Torrential Tribute. Chain?”
+// B · Respond to a chain — with a REAL decline branch
 // ─────────────────────────────────────────────────────────────────────────────
 
 const scenarioB: Scenario = (() => {
@@ -458,6 +478,22 @@ const scenarioB: Scenario = (() => {
   z4.p0_grave = [{ code: SOLEMN, sequence: 0, position: 1 }];
   z4.p1_grave = [{ code: TORRENTIAL, sequence: 0, position: 1 }];
 
+  // DECLINE branch: Torrential resolves. Every monster dies. LP untouched.
+  const d1 = clone(z2);
+  d1.p0_mzone = row([]);
+  d1.p1_mzone = row([]);
+  d1.p0_grave = [
+    { code: JUNK, sequence: 0, position: 1 },
+    { code: TROOPER, sequence: 1, position: 1 },
+  ];
+  d1.p1_grave = [{ code: KREBONS, sequence: 0, position: 1 }];
+  const d2 = clone(d1);
+  d2.p1_szone = row([null, setCard(0, 1)]);
+  d2.p1_grave = [
+    { code: TORRENTIAL, sequence: 0, position: 1 },
+    { code: KREBONS, sequence: 1, position: 1 },
+  ];
+
   const idleB: DuelDecision = {
     kind: "IdleCommand",
     player: 0,
@@ -475,18 +511,71 @@ const scenarioB: Scenario = (() => {
     toEndPhase: true,
   };
 
+  const idleAfterDecline: DuelDecision = {
+    kind: "IdleCommand",
+    player: 0,
+    summons: [],
+    specialSummons: [
+      { code: CYBER, name: "Cyber Dragon", controller: 0, location: "HAND", sequence: 1 },
+    ],
+    posChanges: [],
+    monsterSets: [],
+    spellSets: [],
+    activates: [],
+    toBattlePhase: false,
+    toEndPhase: true,
+  };
+
+  const declineBranch: Step[] = [
+    {
+      decision: null,
+      state: state(z2, { turnNumber: 6 }),
+      latencyMs: 700,
+      waitLabel: "Passing — Torrential Tribute resolves…",
+      onClockSeat: 1,
+      chain: [{ ordinal: 1, code: TORRENTIAL, owner: 1, location: "SZONE", state: "resolving" }],
+      autoPush: TORRENTIAL,
+      events: [ev(72, 1, TORRENTIAL, "Resolve", 6, "M1")],
+      note: "You declined. Nothing of yours was spent — LP is still 8000. This is what the decline branch costs instead.",
+    },
+    {
+      decision: idleAfterDecline,
+      state: state(d2, { turnNumber: 6 }),
+      latencyMs: 1100,
+      onClockSeat: 0,
+      chain: [],
+      events: [
+        ev(50, 0, JUNK, "Destroyed", 6, "M1", { from: "MZONE", to: "GRAVE" }),
+        ev(50, 0, TROOPER, "Destroyed", 6, "M1", { from: "MZONE", to: "GRAVE" }),
+        ev(50, 1, KREBONS, "Destroyed", 6, "M1", { from: "MZONE", to: "GRAVE" }),
+        ev(50, 1, TORRENTIAL, "Move", 6, "M1", { from: "SZONE", to: "GRAVE" }),
+      ],
+      note: "Both boards wiped, LP 8000 vs 8000. Compare with the Activate branch, which costs 4000 LP and saves the board.",
+    },
+  ];
+
   return {
     id: "chain-response",
     title: "Respond to a chain",
     blurb:
-      "The interaction the format is built on. One Question Bar naming the card, candidates badged by location, decline with equal weight.",
+      "The interaction the format is built on. One Question Bar naming the card, candidates badged by location, and a decline that really declines.",
+    lpByTurn: { 5: [8000, 8000], 6: [8000, 8000] },
+    seedLog: [
+      ev(40, 1, 0, "Move", 5, "DP"),
+      ev(90, 1, 0, "Draw", 5, "DP", { from: "DECK", to: "HAND" }),
+      ev(60, 1, KREBONS, "Summon", 5, "M1", { from: "HAND", to: "MZONE" }),
+      ev(54, 1, 0, "Set", 5, "M1", { from: "HAND", to: "SZONE" }),
+      ev(40, 0, 0, "Move", 6, "DP"),
+      ev(90, 0, JUNK, "Draw", 6, "DP", { from: "DECK", to: "HAND" }),
+    ],
     steps: [
       {
         decision: idleB,
         state: state(z0, { turnNumber: 6 }),
-        clockSeconds: 240,
+        myClockSeconds: 240,
+        oppClockSeconds: 300,
         onClockSeat: 0,
-        expect: { ref: { controller: 0, location: "HAND", sequence: 0 }, verb: "Summon" },
+        expect: { ref: { controller: 0, location: "HAND", sequence: 0 }, verb: "Normal Summon" },
         note: "Summon Junk Synchron and see what Sakura does about it.",
       },
       {
@@ -502,22 +591,10 @@ const scenarioB: Scenario = (() => {
           cancelable: false,
           trailingUnknown: true,
         },
-        events: [
-          {
-            engineType: 60,
-            owner: 0,
-            code: JUNK,
-            verb: "Summon",
-            from: "HAND",
-            to: "MZONE",
-            turnNumber: 6,
-            phase: "M1",
-          },
-        ],
+        events: [ev(60, 0, JUNK, "Summon", 6, "M1", { from: "HAND", to: "MZONE" })],
         waitLabel: "Sakura may respond…",
         onClockSeat: 1,
-        clockSeconds: 300,
-        autoResolved: "SelectZone — answered from your zone preference (leftmost free).",
+        autoResolved: "Zone — leftmost free monster zone.",
       },
       {
         decision: {
@@ -545,15 +622,15 @@ const scenarioB: Scenario = (() => {
         },
         state: state(z2, { turnNumber: 6 }),
         latencyMs: 1300,
-        clockSeconds: 236,
         onClockSeat: 0,
         chain: [{ ordinal: 1, code: TORRENTIAL, owner: 1, location: "SZONE", state: "declared" }],
         autoPush: TORRENTIAL,
+        declineBranch,
         highlight: [
           { controller: 0, location: "SZONE", sequence: 0 },
           { controller: 0, location: "SZONE", sequence: 1 },
         ],
-        note: "Line 1 names the card, the owner and the location. Today ChainPromptPanel shows neither — the trigger's identity is not in the ChainPrompt variant at all, only in MSG_CHAINING (backend MH-2).",
+        note: "Line 1 names the card, the owner and the location. “No response” takes a genuinely different branch — try both.",
       },
       {
         decision: null,
@@ -561,31 +638,13 @@ const scenarioB: Scenario = (() => {
         latencyMs: 1400,
         waitLabel: "Sakura may respond…",
         onClockSeat: 1,
-        clockSeconds: 300,
         chain: [
           { ordinal: 1, code: TORRENTIAL, owner: 1, location: "SZONE", state: "declared" },
           { ordinal: 2, code: SOLEMN, owner: 0, location: "SZONE", state: "declared" },
         ],
         events: [
-          {
-            engineType: 70,
-            owner: 0,
-            code: SOLEMN,
-            verb: "Chain",
-            from: "SZONE",
-            to: "SZONE",
-            turnNumber: 6,
-            phase: "M1",
-          },
-          {
-            engineType: 100,
-            owner: 0,
-            code: SOLEMN,
-            verb: "Damage",
-            amount: 4000,
-            turnNumber: 6,
-            phase: "M1",
-          },
+          ev(70, 0, SOLEMN, "Chain", 6, "M1", { from: "SZONE", to: "SZONE" }),
+          ev(100, 0, SOLEMN, "Damage", 6, "M1", { amount: 4000, lpOwner: 0 }),
         ],
       },
       {
@@ -597,7 +656,7 @@ const scenarioB: Scenario = (() => {
           { ordinal: 2, code: SOLEMN, owner: 0, location: "SZONE", state: "resolving" },
         ],
         autoPush: SOLEMN,
-        waitLabel: "Chain resolving…",
+        waitLabel: "Chain resolving — link 2 of 2…",
         onClockSeat: 1,
         note: "The strip unwinds right-to-left and pushes each resolving link's text into the inspector. No click.",
       },
@@ -605,31 +664,13 @@ const scenarioB: Scenario = (() => {
         decision: idleB,
         state: state(z4, { turnNumber: 6, lp: [4000, 8000] }),
         latencyMs: 900,
+        waitLabel: "Chain resolving — link 1 of 2…",
         chain: [],
-        clockSeconds: 232,
         onClockSeat: 0,
         events: [
-          { engineType: 72, owner: 0, code: SOLEMN, verb: "Resolve", turnNumber: 6, phase: "M1" },
-          {
-            engineType: 73,
-            owner: 1,
-            code: TORRENTIAL,
-            verb: "Negated",
-            from: "SZONE",
-            to: "GRAVE",
-            turnNumber: 6,
-            phase: "M1",
-          },
-          {
-            engineType: 50,
-            owner: 0,
-            code: SOLEMN,
-            verb: "Move",
-            from: "SZONE",
-            to: "GRAVE",
-            turnNumber: 6,
-            phase: "M1",
-          },
+          ev(72, 0, SOLEMN, "Resolve", 6, "M1"),
+          ev(73, 1, TORRENTIAL, "Negated", 6, "M1", { from: "SZONE", to: "GRAVE" }),
+          ev(50, 0, SOLEMN, "Move", 6, "M1", { from: "SZONE", to: "GRAVE" }),
         ],
       },
     ],
@@ -651,9 +692,19 @@ const scenarioC: Scenario = (() => {
   z0.p0_deckCount = 28;
   z0.p1_deckCount = 27;
 
-  const z1 = clone(z0); // Krebons destroyed
-  z1.p1_mzone = row([]);
-  z1.p1_grave = [{ code: KREBONS, sequence: 0, position: 1 }];
+  const zSpent = clone(z0);
+  zSpent.p0_mzone = row([
+    { ...mon(CAIUS, 0, 2400, 1000, 6), attacked: true },
+    mon(TROOPER, 1, 400, 400, 3),
+  ]);
+  zSpent.p1_mzone = row([]);
+  zSpent.p1_grave = [{ code: KREBONS, sequence: 0, position: 1 }];
+
+  const zBoth = clone(zSpent);
+  zBoth.p0_mzone = row([
+    { ...mon(CAIUS, 0, 2400, 1000, 6), attacked: true },
+    { ...mon(TROOPER, 1, 400, 400, 3), attacked: true },
+  ]);
 
   const idleC: DuelDecision = {
     kind: "IdleCommand",
@@ -731,16 +782,37 @@ const scenarioC: Scenario = (() => {
     toEndPhase: true,
   };
 
+  const attackIntent = (label: string, stepIndex: number): PendingIntent => ({
+    label,
+    cardCode: CAIUS,
+    // M11 — one commit model. Target selection is cancelable (ocgcore can_cancel:true);
+    // once it is answered the attack is DECLARED and cannot be rescinded.
+    steps: ["Target", "Declared"],
+    stepIndex,
+    commitAt: 1,
+    cancelable: stepIndex === 0,
+  });
+
   return {
     id: "battle",
     title: "Attack with everything",
     blurb:
       "Targets picked on the board, not in a list. attacks[] is re-indexed after every cycle — the client resolves by {controller,location,sequence}, never by index.",
+    lpByTurn: { 7: [8000, 8000], 8: [8000, 8000] },
+    seedLog: [
+      ev(40, 0, 0, "Move", 7, "DP"),
+      ev(90, 1, 0, "Draw", 7, "DP", { from: "DECK", to: "HAND" }),
+      ev(54, 1, 0, "Set", 7, "M1", { from: "HAND", to: "SZONE" }),
+      ev(40, 0, 0, "Move", 8, "DP"),
+      ev(90, 0, GORZ, "Draw", 8, "DP", { from: "DECK", to: "HAND" }),
+      ev(60, 0, CAIUS, "Tribute Summon", 8, "M1", { from: "HAND", to: "MZONE" }),
+    ],
     steps: [
       {
         decision: idleC,
         state: state(z0, { turnNumber: 8 }),
-        clockSeconds: 300,
+        myClockSeconds: 300,
+        oppClockSeconds: 300,
         onClockSeat: 0,
         expect: { phase: "BP" },
         note: "Click BP on the phase rail. It is always there — it is not inside a decision panel.",
@@ -749,10 +821,9 @@ const scenarioC: Scenario = (() => {
         decision: battle1,
         state: state(z0, { turnNumber: 8, phase: "BP" }),
         latencyMs: 200,
-        clockSeconds: 296,
         onClockSeat: 0,
         expect: { ref: { controller: 0, location: "MZONE", sequence: 0 }, verb: "Attack" },
-        note: "BattleCommand also arms the board — no bar. Attackers carry a » glyph.",
+        note: "BattleCommand also arms the board — no bar. Monsters that can still attack carry the ATTACK badge.",
       },
       {
         decision: {
@@ -766,86 +837,54 @@ const scenarioC: Scenario = (() => {
           cancelable: true,
         },
         state: state(z0, { turnNumber: 8, phase: "BP" }),
-        intent: {
-          label: 'Attacking with "Caius the Shadow Monarch"',
-          cardCode: CAIUS,
-          steps: ["Target"],
-          stepIndex: 0,
-          commitAt: 99,
-          cancelable: true,
-        },
+        intent: attackIntent('Attacking with "Caius the Shadow Monarch"', 0),
         latencyMs: 160,
         caption: 'Attack with "Caius the Shadow Monarch" — choose a target',
         highlight: [{ controller: 1, location: "MZONE", sequence: 0 }],
-        events: [
-          { engineType: 110, owner: 0, code: CAIUS, verb: "Attack", turnNumber: 8, phase: "BP" },
-        ],
+        note: "Cancel is live while you are still choosing a target — the engine allows it (can_cancel: true). It goes away the moment the attack is declared.",
       },
       {
         decision: null,
         state: state(z0, { turnNumber: 8, phase: "BP" }),
+        intent: attackIntent('Attacking with "Caius the Shadow Monarch"', 1),
         latencyMs: 1200,
-        waitLabel: "Sakura may respond…",
+        waitLabel: "Attack declared — Sakura may respond…",
         onClockSeat: 1,
-        clockSeconds: 300,
+        events: [ev(110, 0, CAIUS, "Attack", 8, "BP")],
+        note: "Declared. The ribbon now reads COMMITTED and Cancel is gone — the same commit model as a summon.",
+      },
+      {
+        decision: null,
+        state: state(z0, { turnNumber: 8, phase: "BP" }),
+        intent: attackIntent('Attacking with "Caius the Shadow Monarch"', 1),
+        latencyMs: 800,
+        waitLabel: "Damage step — Caius 2400 vs Krebons 1200…",
+        onClockSeat: 1,
+        note: "The ~2s gap between Confirm and the LP change is now labelled at every beat, so it reads as resolving rather than frozen.",
       },
       {
         decision: battle2,
-        state: state(z1, { turnNumber: 8, phase: "BP", lp: [8000, 6800] }),
-        latencyMs: 700,
-        clockSeconds: 290,
+        state: state(zSpent, { turnNumber: 8, phase: "BP", lp: [8000, 6800] }),
+        latencyMs: 500,
         onClockSeat: 0,
         expect: { ref: { controller: 0, location: "MZONE", sequence: 1 }, verb: "Attack directly" },
         events: [
-          {
-            engineType: 111,
-            owner: 0,
-            code: CAIUS,
-            verb: "Attack",
-            amount: 2400,
-            turnNumber: 8,
-            phase: "BP",
-          },
-          {
-            engineType: 111,
-            owner: 1,
-            code: KREBONS,
-            verb: "Destroyed",
-            from: "MZONE",
-            to: "GRAVE",
-            turnNumber: 8,
-            phase: "BP",
-          },
-          {
-            engineType: 91,
-            owner: 1,
-            code: CAIUS,
-            verb: "Damage",
-            amount: 1200,
-            turnNumber: 8,
-            phase: "BP",
-          },
+          ev(111, 0, CAIUS, "Attack", 8, "BP", { amount: 2400 }),
+          ev(111, 1, KREBONS, "Destroyed", 8, "BP", { from: "MZONE", to: "GRAVE" }),
+          ev(91, 1, CAIUS, "Damage", 8, "BP", { amount: 1200, lpOwner: 1 }),
         ],
-        note: "Caius is GONE from attacks[]. Its » glyph is greyed — absence made visible.",
+        note: "Caius is GONE from attacks[]. Its badge greys out — absence made visible.",
       },
       {
         decision: battle3,
-        state: state(z1, { turnNumber: 8, phase: "BP", lp: [8000, 6400] }),
+        state: state(zBoth, { turnNumber: 8, phase: "BP", lp: [8000, 6400] }),
         latencyMs: 900,
-        clockSeconds: 284,
+        waitLabel: "Direct attack resolving…",
         onClockSeat: 0,
         expect: { phase: "EP" },
         events: [
-          { engineType: 110, owner: 0, code: TROOPER, verb: "Attack", turnNumber: 8, phase: "BP" },
-          {
-            engineType: 91,
-            owner: 1,
-            code: TROOPER,
-            verb: "Damage",
-            amount: 400,
-            turnNumber: 8,
-            phase: "BP",
-          },
+          ev(110, 0, TROOPER, "Attack", 8, "BP"),
+          ev(91, 1, TROOPER, "Damage", 8, "BP", { amount: 400, lpOwner: 1 }),
         ],
         note: "canDirectAttack === true → the client answers the follow-up SelectCard itself. Two clicks, not three.",
       },
@@ -893,7 +932,17 @@ const scenarioD: Scenario = (() => {
     id: "waiting-clock-end",
     title: "Waiting · clock · forfeit",
     blurb:
-      "Half of every duel is spent off-clock. Three states that render identically today — opponent thinking, engine busy, you disconnected — are three different screens here. Then the clock runs out.",
+      "Half of every duel is spent off-clock. Then your own clock — which has been banked and visible the whole time — runs out, and a timeout forfeits the duel. Takes about 40 seconds; do nothing and watch.",
+    lpByTurn: { 9: [8000, 8000], 10: [8000, 8000], 11: [8000, 8000], 12: [8000, 8000] },
+    seedLog: [
+      ev(40, 1, 0, "Move", 9, "DP"),
+      ev(90, 1, 0, "Draw", 9, "DP", { from: "DECK", to: "HAND" }),
+      ev(54, 1, 0, "Set", 9, "M1", { from: "HAND", to: "SZONE" }),
+      ev(40, 0, 0, "Move", 10, "DP"),
+      ev(90, 0, TROOPER, "Draw", 10, "DP", { from: "DECK", to: "HAND" }),
+      ev(60, 0, TROOPER, "Summon", 10, "M1", { from: "HAND", to: "MZONE" }),
+      ev(54, 0, DPRISON, "Set", 10, "M1", { from: "HAND", to: "SZONE" }),
+    ],
     steps: [
       {
         decision: null,
@@ -901,80 +950,41 @@ const scenarioD: Scenario = (() => {
         latencyMs: 200,
         waitLabel: "Sakura is deciding",
         onClockSeat: 1,
-        clockSeconds: 268,
-        events: [
-          {
-            engineType: 90,
-            owner: 1,
-            code: 0,
-            verb: "Draw",
-            from: "DECK",
-            to: "HAND",
-            turnNumber: 11,
-            phase: "DP",
-          },
-        ],
-        note: "Off-clock. Their clock counts. You can inspect anything; nothing you do is broadcast.",
+        myClockSeconds: 34,
+        oppClockSeconds: 268,
+        events: [ev(90, 1, 0, "Draw", 11, "DP", { from: "DECK", to: "HAND" })],
+        note: "Off-clock. THEIR clock is ticking; YOURS is banked at 0:34 and still on screen — that is the number you need to decide whether to think.",
       },
       {
         decision: null,
         state: state(z1, { turnNumber: 11, currentTurn: 1, phase: "M1" }),
-        latencyMs: 1800,
+        latencyMs: 3000,
         waitLabel: "Sakura is deciding",
         onClockSeat: 1,
-        clockSeconds: 244,
         autoPush: CAIUS,
         events: [
-          { engineType: 41, owner: 1, code: 0, verb: "Move", turnNumber: 11, phase: "M1" },
-          {
-            engineType: 60,
-            owner: 1,
-            code: CAIUS,
-            verb: "Summon",
-            from: "HAND",
-            to: "MZONE",
-            turnNumber: 11,
-            phase: "M1",
-          },
+          ev(41, 1, 0, "Move", 11, "M1"),
+          ev(60, 1, CAIUS, "Summon", 11, "M1", { from: "HAND", to: "MZONE" }),
         ],
-        note: "Their card text is auto-pushed to the inspector the moment they play it. You are never guessing.",
+        note: "Their card text is auto-pushed the moment they play it. You are never guessing.",
       },
       {
         decision: idleD,
         state: state(z1, { turnNumber: 12, currentTurn: 0, phase: "M1" }),
         latencyMs: 1400,
         onClockSeat: 0,
-        clockSeconds: 52,
-        expect: { ref: { controller: 0, location: "HAND", sequence: 1 }, verb: "Special Summon" },
         events: [
-          { engineType: 40, owner: 0, code: 0, verb: "Move", turnNumber: 12, phase: "DP" },
-          {
-            engineType: 90,
-            owner: 0,
-            code: 0,
-            verb: "Draw",
-            from: "DECK",
-            to: "HAND",
-            turnNumber: 12,
-            phase: "DP",
-          },
+          ev(40, 0, 0, "Move", 12, "DP"),
+          ev(90, 0, 0, "Draw", 12, "DP", { from: "DECK", to: "HAND" }),
         ],
-        note: "≤60s: the clock badge goes amber and doubles. Try to act — or wait and watch it escalate.",
-      },
-      {
-        decision: idleD,
-        state: state(z1, { turnNumber: 12, currentTurn: 0, phase: "M1" }),
-        latencyMs: 400,
-        onClockSeat: 0,
-        clockSeconds: 8,
-        note: "≤10s: the board edge pulses and the badge states the consequence. A timeout forfeits the duel.",
+        expect: { ref: { controller: 0, location: "HAND", sequence: 1 }, verb: "Special Summon" },
+        note: "Your clock resumes from 0:34 — it did NOT reset. Do nothing and watch it escalate: amber at 1:00, alarm at 0:30, seconds at 0:10.",
       },
       {
         decision: null,
         state: state(z1, { turnNumber: 12, currentTurn: 0, phase: "M1", duelEnded: true }),
-        latencyMs: 900,
+        latencyMs: 400,
         onClockSeat: 0,
-        clockSeconds: 0,
         end: { winner: 1, reason: "timeout" },
       },
     ],

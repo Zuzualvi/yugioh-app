@@ -25,6 +25,9 @@ interface Props {
   onPhase: (p: PhaseName) => void;
   legalPhases: PhaseName[];
   clock: React.ReactNode;
+  /** M3 — legal zones for a board-as-answer-space step; they must look clickable */
+  zonePick?: CardRef[];
+  onZonePick?: (r: CardRef) => void;
 }
 
 const isIn = (list: CardRef[], o: Seat, l: LocationCode, s: number) =>
@@ -34,35 +37,51 @@ export function Board(p: Props) {
   const z = p.state.zones;
   const oppSeat: Seat = p.mySeat === 0 ? 1 : 0;
 
-  const slot = (zc: ZoneCard | null, owner: Seat, location: LocationCode, sequence: number) => (
-    <div
-      key={`${owner}-${location}-${sequence}`}
-      className={`slot ${owner === p.mySeat ? "mine" : "theirs"}`}
-    >
-      {zc && (
-        <CardTile
-          zc={zc}
-          owner={owner}
-          mySeat={p.mySeat}
-          target={isIn(p.highlight, owner, location, sequence)}
-          selected={isIn(p.selected, owner, location, sequence)}
-          actionable={p.actionable(owner, location, sequence)}
-          spent={p.spent(owner, location, sequence)}
-          onHover={p.onHover}
-          onClick={(e) => {
-            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            p.onCard({
-              owner,
-              location,
-              sequence,
-              zc,
-              anchor: { x: r.left + r.width / 2, y: r.top },
-            });
-          }}
-        />
-      )}
-    </div>
-  );
+  const slot = (zc: ZoneCard | null, owner: Seat, location: LocationCode, sequence: number) => {
+    // M3 — a zone that is a legal answer must LOOK clickable, not share the style of
+    // every other empty slot.
+    const pickable = !!p.zonePick && isIn(p.zonePick, owner, location, sequence) && !zc;
+    return (
+      <div
+        key={`${owner}-${location}-${sequence}`}
+        className={`slot ${owner === p.mySeat ? "mine" : "theirs"}${pickable ? " zonepick" : ""}`}
+        onClick={
+          pickable ? () => p.onZonePick?.({ controller: owner, location, sequence }) : undefined
+        }
+        title={pickable ? "Place here" : undefined}
+      >
+        {pickable && (
+          <span className="zonepick-label">
+            Place
+            <br />
+            here
+          </span>
+        )}
+        {zc && (
+          <CardTile
+            zc={zc}
+            owner={owner}
+            mySeat={p.mySeat}
+            target={isIn(p.highlight, owner, location, sequence)}
+            selected={isIn(p.selected, owner, location, sequence)}
+            actionable={p.actionable(owner, location, sequence)}
+            spent={p.spent(owner, location, sequence)}
+            onHover={p.onHover}
+            onClick={(e) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              p.onCard({
+                owner,
+                location,
+                sequence,
+                zc,
+                anchor: { x: r.left + r.width / 2, y: r.top },
+              });
+            }}
+          />
+        )}
+      </div>
+    );
+  };
 
   const pile = (label: string, count: number, owner: Seat, location: LocationCode) => (
     <button

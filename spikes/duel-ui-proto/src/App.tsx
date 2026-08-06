@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SCENARIOS } from "./fixtures/scenarios";
-import type { CardRef, Step } from "./fixtures/scenarios";
+import type { CardRef } from "./fixtures/scenarios";
 import type { DuelDecision, LocationCode, PhaseName, Seat, ZoneCard } from "./fixtures/types";
-import { card, cardName } from "./fixtures/cards";
+import { card } from "./fixtures/cards";
 import { useProtoEngine } from "./engine/useProtoEngine";
 import { Board } from "./components/Board";
 import type { BoardClick } from "./components/Board";
-import { QuestionBar } from "./components/QuestionBar";
+import { AutoAnswerReceipt, QuestionBar } from "./components/QuestionBar";
 import { ChainStrip, IntentRibbon } from "./components/Dock";
 import { LogRail } from "./components/LogRail";
 import { Inspector } from "./components/Inspector";
@@ -17,8 +17,7 @@ const OPPONENT = "Sakura";
 
 /** Stable verb order — muscle memory only forms if the order never moves. */
 const VERB_ORDER = [
-  "Summon",
-  "Tribute Summon",
+  "Normal Summon",
   "Special Summon",
   "Set",
   "Activate",
@@ -27,6 +26,13 @@ const VERB_ORDER = [
   "Attack directly",
   "Inspect",
 ];
+
+const PROMPT_MODES = [
+  { key: "Minimal", desc: "Only mandatory effects and certain triggers." },
+  { key: "Standard", desc: "Also on summons, attacks and activations." },
+  { key: "Every window", desc: "Also every phase change and battle step." },
+] as const;
+type PromptMode = (typeof PROMPT_MODES)[number]["key"];
 
 function tributesFor(level: number | null | undefined): number {
   if (!level) return 0;
@@ -39,13 +45,14 @@ function sameRef(a: { controller: Seat; location: LocationCode; sequence: number
   return a.controller === b.controller && a.location === b.location && a.sequence === b.sequence;
 }
 
+/** m4 + m17 — one name for one game concept, and the cost carries its unit. */
 function verbsFor(decision: DuelDecision | null, ref: CardRef): string[] {
   const out: string[] = [];
   if (decision?.kind === "IdleCommand") {
     const s = decision.summons.find((e) => sameRef(e, ref));
     if (s) {
       const t = tributesFor(card(s.code)?.level);
-      out.push(t > 0 ? `Tribute Summon (${t})` : "Summon");
+      out.push(t > 0 ? `Normal Summon — ${t} tribute${t > 1 ? "s" : ""}` : "Normal Summon");
     }
     if (decision.specialSummons.some((e) => sameRef(e, ref))) out.push("Special Summon");
     if (
@@ -62,21 +69,31 @@ function verbsFor(decision: DuelDecision | null, ref: CardRef): string[] {
   }
   out.push("Inspect");
   return out.sort((x, y) => {
-    const ix = VERB_ORDER.findIndex((v) => x.startsWith(v.split(" (")[0]));
-    const iy = VERB_ORDER.findIndex((v) => y.startsWith(v.split(" (")[0]));
+    const ix = VERB_ORDER.findIndex((v) => x.startsWith(v.split(" —")[0]));
+    const iy = VERB_ORDER.findIndex((v) => y.startsWith(v.split(" —")[0]));
     return ix - iy;
   });
+}
+
+function fmt(sec: number) {
+  return `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, "0")}`;
 }
 
 export default function App() {
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id);
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!;
-  const [revealAuto, setRevealAuto] = useState(true);
+  // B1/OQ5 — instrumentation is OFF by default. The CEO must land in the real screen.
+  const [revealAuto, setRevealAuto] = useState(false);
   const [chooseZones, setChooseZones] = useState(false);
-  const [verbosity, setVerbosity] = useState<"OFF" | "Auto" | "ON">("Auto");
+  const [promptMode, setPromptMode] = useState<PromptMode>("Standard");
+  const [promptOpen, setPromptOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
 
-  const { view, answer, reset, setAutoPush } = useProtoEngine(scenario, revealAuto, chooseZones);
+  const { view, answer, decline, reset, setAutoPush } = useProtoEngine(
+    scenario,
+    revealAuto,
+    chooseZones,
+  );
 
   const [selected, setSelected] = useState<CardRef[]>([]);
   const [cluster, setCluster] = useState<{
@@ -84,55 +101,79 @@ export default function App() {
     verbs: string[];
     x: number;
     y: number;
+    below: boolean;
   } | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
   const [pile, setPile] = useState<{ owner: Seat; location: LocationCode } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  /** M7 — a refusal is anchored at the card that refused, not 500px away */
+  const [refusal, setRefusal] = useState<{ x: number; y: number; text: string } | null>(null);
   const [endDismissed, setEndDismissed] = useState(false);
-  const toastTimer = useRef<number>();
+  const refusalTimer = useRef<number>();
 
   const d = view.step?.decision ?? null;
-  const inAnswer = view.mode === "answer";
+  const isReceipt = view.autoReceipt !== null;
+  const inAnswer = view.mode === "answer" && !isReceipt;
 
-  useEffect(() => setSelected([]), [view.stepIndex]);
+  // A decision with exactly ONE candidate is pre-selected: making the player click the
+  // only option before the only button is friction with no decision in it (same
+  // principle as m7). It is still a real choice — confirm vs decline.
+  useEffect(() => {
+    const dec = view.step?.decision ?? null;
+    if (dec?.kind === "ChainPrompt" && dec.selects.length === 1) {
+      const e = dec.selects[0];
+      setSelected([{ controller: e.controller, location: e.location, sequence: e.sequence }]);
+      return;
+    }
+    if (
+      (dec?.kind === "SelectCard" || dec?.kind === "SelectTribute") &&
+      dec.cards.length === 1 &&
+      dec.min === 1
+    ) {
+      const e = dec.cards[0];
+      setSelected([{ controller: e.controller, location: e.location, sequence: e.sequence }]);
+      return;
+    }
+    setSelected([]);
+  }, [view.stepIndex, view.step]);
   useEffect(() => setCluster(null), [view.stepIndex, view.mode]);
-  useEffect(() => {
-    setEndDismissed(false);
-  }, [scenarioId]);
+  useEffect(() => setEndDismissed(false), [scenarioId]);
 
-  // A timeout forfeits the duel — modelled for real.
+  // B5 — a timeout really forfeits. This is the whole point of scenario 4.
   useEffect(() => {
-    if (view.clockSeconds === 0 && view.onClockSeat === ME && !view.end && !view.busy) answer();
-  }, [view.clockSeconds, view.onClockSeat, view.end, view.busy, answer]);
+    if (view.myClockSeconds === 0 && view.onClockSeat === ME && !view.end && !view.busy) answer();
+  }, [view.myClockSeconds, view.onClockSeat, view.end, view.busy, answer]);
 
-  const say = useCallback((m: string) => {
-    setToast(m);
-    window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2200);
+  const refuse = useCallback((x: number, y: number, text: string) => {
+    setRefusal({ x, y, text });
+    window.clearTimeout(refusalTimer.current);
+    refusalTimer.current = window.setTimeout(() => setRefusal(null), 2600);
   }, []);
 
-  // ── Esc closes the cheapest thing first ────────────────────────────────────
+  /**
+   * B2 — Esc NEVER commits anything. It closes the cheapest open thing, and where a
+   * legal decline exists it declines. It is never wired to confirm.
+   */
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (pile) setPile(null);
         else if (cluster) setCluster(null);
         else if (pinned !== null) setPinned(null);
-        else if (inAnswer && d && "cancelable" in d && d.cancelable) answer();
+        else if (inAnswer && d && declineAllowed(d)) decline();
+        return;
       }
-      if (e.key.toLowerCase() === "l") setLogOpen((o) => !o);
+      if (e.key.toLowerCase() === "l" && !promptOpen) setLogOpen((o) => !o);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [pile, cluster, pinned, inAnswer, d, answer]);
+  }, [pile, cluster, pinned, inAnswer, d, decline, promptOpen]);
 
   const expected = view.step?.expect;
 
   const onCard = (c: BoardClick) => {
     const ref: CardRef = { controller: c.owner, location: c.location, sequence: c.sequence };
 
-    // ANSWER mode: clicking a highlighted card answers the question, on the board.
     if (inAnswer) {
       if (view.highlight.some((h) => sameRef(h, ref))) toggle(ref);
       else {
@@ -141,25 +182,30 @@ export default function App() {
       }
       return;
     }
-    if (view.mode !== "act") {
-      setPinned(c.zc.code);
-      return;
-    }
-    // ACT mode: your card → verb chips. Anything else → free, silent inspection.
-    if (c.owner !== ME) {
+    if (view.mode !== "act" || c.owner !== ME) {
       setPinned(c.zc.code);
       return;
     }
     const verbs = verbsFor(d, ref);
     if (verbs.length === 1) {
       setPinned(c.zc.code);
-      say("No legal verbs for that card right now.");
+      // M7 — game words, anchored at the card. We do NOT invent a reason: the engine
+      // does not tell us why a card was omitted, and guessing would be a rules claim.
+      const spentHere = spent(c.owner, c.location, c.sequence);
+      refuse(
+        c.anchor.x,
+        c.anchor.y,
+        spentHere
+          ? "This monster has already attacked."
+          : "Nothing you can do with this card right now.",
+      );
       return;
     }
-    setCluster({ ref, verbs, x: c.anchor.x, y: c.anchor.y });
+    // m5 — never cover the phase rail; flip below the card when the cluster would.
+    setCluster({ ref, verbs, x: c.anchor.x, y: c.anchor.y, below: c.anchor.y < 380 });
   };
 
-  const pickVerb = (v: string, ref: CardRef) => {
+  const pickVerb = (v: string, ref: CardRef, x: number, y: number) => {
     setCluster(null);
     if (v === "Inspect") {
       const zc = findCard(view.state.zones, ref);
@@ -169,13 +215,18 @@ export default function App() {
     if (expected && "ref" in expected && sameRef(expected.ref, ref) && expected.verb === v) {
       answer();
     } else {
-      say(`"${v}" is legal, but this prototype only scripts one line per scenario.`);
+      refuse(x, y, `"${v}" is legal — this prototype scripts one line per scenario.`);
     }
   };
 
   const onPhase = (ph: PhaseName) => {
     if (expected && "phase" in expected && expected.phase === ph) answer();
-    else say("That phase change is legal — this prototype scripts one line per scenario.");
+    else
+      refuse(
+        window.innerWidth / 2,
+        320,
+        "That phase change is legal — the prototype scripts one line.",
+      );
   };
 
   const toggle = (r: CardRef) => {
@@ -224,18 +275,23 @@ export default function App() {
       : [];
 
   const inspectCode = pinned ?? hover ?? view.autoPush;
-  const critical = view.clockSeconds <= 10 && view.onClockSeat === ME && !view.end;
+  const myClock = view.myClockSeconds;
+  const urgency =
+    view.onClockSeat !== ME || view.end
+      ? "none"
+      : myClock <= 10
+        ? "alarm"
+        : myClock <= 30
+          ? "high"
+          : myClock <= 60
+            ? "warn"
+            : "none";
 
   return (
     <div className="app">
       <div className="topbar">
         {/* PROTOTYPE-ONLY chrome, left of the divider */}
-        <select
-          className="chip"
-          value={scenarioId}
-          onChange={(e) => setScenarioId(e.target.value)}
-          style={{ background: "var(--bg-2)" }}
-        >
+        <select className="chip" value={scenarioId} onChange={(e) => setScenarioId(e.target.value)}>
           {SCENARIOS.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title}
@@ -249,9 +305,9 @@ export default function App() {
           className={`chip${revealAuto ? " on" : ""}`}
           onClick={() => setRevealAuto((v) => !v)}
         >
-          {revealAuto ? "Showing auto-answered steps" : "Auto-answered steps hidden"}
+          Reveal auto-answers: {revealAuto ? "ON" : "OFF"}
         </button>
-        <span style={{ color: "var(--bg-3)" }}>│</span>
+        <span className="divider">│</span>
 
         {/* real duel chrome */}
         <span style={{ color: "var(--text-2)" }}>
@@ -261,15 +317,33 @@ export default function App() {
           TURN {view.state.turnNumber} · {view.state.currentTurn === ME ? "YOURS" : "THEIRS"}
         </span>
         <span className="sp" />
-        <button
-          className="chip"
-          onClick={() =>
-            setVerbosity(verbosity === "OFF" ? "Auto" : verbosity === "Auto" ? "ON" : "OFF")
-          }
-          title="Response prompts — hold A to widen, D to narrow"
-        >
-          Chain: {verbosity}
-        </button>
+        {/* M10 — a labelled control whose states are visible without clicking through */}
+        <div className="promptwrap">
+          <button className="chip" onClick={() => setPromptOpen((o) => !o)}>
+            Response prompts: {promptMode} ▾
+          </button>
+          {promptOpen && (
+            <div className="promptmenu">
+              {PROMPT_MODES.map((m) => (
+                <button
+                  key={m.key}
+                  className={`promptopt${promptMode === m.key ? " sel" : ""}`}
+                  onClick={() => {
+                    setPromptMode(m.key);
+                    setPromptOpen(false);
+                  }}
+                >
+                  <b>{m.key}</b>
+                  <span>{m.desc}</span>
+                </button>
+              ))}
+              <div className="promptwarn">
+                Mandatory effects are always offered, whatever this is set to — this cannot make you
+                miss a forced response.
+              </div>
+            </div>
+          )}
+        </div>
         <button
           className={`chip${chooseZones ? " on" : ""}`}
           onClick={() => setChooseZones((v) => !v)}
@@ -277,12 +351,14 @@ export default function App() {
           Choose zones: {chooseZones ? "ON" : "OFF"}
         </button>
         <button className="chip" onClick={() => setLogOpen((o) => !o)}>
-          Log
+          Log <kbd>L</kbd>
         </button>
       </div>
 
       <div className="body">
-        <div className={`stage${inAnswer ? " dimmed" : ""}${critical ? " critical" : ""}`}>
+        <div
+          className={`stage${inAnswer ? " dimmed" : ""}${urgency === "alarm" ? " critical" : ""}`}
+        >
           {inAnswer && <div className="dimscrim" />}
           <Board
             state={view.state}
@@ -296,23 +372,37 @@ export default function App() {
             onHover={setHover}
             onPhase={onPhase}
             legalPhases={legalPhases}
+            zonePick={zonePick}
+            onZonePick={() => answer()}
             clock={
-              <span
-                className={`clockbadge ${view.onClockSeat === ME ? "mine" : "theirs"}${
-                  view.onClockSeat === ME && view.clockSeconds <= 60 ? " warn" : ""
-                }`}
-              >
-                {Math.floor(view.clockSeconds / 60)}:
-                {String(view.clockSeconds % 60).padStart(2, "0")}
-                {view.onClockSeat === ME && view.clockSeconds <= 10 && " — timeout forfeits"}
-              </span>
+              // M8 — BOTH clocks, permanently, each labelled. Never colour alone.
+              <div className="clocks" data-testid="clocks">
+                <span
+                  className={`clockrow mine${view.onClockSeat === ME ? " active" : ""} u-${urgency}`}
+                  data-testid="my-clock"
+                >
+                  <span className="cl-who">You</span>
+                  <span className="cl-val">{fmt(myClock)}</span>
+                  <span className="cl-state">{view.onClockSeat === ME ? "running" : "banked"}</span>
+                </span>
+                <span
+                  className={`clockrow theirs${view.onClockSeat !== ME ? " active" : ""}`}
+                  data-testid="opp-clock"
+                >
+                  <span className="cl-who">{OPPONENT}</span>
+                  <span className="cl-val">{fmt(view.oppClockSeconds)}</span>
+                  <span className="cl-state">{view.onClockSeat !== ME ? "running" : "banked"}</span>
+                </span>
+                {urgency !== "none" && (
+                  <span className={`cl-warn u-${urgency}`}>
+                    {urgency === "alarm"
+                      ? `${myClock}s — TIMEOUT FORFEITS THE DUEL`
+                      : "timeout forfeits the duel"}
+                  </span>
+                )}
+              </div>
             }
           />
-
-          {/* zone picking happens ON THE BOARD (only when Choose zones is ON) */}
-          {zonePick.length > 0 && !view.autoFlash && (
-            <ZoneOverlay zones={zonePick} onPick={() => answer()} />
-          )}
 
           <div className="lp mine">
             <span className="who">You</span>
@@ -333,16 +423,27 @@ export default function App() {
             }}
           />
 
-          {/* the bottom dock: chain strip → intent ribbon → ONE question bar */}
+          {/* the bottom dock: chain strip → intent ribbon → ONE question surface */}
           <div className="dock">
             <ChainStrip chain={view.chain} mySeat={ME} />
-            {view.autoFlash && (
-              <div className="autoflash">auto-answered &middot; {view.autoFlash}</div>
+            {view.intent && (
+              <IntentRibbon
+                intent={view.intent}
+                onCancel={decline}
+                cancelWhat={
+                  view.intent.label.toLowerCase().includes("attack") ? "attack" : "summon"
+                }
+              />
             )}
-            {view.intent && <IntentRibbon intent={view.intent} onCancel={() => answerCancel()} />}
+            {/* B1/M2 — an already-answered step is a receipt, never a live question */}
+            {isReceipt && (
+              <AutoAnswerReceipt
+                text={view.autoReceipt!}
+                onAskNextTime={() => setChooseZones(true)}
+              />
+            )}
             {inAnswer && d && (
               <QuestionBar
-                auto={!!view.autoFlash}
                 caption={view.step?.caption}
                 decision={d}
                 mySeat={ME}
@@ -350,29 +451,26 @@ export default function App() {
                 chain={view.chain}
                 selected={selected}
                 toggle={toggle}
-                onConfirm={answer}
-                onDecline={answer}
-                clockSeconds={view.clockSeconds}
+                onConfirm={(explicit) => answer(explicit ?? selected)}
+                onDecline={decline}
+                clockSeconds={myClock}
                 commitNext={!!view.intent && view.intent.stepIndex + 1 === view.intent.commitAt}
                 subjectCode={view.intent?.cardCode}
               />
             )}
+            {/* m9 — the waiting state lives where the bar was, not 630px away */}
+            {(view.mode === "waiting" || view.mode === "resolving") && !view.end && !isReceipt && (
+              <div className="waitdock" data-testid="wait">
+                <span className="spinner" />
+                {view.waitLabel ??
+                  (view.onClockSeat !== ME ? `${OPPONENT} is deciding` : "Engine is resolving…")}
+              </div>
+            )}
           </div>
 
-          {(view.mode === "waiting" || view.mode === "resolving") && !view.end && (
-            <div className="waitbanner">
-              <span className="spinner" />
-              {view.waitLabel ??
-                (view.onClockSeat !== ME ? `${OPPONENT} is deciding` : "Engine is resolving…")}
-            </div>
-          )}
-
-          {toast && (
-            <div
-              className="waitbanner"
-              style={{ top: "auto", bottom: 12, borderColor: "var(--accent)" }}
-            >
-              {toast}
+          {refusal && (
+            <div className="refusal" style={{ left: refusal.x, top: refusal.y - 34 }}>
+              {refusal.text}
             </div>
           )}
 
@@ -394,7 +492,7 @@ export default function App() {
 
           {view.end && !endDismissed && (
             <div className="scrim">
-              <div className="sheet" style={{ textAlign: "center", maxWidth: 380 }}>
+              <div className="sheet endsheet">
                 <h2>
                   {view.end.winner === null
                     ? "Draw"
@@ -443,10 +541,7 @@ export default function App() {
           )}
 
           {view.end && endDismissed && (
-            <div
-              className="waitbanner"
-              style={{ borderColor: "var(--warn)", color: "var(--warn)" }}
-            >
+            <div className="endedpill">
               Duel ended
               <button className="chip" onClick={() => setEndDismissed(false)}>
                 Result
@@ -464,63 +559,64 @@ export default function App() {
           opponentName={OPPONENT}
           onPick={(c) => setPinned(c)}
           ended={view.end?.reason ?? null}
+          turnNumber={view.state.turnNumber}
+          seededCount={scenario.seedLog?.length ?? 0}
+          lpByTurn={scenario.lpByTurn ?? {}}
         />
       </div>
 
       {cluster && (
         <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 15 }}
-            onClick={() => setCluster(null)}
-          />
+          <div className="clusterscrim" onClick={() => setCluster(null)} />
           <div
             className="verbcluster"
-            style={{ left: cluster.x, top: cluster.y - 42, transform: "translateX(-50%)" }}
+            style={
+              cluster.below
+                ? { left: cluster.x, top: cluster.y + 96 }
+                : { left: cluster.x, top: cluster.y - 44 }
+            }
           >
             {cluster.verbs.map((v) => (
-              <button key={v} className="verb" onClick={() => pickVerb(v, cluster.ref)}>
+              <button
+                key={v}
+                className="verb"
+                onClick={() => pickVerb(v, cluster.ref, cluster.x, cluster.y)}
+              >
                 {v}
               </button>
             ))}
+            <span className="verbhint">
+              <kbd>Esc</kbd> closes — costs nothing
+            </span>
           </div>
         </>
       )}
     </div>
   );
+}
 
-  function answerCancel() {
-    say("Cancelled — nothing was consumed. (The prototype restarts the scenario.)");
-    reset();
-  }
+function declineAllowed(d: DuelDecision): boolean {
+  if (d.kind === "ChainPrompt") return !d.forced;
+  if (d.kind === "SelectCard" || d.kind === "SelectTribute" || d.kind === "SelectUnselectCard")
+    return d.cancelable;
+  if (d.kind === "SelectYesNo" || d.kind === "SelectEffectYN") return true;
+  // SelectZone and SelectPosition have no cancel in the protocol.
+  return false;
 }
 
 function findCard(zones: import("./fixtures/types").DuelZones, ref: CardRef): ZoneCard | null {
-  const key = `${ref.controller === 0 ? "p0" : "p1"}_${ref.location.toLowerCase() === "mzone" ? "mzone" : ref.location.toLowerCase() === "szone" ? "szone" : "hand"}`;
-  const arr = (zones as unknown as Record<string, (ZoneCard | null)[]>)[key];
+  const side = ref.controller === 0 ? "p0" : "p1";
+  const key =
+    ref.location === "MZONE"
+      ? "mzone"
+      : ref.location === "SZONE"
+        ? "szone"
+        : ref.location === "HAND"
+          ? "hand"
+          : null;
+  if (!key) return null;
+  const arr = (zones as unknown as Record<string, (ZoneCard | null)[]>)[`${side}_${key}`];
   return arr?.[ref.sequence] ?? null;
-}
-
-function ZoneOverlay({ zones, onPick }: { zones: CardRef[]; onPick: () => void }) {
-  // Zone picking is done on the board itself; this is the affordance layer.
-  return (
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 4 }}>
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: 12,
-          transform: "translateX(-50%)",
-          pointerEvents: "auto",
-        }}
-        className="waitbanner"
-      >
-        Click a highlighted zone — {zones.length} legal
-        <button className="chip" onClick={onPick}>
-          Place leftmost
-        </button>
-      </div>
-    </div>
-  );
 }
 
 function PileSheet({
@@ -583,7 +679,7 @@ function PileSheet({
           </div>
         )}
         <button className="chip" style={{ marginTop: 12 }} onClick={onClose}>
-          Esc
+          Close <kbd>Esc</kbd>
         </button>
       </div>
     </div>

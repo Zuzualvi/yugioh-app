@@ -4,8 +4,18 @@
  *
  * Every variant is the same three lines:
  *   1 · a sentence naming the card (card name + verb tinted; location inline)
- *   2 · an answer space (candidates as thumbnails, each badged with its location)
+ *   2 · an answer space (candidates as thumbnails) + a CARD TEXT PANE
  *   3 · a decline and a confirm, of equal presence
+ *
+ * Changes forced by the ZUH-81 usability pass:
+ *   M1  the commit is stated in words on the confirm button, not as a bare glyph
+ *   M5  the confirm button names the card it will play
+ *   M5/M6/m2/m3  selecting a candidate reveals its text INSIDE the bar, next to the
+ *       trigger's text, so "what I am responding to" and "what I am about to play"
+ *       are visible at once and near the buttons
+ *   m7  SelectPosition tiles ARE the commit — no second Confirm click
+ *   c2  the location badge appears only when candidates span more than one location
+ *   B2  Esc is advertised next to Cancel, and never bound to confirm
  */
 
 import { card, cardName } from "../fixtures/cards";
@@ -45,15 +55,14 @@ interface Props {
   chain: ChainLink[];
   selected: CardRef[];
   toggle: (r: CardRef) => void;
-  onConfirm: () => void;
+  /** an explicit selection overrides lifted state — a position tile answers itself */
+  onConfirm: (explicit?: CardRef[]) => void;
   onDecline: () => void;
   clockSeconds: number;
   /** the next step in this intent cannot be cancelled — say so on the confirm */
   commitNext: boolean;
   /** the card this whole intent is about, for sentences that name it */
   subjectCode?: number;
-  /** the client is answering this without the player — shown only in the prototype */
-  auto?: boolean;
   /** MH-3.1 — the engine's own caption for this selection */
   caption?: string;
 }
@@ -67,20 +76,23 @@ function Thumb({
   e,
   mySeat,
   selected,
+  showLocation,
   onClick,
 }: {
   e: CardEntry;
   mySeat: Seat;
   selected: boolean;
+  showLocation: boolean;
   onClick: () => void;
 }) {
   const c = card(e.code);
   const mine = e.controller === mySeat;
   return (
-    <div className="pick">
-      <div
+    <div className={`pick${showLocation ? " withloc" : ""}`}>
+      <button
         className={`card${selected ? " selected" : ""}`}
         onClick={onClick}
+        aria-pressed={selected}
         style={{ cursor: "pointer" }}
       >
         <div className={`frame ${frameClass(e.code)}`} />
@@ -95,8 +107,50 @@ function Thumb({
             <span>{c?.race ?? ""}</span>
           )}
         </div>
+        {selected && <span className="tick">SELECTED</span>}
+      </button>
+      {showLocation && (
+        <span className={`locbadge ${mine ? "mine" : "theirs"}`}>{LOC_SHORT[e.location]}</span>
+      )}
+    </div>
+  );
+}
+
+/** M6 — the trigger and your candidate are a comparison. Show both, in the bar. */
+function TextPane({
+  triggerCode,
+  candidateCode,
+  opponentName,
+  triggerOwnerIsMe,
+}: {
+  triggerCode: number | null;
+  candidateCode: number | null;
+  opponentName: string;
+  triggerOwnerIsMe: boolean;
+}) {
+  if (triggerCode === null && candidateCode === null) return null;
+  const block = (code: number, label: string, tone: "mine" | "theirs") => {
+    const c = card(code);
+    if (!c) return null;
+    return (
+      <div className={`textblock ${tone}`} key={label}>
+        <div className="tb-head">
+          <span className="tb-tag">{label}</span>
+          <b>{c.name}</b>
+        </div>
+        <div className="tb-body">{c.desc}</div>
       </div>
-      <span className={`locbadge ${mine ? "mine" : "theirs"}`}>{LOC_SHORT[e.location]}</span>
+    );
+  };
+  return (
+    <div className="textpane">
+      {triggerCode !== null &&
+        block(
+          triggerCode,
+          triggerOwnerIsMe ? "RESPONDING TO (yours)" : `RESPONDING TO (${opponentName})`,
+          triggerOwnerIsMe ? "mine" : "theirs",
+        )}
+      {candidateCode !== null && block(candidateCode, "YOU WOULD PLAY", "mine")}
     </div>
   );
 }
@@ -122,11 +176,27 @@ export function QuestionBar(p: Props) {
   let confirmEnabled = true;
   let counter: string | null = null;
   let commitStatement: string | null = null;
+  let candidateCode: number | null = null;
+  let triggerCode: number | null = null;
+  let triggerOwnerIsMe = false;
+
+  /** c2 — only badge locations when the candidates actually span more than one. */
+  const spanning = (cards: CardEntry[]) =>
+    new Set(cards.map((c) => `${c.controller}:${c.location}`)).size > 1;
+  /** the card the player has picked, for the text pane and the confirm label */
+  const pickedFrom = (cards: CardEntry[]) => cards.find((c) => isSel(c))?.code ?? null;
 
   switch (d.kind) {
     case "ChainPrompt": {
       const top = p.chain[p.chain.length - 1];
       const trigger = top ? { code: top.code, owner: top.owner, location: top.location } : null;
+      if (trigger) {
+        triggerCode = trigger.code;
+        triggerOwnerIsMe = trigger.owner === p.mySeat;
+      } else if (d.selects.length === 1) {
+        triggerCode = d.selects[0].code;
+        triggerOwnerIsMe = true;
+      }
       sentence = trigger ? (
         <>
           <span className={`cn ${mine(trigger.owner)}`}>
@@ -139,11 +209,23 @@ export function QuestionBar(p: Props) {
           <span className="loc">({LOC_LABEL[trigger.location]})</span>.<br />
           <span className="vb">Chain</span> a card or effect?
         </>
+      ) : d.selects.length === 1 ? (
+        // No chain context (this is your own trigger, not a response). R6.1: never a
+        // bare question — name the card and its effect.
+        <>
+          <span className="vb">Activate</span>{" "}
+          <span className="cn mine">&ldquo;{cardName(d.selects[0].code)}&rdquo;</span>{" "}
+          <span className="loc">({LOC_LABEL[d.selects[0].location]})</span>?
+          <div style={{ fontSize: 11.5, color: "var(--text-1)", marginTop: 3 }}>
+            {d.selects[0].description}
+          </div>
+        </>
       ) : (
         <>
           <span className="vb">Chain</span> a card or effect?
         </>
       );
+      candidateCode = pickedFrom(d.selects);
       answers = (
         <div className="answers">
           {d.selects.map((e, i) => (
@@ -152,12 +234,13 @@ export function QuestionBar(p: Props) {
               e={e}
               mySeat={p.mySeat}
               selected={isSel(e)}
+              showLocation={spanning(d.selects)}
               onClick={() => p.toggle(ref(e))}
             />
           ))}
         </div>
       );
-      confirmLabel = "Activate Effect";
+      confirmLabel = candidateCode ? `Activate "${cardName(candidateCode)}"` : "Activate effect";
       confirmEnabled = p.selected.length === 1;
       declineLabel = d.forced ? null : "No response";
       if (d.forced) commitStatement = "You must chain one of these — this effect is mandatory.";
@@ -167,7 +250,6 @@ export function QuestionBar(p: Props) {
     case "SelectTribute":
     case "SelectCard": {
       const isTrib = d.kind === "SelectTribute";
-      const subject = p.subjectCode;
       sentence = p.caption ? (
         <>
           <span className="vb">{p.caption}</span>
@@ -178,14 +260,15 @@ export function QuestionBar(p: Props) {
           <span className="vb">Tribute</span> {d.min === d.max ? d.min : `${d.min}–${d.max}`}{" "}
           monster
           {d.max > 1 ? "s" : ""} to summon{" "}
-          <span className="cn mine">&ldquo;{cardName(subject ?? 0)}&rdquo;</span>.
+          <span className="cn mine">&ldquo;{cardName(p.subjectCode ?? 0)}&rdquo;</span>.
         </>
       ) : (
         <>
           <span className="vb">Choose</span> {d.min === d.max ? d.min : `${d.min}–${d.max}`} card
-          {d.max > 1 ? "s" : ""} — the effect that is asking is highlighted on the board.
+          {d.max > 1 ? "s" : ""}.
         </>
       );
+      candidateCode = pickedFrom(d.cards);
       answers = (
         <div className="answers">
           {d.cards.map((e, i) => (
@@ -194,6 +277,7 @@ export function QuestionBar(p: Props) {
               e={e}
               mySeat={p.mySeat}
               selected={isSel(e)}
+              showLocation={spanning(d.cards)}
               onClick={() => p.toggle(ref(e))}
             />
           ))}
@@ -201,9 +285,25 @@ export function QuestionBar(p: Props) {
       );
       counter = `${p.selected.length} of ${d.max} selected`;
       confirmEnabled = p.selected.length >= d.min && p.selected.length <= d.max;
-      confirmLabel = p.commitNext
-        ? `${isTrib ? "Tribute" : "Confirm"} ${p.selected.length || d.min} & commit ▲`
-        : "Confirm";
+      // M1 + B3 — words, and the name of the card that is about to be destroyed.
+      const names = p.selected
+        .map((r) =>
+          d.cards.find(
+            (c) =>
+              c.controller === r.controller &&
+              c.location === r.location &&
+              c.sequence === r.sequence,
+          ),
+        )
+        .filter(Boolean)
+        .map((c) => cardName(c!.code));
+      if (isTrib) {
+        confirmLabel = names.length
+          ? `Tribute ${names.join(" + ")}${p.commitNext ? " — cannot be undone" : ""}`
+          : "Tribute";
+      } else {
+        confirmLabel = names.length ? `Target ${names.join(" + ")}` : "Confirm";
+      }
       declineLabel = d.cancelable ? "Cancel" : null;
       if (!d.cancelable) commitStatement = "This selection cannot be taken back.";
       break;
@@ -212,17 +312,19 @@ export function QuestionBar(p: Props) {
     case "SelectZone": {
       sentence = (
         <>
-          <span className="vb">Place</span> the card — click a highlighted zone on the board.
+          <span className="vb">Place</span>{" "}
+          <span className="cn mine">&ldquo;{cardName(p.subjectCode ?? 0)}&rdquo;</span> — click one
+          of the highlighted zones on your field.
         </>
       );
       answers = (
-        <div className="answers" style={{ color: "var(--text-2)", fontSize: 12 }}>
-          The board is the answer space.
+        <div className="answers hint">
+          {d.zones.length} legal zone{d.zones.length === 1 ? "" : "s"} highlighted on the board.
         </div>
       );
       declineLabel = null;
       commitStatement = "Choosing a zone completes the summon. There is no cancel at this step.";
-      confirmLabel = "Place here";
+      confirmLabel = "Use the left-most legal zone";
       break;
     }
 
@@ -233,40 +335,50 @@ export function QuestionBar(p: Props) {
           <span className="cn mine">&ldquo;{cardName(d.card.code)}&rdquo;</span> in which position?
         </>
       );
+      // m7 — each tile IS the commit. One click, not two.
       answers = (
         <div className="answers">
-          {d.positions.map((pos) => {
+          {d.positions.map((pos, idx) => {
             const label =
               pos === "faceup_attack"
-                ? "↑ Attack"
+                ? "Attack position"
                 : pos === "faceup_defense"
-                  ? "→ Defence"
+                  ? "Defence position"
                   : pos === "facedown_defense"
-                    ? "v Set (Defence)"
-                    : "v Set (Attack)";
-            const idx = d.positions.indexOf(pos);
-            const sel = optSel(p.selected, idx);
+                    ? "Set face-down (Defence)"
+                    : "Set face-down (Attack)";
+            const sub =
+              pos === "faceup_attack"
+                ? "upright · ATK forward"
+                : pos === "faceup_defense"
+                  ? "sideways · DEF forward"
+                  : "face-down";
             return (
               <button
                 key={pos}
-                className={`btn${sel ? " primary" : ""}`}
-                onClick={() => p.toggle(optRef(idx))}
+                className={`postile${optSel(p.selected, idx) ? " sel" : ""}`}
+                // m7 — the tile IS the commit, and it carries its own answer so it
+                // cannot fire with a stale selection.
+                onClick={() => p.onConfirm([optRef(idx)])}
               >
-                {label}
+                <span className={`posglyph ${pos}`} />
+                <b>{label}</b>
+                <span>{sub}</span>
               </button>
             );
           })}
         </div>
       );
-      confirmEnabled = p.selected.length === 1;
-      confirmLabel = "Confirm";
       declineLabel = null;
-      commitStatement = "The summon is already committed.";
+      commitStatement = "The summon is already committed — only the position is left.";
+      confirmLabel = "";
       break;
     }
 
     case "SelectEffectYN": {
       const c = card(d.card.code);
+      triggerCode = d.card.code;
+      triggerOwnerIsMe = d.card.controller === p.mySeat;
       sentence = (
         <>
           <span className="vb">Activate</span>{" "}
@@ -274,14 +386,13 @@ export function QuestionBar(p: Props) {
             &ldquo;{cardName(d.card.code)}&rdquo;
           </span>{" "}
           <span className="loc">({LOC_LABEL[d.card.location]})</span>?
-          {/* Where the engine gives no usable description, substitute the card's own text. */}
-          <div style={{ fontSize: 11.5, color: "var(--text-1)", marginTop: 4 }}>
-            {d.description && !/^\d+n?$/.test(d.description) ? d.description : c?.desc}
-          </div>
+          {!c && d.description && (
+            <div style={{ fontSize: 11.5, marginTop: 4 }}>{d.description}</div>
+          )}
         </>
       );
       answers = null;
-      confirmLabel = "Activate";
+      confirmLabel = `Activate "${cardName(d.card.code)}"`;
       declineLabel = "No";
       break;
     }
@@ -318,19 +429,22 @@ export function QuestionBar(p: Props) {
     }
 
     case "SelectUnselectCard": {
+      const all = [...d.selectCards, ...d.unselectCards];
       sentence = (
         <>
           <span className="vb">Select materials</span> — click cards to add or remove.
         </>
       );
+      candidateCode = pickedFrom(all);
       answers = (
         <div className="answers">
-          {[...d.selectCards, ...d.unselectCards].map((e, i) => (
+          {all.map((e, i) => (
             <Thumb
               key={i}
               e={e}
               mySeat={p.mySeat}
               selected={isSel(e)}
+              showLocation={spanning(all)}
               onClick={() => p.toggle(ref(e))}
             />
           ))}
@@ -352,39 +466,80 @@ export function QuestionBar(p: Props) {
           <span className="vb">{d.kind}</span> — answer below.
         </>
       );
-      answers = (
-        <div className="answers" style={{ fontSize: 11, color: "var(--text-2)" }}>
-          Generic answer space (this variant has no known Edison trigger).
-        </div>
-      );
+      answers = <div className="answers hint">Generic answer space (no known Edison trigger).</div>;
       break;
     }
   }
 
   const warn = p.clockSeconds <= 60;
+  const mm = Math.floor(p.clockSeconds / 60);
+  const ss = String(p.clockSeconds % 60).padStart(2, "0");
 
   return (
-    <div className={`qbar${p.auto ? " auto" : ""}`} data-testid="question-bar">
-      <div
-        className={`hair${warn ? " warn" : ""}`}
-        style={{ width: `${Math.max(0, Math.min(100, (p.clockSeconds / 300) * 100))}%` }}
-      />
+    <div className="qbar" data-testid="question-bar">
+      {/* M9 — the hairline is the TURN clock, and it now says so, with the number. */}
+      <div className={`hairtrack${warn ? " warn" : ""}`}>
+        <div
+          className="hairfill"
+          style={{ width: `${Math.max(0, Math.min(100, (p.clockSeconds / 300) * 100))}%` }}
+        />
+        <span className="hairlabel">
+          your turn clock {mm}:{ss}
+        </span>
+      </div>
       <div className="sentence">{sentence}</div>
       {answers}
+      <TextPane
+        triggerCode={triggerCode}
+        candidateCode={candidateCode}
+        opponentName={p.opponentName}
+        triggerOwnerIsMe={triggerOwnerIsMe}
+      />
       <div className="verbs">
         {declineLabel ? (
-          <button className="btn decline" onClick={p.onDecline}>
-            {declineLabel}
+          <button className="btn decline" onClick={p.onDecline} data-testid="decline">
+            {declineLabel} <kbd>Esc</kbd>
           </button>
         ) : (
-          <span className="commitnote">▲ {commitStatement}</span>
+          <span className="commitnote">{commitStatement}</span>
         )}
         {counter && <span className="count">{counter}</span>}
         <span style={{ marginLeft: "auto" }} />
-        <button className="btn primary" disabled={!confirmEnabled} onClick={p.onConfirm}>
-          {confirmLabel}
-        </button>
+        {confirmLabel && (
+          <button
+            className="btn primary"
+            disabled={!confirmEnabled}
+            onClick={() => p.onConfirm()}
+            data-testid="confirm"
+          >
+            {confirmLabel}
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * B1/M2 — a decision the CLIENT answered is a RECEIPT, not a question.
+ * Read-only, past tense, no primary button, and it cannot swallow a click.
+ */
+export function AutoAnswerReceipt({
+  text,
+  onAskNextTime,
+}: {
+  text: string;
+  onAskNextTime?: () => void;
+}) {
+  return (
+    <div className="receipt" data-testid="auto-receipt">
+      <span className="rc-tag">ANSWERED FOR YOU</span>
+      <span className="rc-text">{text}</span>
+      {onAskNextTime && (
+        <button className="chip" onClick={onAskNextTime}>
+          Ask me next time
+        </button>
+      )}
     </div>
   );
 }

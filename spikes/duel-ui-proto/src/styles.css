@@ -101,7 +101,9 @@ button {
   display: flex;
   flex-direction: column;
   /* permanent left gutter: the inspector floats there and never reflows the board */
-  padding: 8px 16px 0 312px;
+  /* left gutter: the inspector floats there and never reflows the board.
+     right gutter: reserves the collapsed log spine so the LP plate is never clipped. */
+  padding: 6px 52px 0 268px;
 }
 .hand.mine {
   margin-top: auto;
@@ -132,11 +134,15 @@ button {
   z-index: 2;
   pointer-events: none;
 }
+/* A candidate is lifted above BOTH the scrim and the dock, so the dim law's promise —
+   "every candidate is legible wherever it lives" — holds even when the bar would
+   otherwise cover its row. */
 .card.target-mine,
 .card.target-theirs,
 .card.selected {
   position: relative;
-  z-index: 3;
+  z-index: 6;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.85);
 }
 
 /* ── board ──────────────────────────────────────────────────────────────── */
@@ -173,8 +179,8 @@ button {
 }
 
 .slot {
-  width: 58px;
-  height: 80px;
+  width: 60px;
+  height: 84px;
   border-radius: 5px;
   border: 1px dashed var(--border);
   display: flex;
@@ -191,14 +197,28 @@ button {
 }
 .slot.zonepick {
   border: 2px solid var(--own);
-  background: var(--own-dim);
+  background: rgba(74, 158, 255, 0.22);
   cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.18);
+}
+.slot.zonepick:hover {
+  background: rgba(74, 158, 255, 0.38);
+  transform: translateY(-3px);
+}
+.zonepick-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--own);
+  text-align: center;
+  letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 /* ── card tile ──────────────────────────────────────────────────────────── */
 .card {
-  width: 56px;
-  height: 78px;
+  width: 58px;
+  height: 82px;
   padding: 0;
   border-radius: 5px;
   border: 1px solid var(--border);
@@ -245,7 +265,14 @@ button {
   border-style: dashed;
 }
 .card.def {
-  transform: rotate(90deg) scale(0.86);
+  transform: rotate(90deg) scale(0.82);
+}
+.card.def .st {
+  flex-direction: row-reverse;
+}
+.card.def .st span:last-child {
+  font-weight: 800;
+  color: var(--text-0);
 }
 .card.target-mine {
   outline: 3px solid var(--own);
@@ -264,12 +291,22 @@ button {
 }
 .card .corner {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 9px;
+  top: -6px;
+  right: -6px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #12161d;
+  border: 1px solid #12161d;
+  line-height: 1.3;
 }
 .card .corner.spent {
-  opacity: 0.3;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border-color: var(--border);
 }
 .frame-effect {
   background: #c8873f;
@@ -292,8 +329,8 @@ button {
 
 /* ── piles ──────────────────────────────────────────────────────────────── */
 .pile {
-  width: 44px;
-  height: 58px;
+  width: 46px;
+  height: 60px;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--bg-2);
@@ -324,7 +361,7 @@ button {
   gap: 5px;
   justify-content: center;
   padding: 4px 0;
-  min-height: 90px;
+  min-height: 96px;
   align-items: flex-start;
 }
 .hand .card {
@@ -364,9 +401,11 @@ button {
   background: var(--bg-1);
 }
 .phase.current {
-  color: #12161d;
+  color: #12161d !important;
   background: var(--accent);
   border-color: var(--accent);
+  opacity: 1 !important;
+  box-shadow: 0 0 0 2px rgba(255, 204, 85, 0.25);
 }
 .phase.legal {
   color: var(--text-0);
@@ -411,7 +450,7 @@ button {
   border-color: var(--own);
 }
 .lp.theirs {
-  right: 16px;
+  right: 52px;
   top: 8px;
   border-color: var(--opp);
 }
@@ -454,12 +493,20 @@ button {
 }
 
 /* ── bottom dock: chain strip / ribbon / question bar ───────────────────── */
+/* B1 — the dock is a positioning shell ONLY. It must never intercept a click meant
+   for one of its children. Interactive descendants opt back in. */
+.dock {
+  pointer-events: none;
+}
+.dock > * {
+  pointer-events: auto;
+}
 .dock {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 104px;
-  width: 760px;
+  bottom: 98px;
+  width: 820px;
   max-width: calc(100% - 48px);
   display: flex;
   flex-direction: column;
@@ -552,10 +599,6 @@ button {
   letter-spacing: 0.04em;
 }
 
-.qbar.auto {
-  opacity: 0.45;
-  pointer-events: none;
-}
 .qbar {
   border-radius: 8px;
   background: rgba(21, 26, 35, 0.985);
@@ -709,9 +752,9 @@ button {
 /* ── inspector ──────────────────────────────────────────────────────────── */
 .inspector {
   position: absolute;
-  left: 12px;
-  top: 10px;
-  width: 288px;
+  left: 8px;
+  top: 8px;
+  width: 254px;
   max-height: calc(100% - 190px);
   overflow: auto;
   background: rgba(21, 26, 35, 0.97);
@@ -751,18 +794,42 @@ button {
 }
 
 /* ── log rail ───────────────────────────────────────────────────────────── */
+.body {
+  position: relative;
+}
 .rail {
-  flex: 0 0 320px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 12;
   border-left: 1px solid var(--border);
-  background: var(--bg-1);
+  background: rgba(21, 26, 35, 0.97);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 .rail.collapsed {
-  flex: 0 0 34px;
+  width: 34px;
   align-items: center;
   padding-top: 8px;
+  background: var(--bg-1);
+}
+.chip.vert {
+  writing-mode: vertical-rl;
+  padding: 10px 3px;
+  letter-spacing: 0.12em;
+}
+.resumerule {
+  font-size: 10px;
+  color: var(--text-2);
+  text-align: center;
+  padding: 5px 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.logrow .arrow.lp {
+  color: var(--warn);
 }
 .rail .head {
   display: flex;
@@ -891,7 +958,7 @@ button {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 58px);
+  grid-template-columns: repeat(auto-fill, 60px);
   gap: 7px;
 }
 
@@ -948,7 +1015,7 @@ button {
 /* ── prototype-only review margin ───────────────────────────────────────── */
 .protonote {
   position: absolute;
-  right: 12px;
+  right: 60px;
   bottom: 10px;
   max-width: 330px;
   font-size: 11px;
@@ -960,4 +1027,427 @@ button {
 .protonote b {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Additions from the ZUH-81 usability pass. Each rule names the finding it fixes.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* B1/M2 — an already-answered decision is a RECEIPT: read-only, past tense, no
+   primary button, and structurally incapable of looking like a live question. */
+.receipt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: rgba(21, 26, 35, 0.96);
+  border: 1px dashed var(--text-2);
+  font-size: 12px;
+  color: var(--text-1);
+}
+.rc-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.rc-text {
+  flex: 1;
+}
+
+/* M9 — the hairline says what it measures and carries the number. */
+.hairtrack {
+  position: relative;
+  height: 16px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+}
+.hairfill {
+  height: 100%;
+  background: rgba(74, 158, 255, 0.28);
+  border-right: 2px solid var(--own);
+  transition: width 900ms linear;
+}
+.hairtrack.warn .hairfill {
+  background: rgba(255, 176, 32, 0.3);
+  border-right-color: var(--warn);
+}
+.hairlabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.hairtrack.warn .hairlabel {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* M5/M6/m2/m3 — the trigger and your candidate, side by side, inside the bar. */
+.textpane {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+.textblock {
+  flex: 1;
+  min-width: 0;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  background: rgba(13, 16, 22, 0.6);
+  padding: 7px 9px;
+}
+.textblock.mine {
+  border-left-color: var(--own);
+}
+.textblock.theirs {
+  border-left-color: var(--opp);
+}
+.tb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 4px;
+}
+.tb-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}
+.tb-head b {
+  font-size: 12px;
+}
+.tb-body {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-1);
+  max-height: 50px;
+  overflow: auto;
+}
+
+/* B3 — a selection must be visible on the thumbnail itself, not only in a counter. */
+.card .tick {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--accent);
+  color: #12161d;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 1px 0;
+}
+.answers .card {
+  border: 1px solid var(--border);
+}
+.answers.hint {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+/* m7 — a position tile IS the commit. */
+.postile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-2);
+  min-width: 160px;
+}
+.postile:hover,
+.postile.sel {
+  border-color: var(--accent);
+}
+.postile b {
+  font-size: 13px;
+}
+.postile span:last-child {
+  font-size: 10px;
+  color: var(--text-2);
+}
+.posglyph {
+  display: block;
+  width: 15px;
+  height: 21px;
+  border: 1.5px solid var(--own);
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+.posglyph.faceup_defense {
+  transform: rotate(90deg);
+  margin: 3px 0 7px 3px;
+}
+.posglyph.facedown_defense,
+.posglyph.facedown_attack {
+  background: repeating-linear-gradient(45deg, #2b3446, #2b3446 3px, #1b2230 3px, #1b2230 6px);
+}
+
+/* M1/M13/m1 — the ribbon: lock captioned in words, step budget inline, and a
+   Cancel that says what it cancels. */
+.ribbon {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.rb-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rb-key {
+  display: flex;
+  gap: 16px;
+  font-size: 10px;
+  color: var(--text-2);
+  align-items: center;
+}
+.stepwrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lock {
+  display: inline-block;
+  width: 3px;
+  height: 13px;
+  background: var(--warn);
+  border-radius: 1px;
+}
+.lock.inline {
+  height: 10px;
+  vertical-align: -1px;
+  margin-right: 3px;
+}
+.btn.sm {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+kbd {
+  font: inherit;
+  font-size: 9.5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--text-2);
+  background: var(--bg-0);
+  margin-left: 4px;
+}
+
+/* M8 — both clocks, permanently, each labelled. Colour never carries it alone. */
+.clocks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+}
+.clockrow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+.clockrow.active {
+  opacity: 1;
+  border-width: 2px;
+  padding: 0 6px;
+}
+.clockrow.mine {
+  border-color: var(--own);
+}
+.clockrow.theirs {
+  border-color: var(--opp);
+}
+.cl-who {
+  width: 44px;
+  color: var(--text-2);
+  font-size: 10px;
+}
+.cl-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 14px;
+}
+.clockrow.mine .cl-val {
+  color: var(--own);
+}
+.clockrow.theirs .cl-val {
+  color: var(--opp);
+}
+.cl-state {
+  font-size: 9px;
+  color: var(--text-2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.clockrow.u-warn .cl-val {
+  color: var(--warn);
+  font-size: 17px;
+}
+.clockrow.u-warn {
+  border-color: var(--warn);
+}
+.clockrow.u-high .cl-val {
+  color: var(--warn);
+  font-size: 20px;
+}
+.clockrow.u-high {
+  border-color: var(--warn);
+  background: rgba(255, 176, 32, 0.14);
+}
+.clockrow.u-alarm {
+  border-color: var(--warn);
+  background: var(--warn);
+  animation: alarm 700ms steps(2) infinite;
+}
+.clockrow.u-alarm .cl-val,
+.clockrow.u-alarm .cl-who,
+.clockrow.u-alarm .cl-state {
+  color: #12161d;
+  font-weight: 800;
+}
+.clockrow.u-alarm .cl-val {
+  font-size: 22px;
+}
+@keyframes alarm {
+  50% {
+    background: #ff8a3d;
+  }
+}
+.cl-warn {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--warn);
+  text-transform: uppercase;
+}
+.cl-warn.u-alarm {
+  font-size: 11px;
+}
+
+/* m9 — waiting is reported in the dock, where the question was. */
+.waitdock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 6px;
+  background: rgba(21, 26, 35, 0.96);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-1);
+}
+
+/* M7 — a refusal appears at the card that refused. */
+.refusal {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 25;
+  padding: 5px 11px;
+  border-radius: 5px;
+  background: var(--bg-0);
+  border: 1px solid var(--accent);
+  color: var(--text-0);
+  font-size: 11.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* M10 — response prompts as a labelled menu with descriptions and a standing note. */
+.promptwrap {
+  position: relative;
+}
+.promptmenu {
+  position: absolute;
+  right: 0;
+  top: 26px;
+  z-index: 30;
+  width: 290px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+.promptopt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.promptopt:hover,
+.promptopt.sel {
+  border-color: var(--accent);
+}
+.promptopt b {
+  font-size: 12px;
+}
+.promptopt span {
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+.promptwarn {
+  font-size: 10px;
+  color: var(--text-2);
+  padding: 7px 9px 3px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.divider {
+  color: var(--bg-3);
+}
+.clusterscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+.verbhint {
+  align-self: center;
+  font-size: 9.5px;
+  color: var(--text-2);
+  padding-left: 4px;
+}
+.endsheet {
+  text-align: center;
+  max-width: 380px;
+}
+.endedpill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(21, 26, 35, 0.96);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 12px;
 }

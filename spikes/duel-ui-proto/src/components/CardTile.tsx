@@ -93,7 +93,15 @@ export function CardTile({
           <span>{c?.race ?? ""}</span>
         )}
       </div>
-      {spent !== undefined && <span className={`corner${spent ? " spent" : ""}`}>x</span>}
+      {/* m18 — a labelled badge, clear of the card title, not a 6px glyph on top of it */}
+      {spent !== undefined && (
+        <span
+          className={`corner${spent ? " spent" : ""}`}
+          title={spent ? "Already attacked this turn" : "Can still attack"}
+        >
+          {spent ? "USED" : "ATK"}
+        </span>
+      )}
       {faceDown && mine && (
         <span className="corner" style={{ top: "auto", bottom: 2, right: 3, fontSize: 8 }}>
           SET

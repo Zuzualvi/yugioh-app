@@ -56,6 +56,11 @@ interface Props {
   opponentName: string;
   onPick: (code: number) => void;
   ended: string | null;
+  turnNumber: number;
+  /** LP at each turn boundary; a turn with no entry renders no snapshot rather than a lie */
+  lpByTurn: Record<number, [number, number]>;
+  /** how many rows came from the scenario's history rather than this session */
+  seededCount: number;
 }
 
 export function LogRail(p: Props) {
@@ -139,7 +144,14 @@ export function LogRail(p: Props) {
         </button>
       </div>
       <div className="rows">
-        {p.log.length === 0 && <div className="empty">The duel has not started.</div>}
+        {p.log.length === 0 && (
+          <div className="empty">
+            {p.turnNumber > 1 ? "Earlier turns are not available." : "The duel has not started."}
+          </div>
+        )}
+        {p.log.length > 0 && p.seededCount > 0 && (
+          <div className="resumerule">earlier turns reconstructed from the duel record</div>
+        )}
         {p.log.length > 0 && rows.length === 0 && (
           <div className="empty">
             No {filter.toLowerCase()} events this duel.
@@ -161,12 +173,14 @@ export function LogRail(p: Props) {
             <div className={`turnbanner ${g.owner === p.mySeat ? "mine" : "theirs"}`}>
               TURN {g.turn} — {g.owner === p.mySeat ? "You" : p.opponentName}
             </div>
-            <div className="lpsnap">
-              <span>You {p.lp[p.mySeat]}</span>
-              <span>
-                {p.opponentName} {p.lp[p.mySeat === 0 ? 1 : 0]}
-              </span>
-            </div>
+            {p.lpByTurn[g.turn] && (
+              <div className="lpsnap">
+                <span>You {p.lpByTurn[g.turn][p.mySeat]}</span>
+                <span>
+                  {p.opponentName} {p.lpByTurn[g.turn][p.mySeat === 0 ? 1 : 0]}
+                </span>
+              </div>
+            )}
             {g.phases.map((ph, i) => (
               <div key={i}>
                 <div className="phasehead">{PHASE_FULL[ph.phase] ?? ph.phase}</div>
@@ -182,7 +196,13 @@ export function LogRail(p: Props) {
                         {GLYPH[e.from]} → {GLYPH[e.to]}
                       </span>
                     )}
-                    {e.amount !== undefined && <span className="arrow">−{e.amount}</span>}
+                    {e.amount !== undefined && (
+                      <span className="arrow lp">
+                        {e.lpOwner === undefined
+                          ? `${e.amount}`
+                          : `${e.lpOwner === p.mySeat ? "You" : p.opponentName} −${e.amount} LP`}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

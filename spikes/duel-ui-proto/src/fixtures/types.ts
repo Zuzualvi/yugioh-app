@@ -219,6 +219,8 @@ export interface DuelEvent {
   from?: LocationCode;
   to?: LocationCode;
   amount?: number; // damage / LP
+  /** m14 — whose LP moved. "Damage -1200" on the attacker read as damage TAKEN. */
+  lpOwner?: Seat;
   turnNumber: number;
   phase: PhaseName;
 }
