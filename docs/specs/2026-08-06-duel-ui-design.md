@@ -2,22 +2,38 @@
 linear_project: Duel UI Rebuild
 ---
 
-# Duel screen — design deliverable (surface inventory · flows · component contract · usability findings)
+# Duel screen — design deliverable (surface inventory · flows · component contract · usability findings · answer-outcome matrix)
 
 **Date:** 2026-08-06 · **Discovery issue:** ZUH-81
 **Companions:** `docs/reference/2026-08-05-duel-ui-competitor-teardown.md` (visual baseline) · `docs/specs/2026-08-05-duel-ui-intent-model-and-backend-delta.md` (intent/protocol disagreements and the backend delta)
-**Prototype:** branch `proto/duel-ui`, commit `bc8a93aea7533c6dfb9053b27db47a7ba5957a90`, code in `spikes/duel-ui-proto/`. That is a **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable; what survives is this document.
+**Prototype:** branch `proto/duel-ui`, commit `4d7ced1190688f682af9c626c7261b7ddf70e397`, code in `spikes/duel-ui-proto/`. That is a **pointer, not an approval** — it records which prototype this document describes once both have moved on. `proto/*` is structurally unmergeable and disposable; what survives is this document.
 
-This is the artifact engineering builds from. It has four parts:
+This is the artifact engineering builds from. Five parts:
 
 1. **Surface inventory** — every panel, overlay and sheet, the job each does, its entry and exit points, and its required states.
 2. **Flows** — the plays that happen every game, the decision sequence the engine actually emits for each, failure modes and recovery.
-3. **Component contract** — component tree, props, variants, every state, interactions, data bindings, acceptance criteria, backend delta, and where the code contradicted the design brief.
-4. **Usability findings** — an independent pass by a fresh evaluator that had not seen the design rationale: 5 blockers, 13 major, 18 minor, 2 cosmetic. **Includes the triage of what was fixed and what was rejected with reasons.** Nothing was dropped silently.
+3. **Component contract** — component tree, props, variants, every state, interactions, data bindings, acceptance criteria, backend delta, and where the code contradicted the design brief. **§0a is the answer-fidelity invariant and is normative.**
+4. **Usability findings** — an independent pass by a fresh evaluator that had not seen the design rationale: 5 blockers, 13 major, 18 minor, 2 cosmetic, with the triage of what was fixed and what was **rejected with reasons**. Nothing was dropped silently.
+5. **Answer-outcome matrix** — 8 decision points, 24 answers, enumerated rather than sampled.
 
-**Verified independently by the Product Lead** in the running prototype, not accepted on report: the flagship tribute-summon flow completes with real mouse events at real coordinates with zero console errors; the chosen tribute is the card that dies; both clocks are visible and labelled; the clock escalates through four pairwise-distinguishable states; and the timeout forfeit fires with a result naming the cause.
+## The one rule this document exists to enforce
 
-⚠️ **Not assessed and therefore not cleared:** damage-number animation, audio, anything below 1440×900. Timing and motion are systematically under-detected by simulated evaluation — they need a human look.
+**The answer-fidelity invariant (§0a).** The action performed must be the action the confirming control named, and for any decision with more than one legal answer, distinct answers must produce distinct observable outcomes. Test it **by enumeration, never by sample.**
+
+This is here because the same defect was found and reported fixed **three times** — tribute selection ignored, decline-equals-confirm, and a chain prompt whose button read `Activate "Book of Moon"` while the engine resolved Solemn Judgment and charged its pay-half-your-LP cost. That last one was found by the CEO. The single root cause was two continuation mechanisms plus an implicit hardcoded fall-through, and the fall-through was keyed to the *step*, so it could not vary with the answer. It was replaced with one mechanism (`branch(answer) => Step[]`) that every path goes through, including the client's own auto-answers, with board states as functions of the accumulated choices rather than snapshots. `answer-matrix.py` on the prototype branch is the reference implementation and exits non-zero on any collision.
+
+**Enumeration found a bug that sampling would not have:** with a single pre-selected candidate, clicking it deselected and dead-ended the step by disabling the only enabled control.
+
+## Verified independently by the Product Lead, not accepted on report
+
+Re-driven by hand with real mouse events at real coordinates, on the shipped static build:
+
+- Flagship tribute summon completes end to end, zero console errors; **the chosen tribute is the card that dies** (picked Sangan → Sangan died, Card Trooper and Junk Synchron survived, Caius reached the field).
+- Every visible control returns itself from `document.elementFromPoint` at its own centre.
+- **Four pairwise-distinguishable clock states** (banked → ≤60s → ≤30s → ≤10s alarm); **timeout forfeit fires** with a result naming the cause.
+- **The three chain branches produce three distinct, rules-correct outcomes:** Book of Moon → no LP cost, asks for a target, Torrential still resolves and clears the monsters, Book to graveyard, Solemn still set · Solemn Judgment → **LP 8000→4000**, Torrential negated, **all monsters survive**, Book still set · decline → no cost, Torrential resolves, both traps still set.
+
+⚠️ **Not assessed and therefore NOT cleared:** damage-number animation, audio, anything below 1440×900, and all timing and motion — notably the board reflow when the log opens and the beat between attack-confirm and the LP change. Simulated evaluation systematically under-detects these; they need a human look. ACT-mode card/verb combinations are not enumerated either: the prototype scripts one line and refuses the others explicitly by name, which promises nothing and so is not the defect class above.
 
 ---
 
@@ -1272,6 +1288,63 @@ Companions: `surface-inventory.md`, `flows.md`, `usability-findings.md`.
 **Revision 2** — amended after the independent usability pass. Every change forced by a
 **design** defect (as opposed to a prototype defect) is tagged with its finding id, e.g. `[M8]`.
 The triage of all 38 findings is recorded at the bottom of `usability-findings.md`.
+
+**Revision 3** — adds §0a, the answer-fidelity invariant. It is the durable value of a bug the
+CEO found, and it is a **QA gate**, not a nicety.
+
+---
+
+## 0a · The answer-fidelity invariant — normative, and it applies to EVERY decision
+
+> **For any decision with more than one legal answer, distinct answers must produce distinct
+> observable outcomes, and the outcome must be the one the confirm control named.**
+
+**Why this is a contract clause and not a test note.** The prototype broke this three times, and
+each time it was reported fixed after a spot check on one answer:
+
+| Instance | What the screen promised | What happened |
+|---|---|---|
+| **B3** | `Tribute Sangan` | Card Trooper was tributed, every time |
+| **B4** | `No response` | Solemn Judgment activated and 4000 LP was paid |
+| **CEO** | `Activate "Book of Moon"` | Solemn Judgment resolved and 4000 LP was paid |
+
+One defect, three symptoms. The cause was always the same shape: **the outcome was keyed to the
+step rather than to the answer**, so it could not vary with what the player chose. A spot check on
+one answer cannot detect that — the one path you check is the one path that works.
+
+### What engineering must do about it
+
+1. **Never key a state transition to a step or a screen.** The response you send is a function of
+   the answer; so is everything the player then sees. In the real client this is mostly free,
+   because ocgcore computes the outcome — but the same shape recurs in any optimistic update,
+   any client-side ghost, and any narration string. Every one of those must read the answer.
+2. **The confirm control's label and the submitted response must be derived from the same value.**
+   The B3/CEO bugs both had a *correct* label next to an *incorrect* action, which is the worst
+   possible failure: the interface lied and looked confident. Compute the label from the same
+   selection object you are about to send. Do not build it from a parallel source.
+3. **Test by enumeration, never by sample.** For each decision under test, loop over *every* legal
+   answer including the decline, drive to a settled state, fingerprint the observable result, and
+   assert pairwise distinctness. `spikes/duel-ui-proto/answer-matrix.py` is a working reference
+   implementation, and `answer-outcome-matrix.md` is its output.
+4. **A pair that legitimately converges must be named and justified.** Some answers genuinely reach
+   the same place — a Book of Moon flip before a Torrential Tribute resolves is inconsequential to
+   the final board because everything dies regardless of position. That is a domain fact, not a
+   pass. It must be listed, with its reason, and the two answers must still be distinguishable
+   through **some** observable channel (in that case the event log records which card was flipped).
+
+### Acceptance criteria — apply to every decision-bearing component
+- [ ] For every decision variant with `min !== max`, or with more than one candidate, or with a
+      legal decline: an enumerating test walks all answers and asserts pairwise-distinct observable
+      outcomes. **Sampling one answer is not evidence.**
+- [ ] The string on the confirm control and the `DuelDecisionResponse` that control sends are
+      derived from the same selection value, in the same expression where practical.
+- [ ] Any pair of answers that share an outcome is listed in the test's own output with the domain
+      reason, and is distinguishable through at least one observable channel.
+- [ ] A face-down candidate is still named unambiguously on the confirm control — by **location**,
+      since we are not entitled to its identity: `Target Sakura's set card in S/T 1`.
+- [ ] Clicking the only candidate of a `min === max === 1` decision **selects** it. Radio
+      semantics, never toggle — deselecting the only option disables the only button and dead-ends
+      the step. (Found by the enumerating test, not by a human.)
 
 This is what engineering builds. The prototype dies; this, the fixtures in
 `spikes/duel-ui-proto/src/fixtures/`, and the backend deltas in §12 do not.
@@ -2546,3 +2619,230 @@ Two buckets, and the distinction is the one that matters:
   above. All three survived the weighing; M4 and m18 are corroborated by the teardown or by the
   intent-model doc's own defect list, and M11 was resolved from the engine's `can_cancel` rather
   than from convention.
+
+---
+
+# Answer × outcome matrix — the distinct-outcomes invariant
+
+**Generated by** `spikes/duel-ui-proto/answer-matrix.py` on the built prototype,
+real mouse events at real coordinates.
+
+**Invariant:** for any decision with more than one legal answer, distinct answers must
+produce distinct observable outcomes, and the outcome must be the one the confirm
+control named.
+
+**Decision points walked:** 8 · **answers exercised:** 24 · **collisions:** 0
+
+## ✔ No collisions. Every answer produced a distinct end state.
+
+## ◑ Distinguished by the event log, not by the final board
+
+Not bugs — the domain makes the boards converge. Listed so it is visible.
+
+- **SelectCard — Book of Moon flips which monster** — `flip Krebons` and `flip Card Trooper` reach the same final board; the log records which.
+- **SelectCard — Book of Moon flips which monster** — `flip Card Trooper` and `flip Junk Synchron` reach the same final board; the log records which.
+
+---
+
+## SelectTribute — which monster to tribute
+
+*Scenario:* `tribute-summon`
+
+*Candidates offered:* Card Trooper, Sangan, Junk Synchron
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **tribute Card Trooper** | `Tribute Card Trooper — cannot be undone` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+| **tribute Sangan** | `Tribute Sangan — cannot be undone` | `8000/8000` | `Card Trooper,Caius the Shadow Monarch,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+| **tribute Junk Synchron** | `Tribute Junk Synchron — cannot be undone` | `8000/8000` | `Card Trooper,Sangan,Caius the Shadow Monarch,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+| **decline (Esc/Cancel)** | `Cancel Esc` | `8000/8000` | `Card Trooper,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:1 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | — |
+
+<details><summary>log tails</summary>
+
+- **tribute Card Trooper** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+- **tribute Sangan** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Sangan Move Field → GY
+- **tribute Junk Synchron** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Junk Synchron Move Field → GY
+- **decline (Esc/Cancel)** — Krebons Summon Hand → Field ; Sakura Set Hand → S/T ; Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field
+
+</details>
+
+---
+
+## SelectZone — where Caius lands (Choose zones: ON)
+
+*Scenario:* `tribute-summon`
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **zone 1 (freed slot)** | `Place here (legal zone #1 of 3)` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+| **zone 4** | `Place here (legal zone #2 of 3)` | `8000/8000` | `.,Sangan,Junk Synchron,Caius the Shadow Monarch,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+| **zone 5** | `Place here (legal zone #3 of 3)` | `8000/8000` | `.,Sangan,Junk Synchron,.,Caius the Shadow Monarch // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Summon “Caius the Shadow Monarch” in which position? |
+
+<details><summary>log tails</summary>
+
+- **zone 1 (freed slot)** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+- **zone 4** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+- **zone 5** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+
+</details>
+
+---
+
+## SelectPosition — Caius's battle position
+
+*Scenario:* `tribute-summon`
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **Attack position** | `Attack position · upright · ATK forward` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Activate “Caius the Shadow Monarch” (Monster Zone)? Banish 1 card on the field |
+| **Defence position** | `Defence position · sideways · DEF forward` | `8000/8000` | `Caius the Shadow Monarch(def),Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Activate “Caius the Shadow Monarch” (Monster Zone)? Banish 1 card on the field |
+
+<details><summary>log tails</summary>
+
+- **Attack position** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+- **Defence position** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+
+</details>
+
+---
+
+## ChainPrompt — activate Caius's trigger?
+
+*Scenario:* `tribute-summon`
+
+*Candidates offered:* Caius the Shadow Monarch
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **activate** | `Activate "Caius the Shadow Monarch"` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | Banish 1 card on the field — "Caius the Shadow Monarch" |
+| **no response** | `No response Esc` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | — |
+
+<details><summary>log tails</summary>
+
+- **activate** — Sakura Set Hand → S/T ; You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY
+- **no response** — You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY ; Caius the Shadow Monarch Resolve
+
+</details>
+
+---
+
+## SelectCard — Caius banishes which card
+
+*Scenario:* `tribute-summon`
+
+*Candidates offered:* Krebons, Set card, Set card
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **banish Krebons (DARK)** | `Target Krebons` | `8000/7000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // .,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:1 GY:0 EXTRA:0 DECK:32` | — |
+| **banish set card #1** | `Target Sakura's set card in S/T 1` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `.,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:1 GY:0 EXTRA:0 DECK:32` | — |
+| **banish set card #2** | `Target Sakura's set card in S/T 2` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,.,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:1 GY:0 EXTRA:0 DECK:32` | — |
+| **cancel** | `Cancel Esc` | `8000/8000` | `Caius the Shadow Monarch,Sangan,Junk Synchron,.,. // Mystical Space Typhoon,.,.,.,.` | `FD,FD,.,.,. // Krebons,.,.,.,.` | `DECK:30 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:32` | — |
+
+<details><summary>log tails</summary>
+
+- **banish Krebons (DARK)** — Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY ; Caius the Shadow Monarch Chain Field → Field ; Krebons Target Field → Field ; Krebons Banish Field → Banished ; Caius the Shadow Monarch Damage Sakura −1000 LP
+- **banish set card #1** — Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY ; Caius the Shadow Monarch Chain Field → Field ; Bottomless Trap Hole Target S/T → S/T ; Bottomless Trap Hole Banish S/T → Banished
+- **banish set card #2** — Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY ; Caius the Shadow Monarch Chain Field → Field ; Dimensional Prison Target S/T → S/T ; Dimensional Prison Banish S/T → Banished
+- **cancel** — You Move ; Card Trooper Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Card Trooper Move Field → GY ; Caius the Shadow Monarch Resolve
+
+</details>
+
+---
+
+## ChainPrompt — respond to Torrential Tribute
+
+*Scenario:* `chain-response`
+
+*Candidates offered:* Solemn Judgment, Book of Moon
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **Solemn Judgment** | `Activate "Solemn Judgment"` | `4000/8000` | `Card Trooper,Junk Synchron,.,.,. // .,Book of Moon,.,.,.` | `.,FD,.,.,. // Krebons,.,.,.,.` | `DECK:31 EXTRA:0 GY:1 BAN:0` | `BAN:0 GY:1 EXTRA:0 DECK:29` | — |
+| **Book of Moon** | `Activate "Book of Moon"` | `8000/8000` | `Card Trooper,Junk Synchron,.,.,. // Solemn Judgment,Book of Moon,.,.,.` | `Torrential Tribute,FD,.,.,. // Krebons,.,.,.,.` | `DECK:31 EXTRA:0 GY:0 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:29` | Target 1 face-up monster — "Book of Moon" |
+| **No response** | `No response Esc` | `8000/8000` | `.,.,.,.,. // Solemn Judgment,Book of Moon,.,.,.` | `.,FD,.,.,. // .,.,.,.,.` | `DECK:31 EXTRA:0 GY:2 BAN:0` | `BAN:0 GY:2 EXTRA:0 DECK:29` | — |
+
+<details><summary>log tails</summary>
+
+- **Solemn Judgment** — Junk Synchron Summon Hand → Field ; Solemn Judgment Chain S/T → S/T ; Solemn Judgment Damage You −4000 LP ; Solemn Judgment Resolve ; Torrential Tribute Negated S/T → GY ; Solemn Judgment Move S/T → GY
+- **Book of Moon** — Krebons Summon Hand → Field ; Sakura Set Hand → S/T ; You Move ; Junk Synchron Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Book of Moon Chain S/T → S/T
+- **No response** — Junk Synchron Summon Hand → Field ; Torrential Tribute Resolve ; Junk Synchron Destroyed Field → GY ; Card Trooper Destroyed Field → GY ; Krebons Destroyed Field → GY ; Torrential Tribute Move S/T → GY
+
+</details>
+
+---
+
+## SelectCard — Book of Moon flips which monster
+
+*Scenario:* `chain-response`
+
+*Candidates offered:* Krebons, Card Trooper, Junk Synchron
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **flip Krebons** | `Target Krebons` | `8000/8000` | `.,.,.,.,. // Solemn Judgment,.,.,.,.` | `.,FD,.,.,. // .,.,.,.,.` | `DECK:31 EXTRA:0 GY:3 BAN:0` | `BAN:0 GY:2 EXTRA:0 DECK:29` | — |
+| **flip Card Trooper** | `Target Card Trooper` | `8000/8000` | `.,.,.,.,. // Solemn Judgment,.,.,.,.` | `.,FD,.,.,. // .,.,.,.,.` | `DECK:31 EXTRA:0 GY:3 BAN:0` | `BAN:0 GY:2 EXTRA:0 DECK:29` | — |
+| **flip Junk Synchron** | `Target Junk Synchron` | `8000/8000` | `.,.,.,.,. // Solemn Judgment,.,.,.,.` | `.,FD,.,.,. // .,.,.,.,.` | `DECK:31 EXTRA:0 GY:3 BAN:0` | `BAN:0 GY:2 EXTRA:0 DECK:29` | — |
+| **cancel activation** | `Cancel Esc` | `8000/8000` | `Card Trooper,Junk Synchron,.,.,. // Solemn Judgment,Book of Moon,.,.,.` | `Torrential Tribute,FD,.,.,. // Krebons,.,.,.,.` | `DECK:31 EXTRA:0 GY:0 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:29` | Sakura activated “Torrential Tribute” (Spell/Trap Zone). Chain a card or effect? |
+
+<details><summary>log tails</summary>
+
+- **flip Krebons** — Krebons Position Field → Field ; Junk Synchron Destroyed Field → GY ; Card Trooper Destroyed Field → GY ; Krebons Destroyed Field → GY ; Torrential Tribute Move S/T → GY ; Book of Moon Move S/T → GY
+- **flip Card Trooper** — Card Trooper Position Field → Field ; Junk Synchron Destroyed Field → GY ; Card Trooper Destroyed Field → GY ; Krebons Destroyed Field → GY ; Torrential Tribute Move S/T → GY ; Book of Moon Move S/T → GY
+- **flip Junk Synchron** — Junk Synchron Position Field → Field ; Junk Synchron Destroyed Field → GY ; Card Trooper Destroyed Field → GY ; Krebons Destroyed Field → GY ; Torrential Tribute Move S/T → GY ; Book of Moon Move S/T → GY
+- **cancel activation** — Krebons Summon Hand → Field ; Sakura Set Hand → S/T ; You Move ; Junk Synchron Draw Deck → Hand ; Junk Synchron Summon Hand → Field ; Book of Moon Chain S/T → S/T
+
+</details>
+
+---
+
+## SelectCard — attack target (cancelable)
+
+*Scenario:* `battle`
+
+*Candidates offered:* Krebons
+
+| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now asks |
+|---|---|---|---|---|---|---|---|
+| **attack Krebons** | `Target Krebons` | `8000/6800` | `Caius the Shadow Monarch,Card Trooper,.,.,. // Book of Moon,.,.,.,.` | `FD,.,.,.,. // .,.,.,.,.` | `DECK:28 EXTRA:0 GY:0 BAN:0` | `BAN:0 GY:1 EXTRA:0 DECK:27` | — |
+| **cancel the attack** | `Cancel Esc` | `8000/8000` | `Caius the Shadow Monarch,Card Trooper,.,.,. // Book of Moon,.,.,.,.` | `FD,.,.,.,. // Krebons,.,.,.,.` | `DECK:28 EXTRA:0 GY:0 BAN:0` | `BAN:0 GY:0 EXTRA:0 DECK:27` | — |
+
+<details><summary>log tails</summary>
+
+- **attack Krebons** — Gorz the Emissary of Darkness Draw Deck → Hand ; Caius the Shadow Monarch Tribute Summon Hand → Field ; Caius the Shadow Monarch Attack ; Caius the Shadow Monarch Attack 2400 ; Krebons Destroyed Field → GY ; Caius the Shadow Monarch Damage Sakura −1200 LP
+- **cancel the attack** — You Move ; Sakura Draw Deck → Hand ; Sakura Set Hand → S/T ; You Move ; Gorz the Emissary of Darkness Draw Deck → Hand ; Caius the Shadow Monarch Tribute Summon Hand → Field
+
+</details>
+
+
+---
+
+## What is deliberately NOT in this matrix, and why
+
+**ACT-mode choices (which card, which verb).** Every `IdleCommand` and `BattleCommand` offers many
+legal answers — in scenario A the first decision alone affords 11 card/verb combinations. The
+prototype scripts **one line per scenario** and **refuses the others explicitly**, with an anchored
+message naming the verb: *"'Set' is legal — this prototype scripts one line per scenario."*
+
+That refusal is not the defect class this matrix exists to catch. The invariant is *never promise
+one outcome and deliver another*; an explicit refusal promises nothing. It is a fixture limitation,
+visible to the reviewer at the moment it bites, and it disappears with the prototype — in the real
+client ocgcore computes the outcome for every legal verb.
+
+**Scenario 4 (`Waiting · clock · forfeit`) has no multi-answer question at all.** Its only decisions
+are `IdleCommand` (ACT-mode, above) and the timeout, which is not a choice. Nothing to enumerate.
+
+**Answers the engine never offers.** `SelectZone` legal zones come from ocgcore's decoded
+`field_mask`; the matrix walks the three the fixture declares, which is the whole legal set for that
+board.
+
+## Reproducing this file
+
+```sh
+cd spikes/duel-ui-proto
+npm install && npm run build
+npx vite preview --port 4319 --strictPort &
+python3 answer-matrix.py http://localhost:4319/ /workspace/product/design/answer-outcome-matrix.md
+```
+
+Exit code is non-zero if any two answers to the same question collide. That is the gate.
