@@ -195,7 +195,7 @@ export const CARDS: Record<number, CardDTO> = {
     level: null,
     atk: null,
     def: null,
-    desc: "All effects that involve Graveyards are negated and neither player can banish cards in the Graveyards.",
+    desc: 'As long as this card remains face-up on the field, all effects of Magic, Trap and/or Effect Monster Cards that involve Graveyards are negated and neither player can remove cards in the Graveyards from play. In addition, increase the ATK and DEF of all monsters that includes "Gravekeeper\'s" in their card name by 500 points.',
   },
   50321796: {
     passcode: 50321796,

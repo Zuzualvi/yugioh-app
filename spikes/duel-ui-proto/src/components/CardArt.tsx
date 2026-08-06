@@ -34,7 +34,7 @@ export const CARD_ART_RATIO = 813 / 1185;
 const IMAGE_BASE = "https://api.zuhayr.io/images";
 export const cardImageUrl = (passcode: number) => `${IMAGE_BASE}/${passcode}.jpg`;
 
-type ArtState = "loading" | "ok" | "failed";
+export type ArtState = "loading" | "ok" | "failed";
 
 interface Props {
   code: number;
@@ -45,6 +45,12 @@ interface Props {
   fill?: boolean;
   /** the inspector's art is the thing the player asked for — never defer it */
   eager?: boolean;
+  /**
+   * Lifted so a caller can react to whether a printing is actually on screen. The
+   * provenance badge needs this: it contrasts our text with "this printing", and with
+   * no printing visible there is nothing to contrast.
+   */
+  onState?: (s: ArtState) => void;
 }
 
 /**
@@ -54,18 +60,30 @@ interface Props {
  */
 const LOAD_DEADLINE_MS = 5000;
 
-export function CardArt({ code, width, className = "", fill = false, eager = false }: Props) {
+export function CardArt({
+  code,
+  width,
+  className = "",
+  fill = false,
+  eager = false,
+  onState,
+}: Props) {
   const [state, setState] = useState<ArtState>("loading");
   const src = code > 0 ? cardImageUrl(code) : null;
 
   useEffect(() => {
     setState("loading");
-    if (!src) return;
-    const t = window.setTimeout(
-      () => setState((s) => (s === "loading" ? "failed" : s)),
-      LOAD_DEADLINE_MS,
-    );
+    if (!src) {
+      onState?.("failed");
+      return;
+    }
+    onState?.("loading");
+    const t = window.setTimeout(() => {
+      setState((s) => (s === "loading" ? "failed" : s));
+      onState?.("failed");
+    }, LOAD_DEADLINE_MS);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
   // Face-down / unknown: there is no art we are entitled to show, and no failure either.
@@ -90,8 +108,14 @@ export function CardArt({ code, width, className = "", fill = false, eager = fal
         loading={eager ? "eager" : "lazy"}
         decoding="async"
         draggable={false}
-        onLoad={() => setState("ok")}
-        onError={() => setState("failed")}
+        onLoad={() => {
+          setState("ok");
+          onState?.("ok");
+        }}
+        onError={() => {
+          setState("failed");
+          onState?.("failed");
+        }}
       />
     </div>
   );
