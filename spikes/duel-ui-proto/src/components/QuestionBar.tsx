@@ -296,7 +296,13 @@ export function QuestionBar(p: Props) {
           ),
         )
         .filter(Boolean)
-        .map((c) => cardName(c!.code));
+        // A face-down card has no name we are entitled to show. Name it by WHERE it is,
+        // so the confirm control still identifies exactly which card it will act on.
+        .map((c) =>
+          c!.code === 0
+            ? `${c!.controller === p.mySeat ? "your" : `${p.opponentName}'s`} set card in ${LOC_SHORT[c!.location]} ${c!.sequence + 1}`
+            : cardName(c!.code),
+        );
       if (isTrib) {
         confirmLabel = names.length
           ? `Tribute ${names.join(" + ")}${p.commitNext ? " — cannot be undone" : ""}`

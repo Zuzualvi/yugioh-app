@@ -4,14 +4,17 @@
  * FAKED: data, persistence, auth, concurrency, network failure.
  * REAL:  interaction, sequencing, round-trip latency, mode switching, states.
  *
- * It walks a Scenario's Steps. Presenting a step costs `latencyMs` — that is the
- * WebSocket round trip, and it is the gap the Intent Ribbon exists to survive.
+ * ── ONE mechanism for continuations, and why ────────────────────────────────
+ * A step's continuation is `branch(answer) => Step[]`. There is no other way for a
+ * step to lead somewhere. Revision 2 had TWO mechanisms — `applySelection` (patch the
+ * board) and `declineBranch` (a different path for decline) — and both left a third,
+ * implicit path: fall through to a hardcoded next step. That implicit path is keyed to
+ * the STEP, so it cannot depend on the ANSWER, and it produced the same bug three
+ * times: B3 (tribute ignored), B4 (decline == confirm) and the chain-activation bug
+ * (Book of Moon played Solemn Judgment).
  *
- * Three mechanisms exist because the usability pass (ZUH-81) found their absence:
- *   • every step, including step 0, is presented through goTo() — a scenario whose
- *     first step is a wait beat used to dead-end forever (blocker B5);
- *   • a step can carry a DECLINE branch, so "No response" is not "Confirm" (B4);
- *   • a step can apply the player's actual selection to the board (B3).
+ * The rule now: **any decision with more than one legal answer MUST define `branch`.**
+ * A step with no `branch` may only be a step with at most one legal answer.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,7 +25,8 @@ import type {
   PendingIntent,
   Seat,
 } from "../fixtures/types";
-import type { CardRef, Scenario, Step } from "../fixtures/scenarios";
+import type { Answer, CardRef, Scenario, Step } from "../fixtures/scenarios";
+import { candidateCodes } from "../fixtures/scenarios";
 
 export type Mode = "act" | "answer" | "waiting" | "resolving" | "ended";
 
@@ -37,7 +41,6 @@ export interface EngineView {
   mode: Mode;
   busy: boolean;
   waitLabel: string | null;
-  /** an auto-answered step is showing its receipt; the bar is NOT a live question */
   autoReceipt: string | null;
   clockSeconds: number;
   myClockSeconds: number;
@@ -53,7 +56,6 @@ const MY_START = 300;
 const OPP_START = 300;
 
 export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZones = false) {
-  /** the step list currently being walked — the scenario's, or a decline branch */
   const [track, setTrack] = useState<Step[]>(scenario.steps);
   const [stepIndex, setStepIndex] = useState(0);
   const [applied, setApplied] = useState<Step>(scenario.steps[0]);
@@ -67,18 +69,13 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
   const [end, setEnd] = useState<{ winner: Seat | null; reason: string } | null>(null);
   const [autoPush, setAutoPush] = useState<number | null>(null);
   const [chain, setChain] = useState<ChainLink[]>([]);
-  const [boardOverride, setBoardOverride] = useState<DuelStateSnapshot | null>(null);
 
   const timers = useRef<number[]>([]);
   const eventId = useRef(0);
   const trackRef = useRef<Step[]>(scenario.steps);
+  const stepRef = useRef(0);
   const endedRef = useRef(false);
-  /**
-   * B3/M4 — the player's real choices must persist for the REST of the scenario, not
-   * just the next beat. Patching one step made the board revert as soon as the engine
-   * moved on, which is exactly what the usability pass saw.
-   */
-  const patchesRef = useRef<((s: DuelStateSnapshot) => DuelStateSnapshot)[]>([]);
+  const goToRef = useRef<(i: number, steps?: Step[]) => void>(() => {});
 
   const clearTimers = () => {
     timers.current.forEach((t) => window.clearTimeout(t));
@@ -89,9 +86,7 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
   };
 
   const apply = useCallback((step: Step) => {
-    const patched = patchesRef.current.reduce((acc, fn) => fn(acc), step.state);
-    setApplied(patched === step.state ? step : { ...step, state: patched });
-    setBoardOverride(null);
+    setApplied(step);
     if (step.chain) setChain(step.chain);
     if (step.autoPush) setAutoPush(step.autoPush);
     if (step.myClockSeconds !== undefined) setMyClock(step.myClockSeconds);
@@ -106,19 +101,40 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
     }
   }, []);
 
+  /**
+   * The ONLY way a step leads anywhere. Every path — confirm, decline, and the
+   * client's own auto-answer — comes through here with the answer in hand.
+   */
+  const continueFrom = useCallback((i: number, a: Answer, list: Step[]) => {
+    const step = list[i];
+    if (!step) return;
+    const br = step.branch?.(a);
+    if (br && br.length) {
+      goToRef.current(0, br);
+      return;
+    }
+    if (a.kind === "decline") {
+      // No scripted decline path: replay from the top, which is the honest fixture
+      // equivalent of "nothing was consumed".
+      goToRef.current(-1);
+      return;
+    }
+    goToRef.current(i + 1);
+  }, []);
+
   /** Present step `i` of the current track. EVERY step goes through here, including 0. */
   const goTo = useCallback(
     (i: number, steps?: Step[]) => {
+      if (i === -1) {
+        resetRef.current();
+        return;
+      }
       const list = steps ?? trackRef.current;
       if (steps) {
         trackRef.current = steps;
         setTrack(steps);
       }
-      if (i >= list.length) {
-        // A finished branch returns to the scenario's own last step rather than
-        // dead-ending; a finished scenario stops on its last frame.
-        return;
-      }
+      if (i >= list.length) return;
       const step = list[i];
       const latency = step.latencyMs ?? 120;
       setBusy(true);
@@ -126,6 +142,7 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
       setAutoReceipt(null);
       later(() => {
         setStepIndex(i);
+        stepRef.current = i;
         apply(step);
         setBusy(false);
         setWaitLabel(null);
@@ -136,28 +153,31 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
         const suppressAuto = chooseZones && step.decision?.kind === "SelectZone";
         if (step.autoResolved && !suppressAuto) {
           setAutoReceipt(step.autoResolved);
-          // Hold the RECEIPT (read-only, no primary button) long enough to read when
-          // the reviewer has asked to see auto-answered steps; otherwise blink past.
           const hold = revealAuto ? 2200 : 240;
           later(() => {
             setAutoReceipt(null);
-            goTo(i + 1);
+            // The client's auto-answer is an ANSWER: it goes through branch() like any
+            // other, with an empty selection meaning "use the default".
+            continueFrom(i, { kind: "confirm", selection: [], codes: [] }, list);
           }, hold);
           return;
         }
         if (step.decision === null) {
-          later(() => goTo(i + 1), 220);
+          later(() => goToRef.current(i + 1), 220);
         }
       }, latency);
     },
-    [apply, revealAuto, chooseZones],
+    [apply, revealAuto, chooseZones, continueFrom],
   );
+  goToRef.current = goTo;
 
+  const resetRef = useRef<() => void>(() => {});
   const reset = useCallback(() => {
     clearTimers();
     eventId.current = 0;
     endedRef.current = false;
     trackRef.current = scenario.steps;
+    stepRef.current = 0;
     setTrack(scenario.steps);
     setStepIndex(0);
     setApplied(scenario.steps[0]);
@@ -167,16 +187,13 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
     setAutoReceipt(null);
     setChain([]);
     setAutoPush(null);
-    setBoardOverride(null);
-    patchesRef.current = [];
     setEnd(null);
     setMyClock(scenario.steps[0].myClockSeconds ?? MY_START);
     setOppClock(scenario.steps[0].oppClockSeconds ?? OPP_START);
     setOnClockSeat(scenario.steps[0].onClockSeat ?? 0);
-    // ← B5: step 0 is PRESENTED, not merely assigned. A scenario that opens on a
-    //   wait beat now advances instead of hanging forever.
     goTo(0, scenario.steps);
   }, [scenario, goTo]);
+  resetRef.current = reset;
 
   useEffect(() => {
     reset();
@@ -193,32 +210,22 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
     return () => window.clearInterval(t);
   }, [onClockSeat]);
 
-  /** Confirm / proceed. */
+  /** Confirm / proceed, carrying WHAT the player chose. */
   const answer = useCallback(
-    (selection?: CardRef[]) => {
-      const step = trackRef.current[stepIndex];
-      // B3/M4: honour what the player actually picked, from here to the end.
-      if (step?.applySelection && selection?.length) {
-        const fn = step.applySelection;
-        const sel = selection.slice();
-        patchesRef.current = [...patchesRef.current, (st) => fn(st, sel)];
-      }
-      goTo(stepIndex + 1);
+    (selection: CardRef[] = []) => {
+      const i = stepRef.current;
+      const step = trackRef.current[i];
+      const codes = candidateCodes(step?.decision ?? null, selection);
+      continueFrom(i, { kind: "confirm", selection, codes }, trackRef.current);
     },
-    [goTo, stepIndex],
+    [continueFrom],
   );
 
   /** Decline / cancel. NEVER the same thing as answer(). */
   const decline = useCallback(() => {
-    const step = trackRef.current[stepIndex];
-    if (step?.declineBranch) {
-      goTo(0, step.declineBranch);
-      return;
-    }
-    // No branch scripted: a cancel returns to the top of the scenario, which is the
-    // honest fixture equivalent of "nothing was consumed".
-    reset();
-  }, [goTo, stepIndex, reset]);
+    const i = stepRef.current;
+    continueFrom(i, { kind: "decline" }, trackRef.current);
+  }, [continueFrom]);
 
   const mode: Mode = end
     ? "ended"
@@ -238,14 +245,12 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
     step: applied,
     stepIndex,
     total: track.length,
-    state: boardOverride ?? applied.state,
+    state: applied.state,
     intent: applied.intent ?? null,
     chain,
     log,
     mode,
     busy,
-    // Keep the step's own label while a wait beat is ON SCREEN, not only while it is
-    // being fetched — otherwise a labelled gap degrades to the generic string.
     waitLabel: waitLabel ?? (applied.decision === null ? (applied.waitLabel ?? null) : null),
     autoReceipt,
     clockSeconds: onClockSeat === 0 ? myClock : oppClock,
@@ -258,5 +263,5 @@ export function useProtoEngine(scenario: Scenario, revealAuto: boolean, chooseZo
     note: applied.note ?? null,
   };
 
-  return { view, answer, decline, reset, setAutoPush, forfeit: () => answer() };
+  return { view, answer, decline, reset, setAutoPush };
 }

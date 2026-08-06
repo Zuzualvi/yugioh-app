@@ -230,10 +230,15 @@ export default function App() {
   };
 
   const toggle = (r: CardRef) => {
+    const max = d && "max" in d ? d.max : 1;
+    const min = d && "min" in d ? d.min : 1;
     setSelected((prev) => {
       const has = prev.some((x) => sameRef(x, r));
+      // Radio semantics for a mandatory single choice: clicking a candidate SELECTS it.
+      // Deselecting would leave the step unanswerable, which is a dead end — found by
+      // answer-matrix.py on the single-candidate attack target.
+      if (max === 1 && min >= 1) return [r];
       if (has) return prev.filter((x) => !sameRef(x, r));
-      const max = d && "max" in d ? d.max : 1;
       const next = [...prev, r];
       return next.length > max ? next.slice(next.length - max) : next;
     });
@@ -373,7 +378,7 @@ export default function App() {
             onPhase={onPhase}
             legalPhases={legalPhases}
             zonePick={zonePick}
-            onZonePick={() => answer()}
+            onZonePick={(r) => answer([r])}
             clock={
               // M8 — BOTH clocks, permanently, each labelled. Never colour alone.
               <div className="clocks" data-testid="clocks">
