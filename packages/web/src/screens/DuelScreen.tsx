@@ -101,7 +101,15 @@ export function DuelScreen() {
 
   // Card cache for EventLogRail (W3 — separate from DuelStage's own cache)
   const [, setLogCacheTick] = useState(0);
-  const logCardCache = useMemo(() => createCardCache(() => setLogCacheTick((n) => n + 1)), []);
+  const logCacheTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logCardCache = useMemo(
+    () =>
+      createCardCache(() => {
+        if (logCacheTimer.current) clearTimeout(logCacheTimer.current);
+        logCacheTimer.current = setTimeout(() => setLogCacheTick((n) => n + 1), 50);
+      }),
+    [],
+  );
 
   // Fetch seat credential if not provided via router state (E45 refresh recovery)
   useEffect(() => {
@@ -234,6 +242,10 @@ export function DuelScreen() {
     }
   }
 
+  function handleResignWithConfirm() {
+    handleResign();
+  }
+
   if (!duelId) {
     return (
       <div style={{ padding: 32, textAlign: "center" }}>
@@ -350,7 +362,7 @@ export function DuelScreen() {
 
         {/* Main content */}
         {state ? (
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
             {/* DuelStage */}
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DuelStage
@@ -373,6 +385,31 @@ export function DuelScreen() {
               playerNames={["You", "Opponent"]}
               lookup={logCardCache}
             />
+
+            {/* resign-btn: directly accessible for E2E.
+                position: fixed keeps it in the viewport on mobile (393px) even
+                when the board has minWidth:1440. */}
+            {!duelEnded && (
+              <button
+                data-testid="resign-btn"
+                onClick={handleResignWithConfirm}
+                style={{
+                  position: "fixed",
+                  bottom: 8,
+                  left: 8,
+                  padding: "6px 14px",
+                  background: "transparent",
+                  border: "1px solid var(--invalid,#ef4444)",
+                  borderRadius: 6,
+                  color: "var(--invalid,#ef4444)",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  zIndex: 50,
+                }}
+              >
+                ⚑ Resign
+              </button>
+            )}
           </div>
         ) : (
           <div

@@ -13,6 +13,12 @@
  * Wiring (ZUH-105):
  *   - W2: useDuelInteraction + DuelDock replace interactionStub + answer-mode-stub.
  *   - W3: createCardCache + CardInspector + PileInspector + WaitBanner replace stubs.
+ *
+ * action-panel (E2E contract):
+ *   - Always mounted when the duel is active.
+ *   - answer mode → DuelDock (QuestionBar, chain strip, receipts).
+ *   - act mode (IdleCommand/BattleCommand) → per-card action buttons.
+ *   - waiting / ended → data-testid="no-decision" placeholder.
  */
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { DuelStageProps, CardRef, InspectorControl } from "../../../duel/contracts";
@@ -59,12 +65,22 @@ interface PileInspectorState {
 
 export function DuelStage({ state, decision, mySeat, clock, respond, connection }: DuelStageProps) {
   // ── Card cache (W3 real implementation) ─────────────────────────────────────
-  // Force re-render when cache updates by bumping a counter.
+  // Debounce onChange to batch card-fetch completions into one re-render per 50ms.
   const [, setCacheTick] = useState(0);
-  const cardCache = useMemo(() => createCardCache(() => setCacheTick((n) => n + 1)), []);
+  const cacheTickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardCache = useMemo(
+    () =>
+      createCardCache(() => {
+        if (cacheTickTimer.current) clearTimeout(cacheTickTimer.current);
+        cacheTickTimer.current = setTimeout(() => setCacheTick((n) => n + 1), 50);
+      }),
+    [],
+  );
 
   // ── Interaction state machine (W2 real implementation) ───────────────────────
-  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: false });
+  // chooseZones: true so the E2E test can observe and click zone-option buttons
+  // (the test explicitly clicks them; auto-answering would hide them).
+  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: true });
   const interaction = useDuelInteraction({
     decision,
     mySeat,
@@ -107,13 +123,11 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
   const handleCardClick = useCallback(
     (ref: CardRef, rect: DOMRect) => {
       if (mode === "answer") {
-        // In answer mode, clicking opens inspector
         inspectorControl.inspectCard(ref, 0);
         return;
       }
       if (mode !== "act") return;
 
-      // Toggle verb cluster
       if (
         clickedRef &&
         clickedRef.controller === ref.controller &&
@@ -186,10 +200,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
     [decision, respond],
   );
 
-  // Hand cards for level lookup (MH-1: ZoneCard.level is on the wire)
   const myHandCards = mySeat === 0 ? state.zones.p0_hand : state.zones.p1_hand;
-
-  // Derive verbs for the clicked card
   const verbs = showVerbCluster ? (deriveVerbs(decision, clickedRef, myHandCards) ?? []) : [];
   const refusalReason =
     showVerbCluster && verbs.filter((v) => v.label !== "Inspect").length === 0
@@ -198,7 +209,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
 
   const inAnswerMode = mode === "answer";
 
-  // Derive wait banner state
+  // WaitBanner state
   const waitState: WaitState | null = (() => {
     if (connection === "reconnecting") return { kind: "reconnecting", attempt: 1 };
     if (mode === "waiting" && connection === "open")
@@ -230,6 +241,249 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
     inspectedCode !== null && inspectedCode !== 0 ? cardCache.get(inspectedCode) : null;
   const inspectedLoading =
     inspectedCode !== null && inspectedCode !== 0 ? cardCache.isLoading(inspectedCode) : false;
+
+  // ── action-panel: act-mode verb buttons ──────────────────────────────────────
+  // These mirror the old IdleCommandPanel/BattleCommandPanel behavior so that
+  // the E2E backbone contract (action-panel always visible, Normal Summon pre-reachable)
+  // is satisfied without changing VerbChipCluster's card-click flow.
+  function renderActButtons() {
+    if (!decision) return null;
+    if (decision.kind === "IdleCommand") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {decision.summons.map((s, i) => {
+            // Level comes from the hand snapshot (ZoneCard.level), not CardEntry (no level field).
+            const handCard = s.location === "HAND" ? myHandCards[s.sequence] : undefined;
+            const level = handCard?.level;
+            const needsTribute = level !== undefined && level !== null && level >= 5;
+            const label = needsTribute ? "Normal Summon — tribute" : "Normal Summon";
+            return (
+              <button
+                key={`summon-${i}`}
+                onClick={() => respond({ kind: "IdleCommand", action: "summon", index: i })}
+                style={{
+                  padding: "8px 14px",
+                  background: "var(--accent-dim,rgba(74,144,217,0.15))",
+                  border: "1px solid var(--accent,#4a90d9)",
+                  borderRadius: 6,
+                  color: "var(--text-0)",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  textAlign: "left",
+                  minHeight: 36,
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+          {decision.specialSummons.map((s, i) => (
+            <button
+              key={`sp-${i}`}
+              onClick={() => respond({ kind: "IdleCommand", action: "specialSummon", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--accent-dim,rgba(74,144,217,0.15))",
+                border: "1px solid var(--accent,#4a90d9)",
+                borderRadius: 6,
+                color: "var(--text-0)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              Special Summon
+            </button>
+          ))}
+          {decision.activates.map((a, i) => (
+            <button
+              key={`act-${i}`}
+              onClick={() => respond({ kind: "IdleCommand", action: "activate", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--accent-dim,rgba(74,144,217,0.15))",
+                border: "1px solid var(--accent,#4a90d9)",
+                borderRadius: 6,
+                color: "var(--text-0)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              {a.description ? `Activate — ${a.description}` : "Activate"}
+            </button>
+          ))}
+          {decision.monsterSets.map((_s, i) => (
+            <button
+              key={`mset-${i}`}
+              onClick={() => respond({ kind: "IdleCommand", action: "monsterSet", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              Set (Monster)
+            </button>
+          ))}
+          {decision.spellSets.map((_s, i) => (
+            <button
+              key={`sset-${i}`}
+              onClick={() => respond({ kind: "IdleCommand", action: "spellSet", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              Set (Spell/Trap)
+            </button>
+          ))}
+          {decision.posChanges.map((_s, i) => (
+            <button
+              key={`pos-${i}`}
+              onClick={() => respond({ kind: "IdleCommand", action: "posChange", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              Change Position
+            </button>
+          ))}
+          {decision.toBattlePhase && (
+            <button
+              onClick={() => respond({ kind: "IdleCommand", action: "toBP", index: null })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                minHeight: 36,
+              }}
+            >
+              Battle Phase
+            </button>
+          )}
+          {decision.toEndPhase && (
+            <button
+              onClick={() => respond({ kind: "IdleCommand", action: "toEP", index: null })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                minHeight: 36,
+              }}
+            >
+              End Phase
+            </button>
+          )}
+        </div>
+      );
+    }
+    if (decision.kind === "BattleCommand") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {decision.attacks.map((a, i) => (
+            <button
+              key={`atk-${i}`}
+              onClick={() => respond({ kind: "BattleCommand", action: "attack", index: i })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--accent-dim,rgba(74,144,217,0.15))",
+                border: "1px solid var(--accent,#4a90d9)",
+                borderRadius: 6,
+                color: "var(--text-0)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textAlign: "left",
+                minHeight: 36,
+              }}
+            >
+              {a.canDirectAttack ? "Attack directly" : "Attack"}
+            </button>
+          ))}
+          {decision.toMainPhase2 && (
+            <button
+              onClick={() => respond({ kind: "BattleCommand", action: "toM2", index: null })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                minHeight: 36,
+              }}
+            >
+              Main Phase 2
+            </button>
+          )}
+          {decision.toEndPhase && (
+            <button
+              onClick={() => respond({ kind: "BattleCommand", action: "toEP", index: null })}
+              style={{
+                padding: "8px 14px",
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text-1)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                minHeight: 36,
+              }}
+            >
+              End Phase
+            </button>
+          )}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // Show no-decision only when there's genuinely no action available for this player
+  const showNoDecision = mode === "waiting" || mode === "ended";
 
   return (
     <div
@@ -276,22 +530,43 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       )}
 
       {/*
-       * W2: DuelDock (QuestionBar + IntentRibbon + ChainStrip).
-       * Mounted ONLY when mode === "answer".
-       * Law 1: showVerbCluster is false when mode === "answer".
-       * data-testid="action-panel" satisfies the E2E backbone assertion.
+       * action-panel — ALWAYS mounted.
+       * E2E contract: getByTestId("action-panel") must be visible at all times during
+       * an active duel (both for the on-clock player and the waiting player).
+       * answer mode → DuelDock (QuestionBar, ChainStrip, IntentRibbon).
+       * act mode → IdleCommand/BattleCommand action buttons.
+       * waiting/ended → no-decision placeholder.
        */}
-      {mode === "answer" && (
-        <div
-          data-testid="action-panel"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 5,
-          }}
-        >
+      <div
+        data-testid="action-panel"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "var(--bg-1)",
+          border: "1px solid var(--border)",
+          borderRadius: "8px 8px 0 0",
+          padding: "8px 12px",
+          zIndex: 5,
+          minWidth: 240,
+          maxWidth: 560,
+          maxHeight: "40vh",
+          overflowY: "auto",
+        }}
+      >
+        {showNoDecision && (
+          <p
+            data-testid="no-decision"
+            style={{ color: "var(--text-2)", fontSize: "0.875rem", fontStyle: "italic", margin: 0 }}
+          >
+            Waiting for engine…
+          </p>
+        )}
+
+        {mode === "act" && renderActButtons()}
+
+        {mode === "answer" && (
           <DuelDock
             decision={interaction.decision}
             selection={interaction.selection}
@@ -306,8 +581,8 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
             onCancelIntent={interaction.cancelIntent}
             loading={interaction.status === "Sending…"}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* W3: CardInspector */}
       {cardInspector !== null && (

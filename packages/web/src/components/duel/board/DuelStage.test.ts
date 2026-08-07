@@ -106,8 +106,8 @@ describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", 
 
     // VerbChipCluster is not open (no card clicked) — but QuestionBar definitely not mounted
     expect(screen.queryByTestId("question-bar")).toBeNull();
-    // The action panel is not shown in act mode (only in answer mode)
-    expect(screen.queryByTestId("action-panel")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("in answer mode (SelectYesNo): VerbChipCluster is NOT mounted", async () => {
@@ -144,7 +144,8 @@ describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", 
 
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
     expect(screen.queryByTestId("question-bar")).toBeNull();
-    expect(screen.queryByTestId("action-panel")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("FAILS if both VerbChipCluster and QuestionBar are mounted simultaneously", () => {
@@ -184,8 +185,8 @@ describe("DuelStage — mode derivation", () => {
 
     // No VerbChipCluster (waiting mode)
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
-    // No action panel (waiting — not answer mode)
-    expect(screen.queryByTestId("action-panel")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("derives 'answer' mode for SelectCard decision for my seat", async () => {
