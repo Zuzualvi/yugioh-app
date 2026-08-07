@@ -242,10 +242,6 @@ export function DuelScreen() {
     }
   }
 
-  function handleResignWithConfirm() {
-    handleResign();
-  }
-
   if (!duelId) {
     return (
       <div style={{ padding: 32, textAlign: "center" }}>
@@ -362,7 +358,7 @@ export function DuelScreen() {
 
         {/* Main content */}
         {state ? (
-          <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             {/* DuelStage */}
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DuelStage
@@ -385,31 +381,6 @@ export function DuelScreen() {
               playerNames={["You", "Opponent"]}
               lookup={logCardCache}
             />
-
-            {/* resign-btn: directly accessible for E2E.
-                position: fixed keeps it in the viewport on mobile (393px) even
-                when the board has minWidth:1440. */}
-            {!duelEnded && (
-              <button
-                data-testid="resign-btn"
-                onClick={handleResignWithConfirm}
-                style={{
-                  position: "fixed",
-                  bottom: 8,
-                  left: 8,
-                  padding: "6px 14px",
-                  background: "transparent",
-                  border: "1px solid var(--invalid,#ef4444)",
-                  borderRadius: 6,
-                  color: "var(--invalid,#ef4444)",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  zIndex: 50,
-                }}
-              >
-                ⚑ Resign
-              </button>
-            )}
           </div>
         ) : (
           <div

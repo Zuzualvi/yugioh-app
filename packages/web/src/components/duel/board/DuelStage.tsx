@@ -78,9 +78,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
   );
 
   // ── Interaction state machine (W2 real implementation) ───────────────────────
-  // chooseZones: true so the E2E test can observe and click zone-option buttons
-  // (the test explicitly clicks them; auto-answering would hide them).
-  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: true });
+  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: false });
   const interaction = useDuelInteraction({
     decision,
     mySeat,
@@ -242,248 +240,10 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
   const inspectedLoading =
     inspectedCode !== null && inspectedCode !== 0 ? cardCache.isLoading(inspectedCode) : false;
 
-  // ── action-panel: act-mode verb buttons ──────────────────────────────────────
-  // These mirror the old IdleCommandPanel/BattleCommandPanel behavior so that
-  // the E2E backbone contract (action-panel always visible, Normal Summon pre-reachable)
-  // is satisfied without changing VerbChipCluster's card-click flow.
-  function renderActButtons() {
-    if (!decision) return null;
-    if (decision.kind === "IdleCommand") {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {decision.summons.map((s, i) => {
-            // Level comes from the hand snapshot (ZoneCard.level), not CardEntry (no level field).
-            const handCard = s.location === "HAND" ? myHandCards[s.sequence] : undefined;
-            const level = handCard?.level;
-            const needsTribute = level !== undefined && level !== null && level >= 5;
-            const label = needsTribute ? "Normal Summon — tribute" : "Normal Summon";
-            return (
-              <button
-                key={`summon-${i}`}
-                onClick={() => respond({ kind: "IdleCommand", action: "summon", index: i })}
-                style={{
-                  padding: "8px 14px",
-                  background: "var(--accent-dim,rgba(74,144,217,0.15))",
-                  border: "1px solid var(--accent,#4a90d9)",
-                  borderRadius: 6,
-                  color: "var(--text-0)",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  textAlign: "left",
-                  minHeight: 36,
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-          {decision.specialSummons.map((s, i) => (
-            <button
-              key={`sp-${i}`}
-              onClick={() => respond({ kind: "IdleCommand", action: "specialSummon", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--accent-dim,rgba(74,144,217,0.15))",
-                border: "1px solid var(--accent,#4a90d9)",
-                borderRadius: 6,
-                color: "var(--text-0)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              Special Summon
-            </button>
-          ))}
-          {decision.activates.map((a, i) => (
-            <button
-              key={`act-${i}`}
-              onClick={() => respond({ kind: "IdleCommand", action: "activate", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--accent-dim,rgba(74,144,217,0.15))",
-                border: "1px solid var(--accent,#4a90d9)",
-                borderRadius: 6,
-                color: "var(--text-0)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              {a.description ? `Activate — ${a.description}` : "Activate"}
-            </button>
-          ))}
-          {decision.monsterSets.map((_s, i) => (
-            <button
-              key={`mset-${i}`}
-              onClick={() => respond({ kind: "IdleCommand", action: "monsterSet", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              Set (Monster)
-            </button>
-          ))}
-          {decision.spellSets.map((_s, i) => (
-            <button
-              key={`sset-${i}`}
-              onClick={() => respond({ kind: "IdleCommand", action: "spellSet", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              Set (Spell/Trap)
-            </button>
-          ))}
-          {decision.posChanges.map((_s, i) => (
-            <button
-              key={`pos-${i}`}
-              onClick={() => respond({ kind: "IdleCommand", action: "posChange", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              Change Position
-            </button>
-          ))}
-          {decision.toBattlePhase && (
-            <button
-              onClick={() => respond({ kind: "IdleCommand", action: "toBP", index: null })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                minHeight: 36,
-              }}
-            >
-              Battle Phase
-            </button>
-          )}
-          {decision.toEndPhase && (
-            <button
-              onClick={() => respond({ kind: "IdleCommand", action: "toEP", index: null })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                minHeight: 36,
-              }}
-            >
-              End Phase
-            </button>
-          )}
-        </div>
-      );
-    }
-    if (decision.kind === "BattleCommand") {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {decision.attacks.map((a, i) => (
-            <button
-              key={`atk-${i}`}
-              onClick={() => respond({ kind: "BattleCommand", action: "attack", index: i })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--accent-dim,rgba(74,144,217,0.15))",
-                border: "1px solid var(--accent,#4a90d9)",
-                borderRadius: 6,
-                color: "var(--text-0)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textAlign: "left",
-                minHeight: 36,
-              }}
-            >
-              {a.canDirectAttack ? "Attack directly" : "Attack"}
-            </button>
-          ))}
-          {decision.toMainPhase2 && (
-            <button
-              onClick={() => respond({ kind: "BattleCommand", action: "toM2", index: null })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                minHeight: 36,
-              }}
-            >
-              Main Phase 2
-            </button>
-          )}
-          {decision.toEndPhase && (
-            <button
-              onClick={() => respond({ kind: "BattleCommand", action: "toEP", index: null })}
-              style={{
-                padding: "8px 14px",
-                background: "var(--bg-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                color: "var(--text-1)",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                minHeight: 36,
-              }}
-            >
-              End Phase
-            </button>
-          )}
-        </div>
-      );
-    }
-    return null;
-  }
-
-  // Show no-decision only when there's genuinely no action available for this player
-  const showNoDecision = mode === "waiting" || mode === "ended";
+  // Show no-decision only when there's genuinely no action available for this player.
+  // ACT mode (IdleCommand/BattleCommand) is expressed via VerbChipCluster on the board
+  // (design spec A1/A5) — no panel content needed.
+  const showNoDecision = mode === "waiting" || mode === "ended" || mode === "act";
 
   return (
     <div
@@ -534,8 +294,8 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
        * E2E contract: getByTestId("action-panel") must be visible at all times during
        * an active duel (both for the on-clock player and the waiting player).
        * answer mode → DuelDock (QuestionBar, ChainStrip, IntentRibbon).
-       * act mode → IdleCommand/BattleCommand action buttons.
-       * waiting/ended → no-decision placeholder.
+       * act mode and waiting/ended → no-decision placeholder.
+       * ACT mode is expressed via VerbChipCluster on the board (A1/A5).
        */}
       <div
         data-testid="action-panel"
@@ -563,8 +323,6 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
             Waiting for engine…
           </p>
         )}
-
-        {mode === "act" && renderActButtons()}
 
         {mode === "answer" && (
           <DuelDock
