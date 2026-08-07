@@ -21,12 +21,18 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// This file lives at packages/web/src/duel/, so the repo root is FOUR levels
+// up, not three. The first version used three, resolved the spec to
+// `packages/e2e/playwright/duel.spec.ts`, and died with ENOENT in CI — a guard
+// that fails for its own reasons is worse than no guard, because the next
+// person to see it red assumes it is noise. The existence assertion below is
+// what makes that failure mode loud instead of silent.
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..", "..", "..");
+const repoRoot = join(here, "..", "..", "..", "..");
 const e2eSpec = join(repoRoot, "e2e", "playwright", "duel.spec.ts");
 const webSrc = join(here, "..");
 
@@ -49,6 +55,14 @@ function walk(dir: string, out: string[] = []): string[] {
 const NOT_RENDERED_BY_WEB = new Set<string>();
 
 describe("E2E data-testid contract", () => {
+  it("can actually find the E2E spec (guards against this test passing vacuously)", () => {
+    expect(
+      existsSync(e2eSpec),
+      `Expected the Playwright spec at ${e2eSpec}. If this path is wrong the guard cannot ` +
+        `protect anything — fix the path, do not delete the test.`,
+    ).toBe(true);
+  });
+
   const spec = readFileSync(e2eSpec, "utf8");
 
   // Playwright reaches test ids two ways and BOTH must be scanned. The first
