@@ -478,7 +478,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When your opponent has 4 cards in their hand: Activate 1 of these effects.\n● Your opponent cannot draw during their next Draw Phase.\n● Your opponent cannot activate Spell/Trap Cards this turn.",
+      "desc": "When your opponent has 4 cards in their hand: Activate 1 of these effects.\n\u25cf Your opponent cannot draw during their next Draw Phase.\n\u25cf Your opponent cannot activate Spell/Trap Cards this turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 967928
@@ -958,7 +958,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When there are face-up WIND, WATER, FIRE and EARTH monster(s) on the field: Apply 1 of these effects.\n● Destroy all monsters your opponent controls.\n● Destroy all Spell and Trap Cards your opponent controls.\n● Discard 2 random cards from your opponent's hand.\n● Draw 2 cards.",
+      "desc": "When there are face-up WIND, WATER, FIRE and EARTH monster(s) on the field: Apply 1 of these effects.\n\u25cf Destroy all monsters your opponent controls.\n\u25cf Destroy all Spell and Trap Cards your opponent controls.\n\u25cf Discard 2 random cards from your opponent's hand.\n\u25cf Draw 2 cards.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 1781310
@@ -1003,7 +1003,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When this face-down card is destroyed and sent to the Graveyard, your opponent selects and executes 1 of the following effects:\n● Discard 1 random card in their hand.\n● Select 1 monster on their side of the field and destroy it.",
+      "desc": "When this face-down card is destroyed and sent to the Graveyard, your opponent selects and executes 1 of the following effects:\n\u25cf Discard 1 random card in their hand.\n\u25cf Select 1 monster on their side of the field and destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 1804528
@@ -1258,7 +1258,7 @@
       "level": 4,
       "atk": 500,
       "def": 1400,
-      "desc": "Once per turn, you can toss a coin 3 times and apply the appropriate effect: ● 3 Heads: Destroy all monsters your opponent controls. ● 2 Heads: Discard 1 random card from your opponent's hand. ● 1 Head: Destroy 1 card you control. ● 3 Tails: Discard your entire hand.",
+      "desc": "Once per turn, you can toss a coin 3 times and apply the appropriate effect: \u25cf 3 Heads: Destroy all monsters your opponent controls. \u25cf 2 Heads: Discard 1 random card from your opponent's hand. \u25cf 1 Head: Destroy 1 card you control. \u25cf 3 Tails: Discard your entire hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 2196767
@@ -1981,7 +1981,8 @@
       "desc": "While this card is in face-up Attack Position on your side of the field, negate the effects of any Spell or Trap Card that targets 1 Machine-Type monster on your side of the field. When this face-up card on the field attacks or is attacked, and it is destroyed as a result of battle and sent to the Graveyard, you can draw 1 card from your Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 3370104
+      "imageId": 3370104,
+      "preErrataText": true
     },
     {
       "passcode": 3381441,
@@ -2143,7 +2144,7 @@
       "level": 1,
       "atk": 0,
       "def": 0,
-      "desc": "You can use 1 of these effects.\r\n● When this card is targeted for an attack by an opponent's monster: You can banish this card; draw 1 card, then end the Battle Phase.\r\n● You can target 1 face-up monster you control and this card; banish both that target and this card, then draw 2 cards.\r\n● You can target 1 card in your GY; banish both this card and 1 card from your hand, then place that target on top of the Deck.",
+      "desc": "You can use 1 of these effects.\r\n\u25cf When this card is targeted for an attack by an opponent's monster: You can banish this card; draw 1 card, then end the Battle Phase.\r\n\u25cf You can target 1 face-up monster you control and this card; banish both that target and this card, then draw 2 cards.\r\n\u25cf You can target 1 card in your GY; banish both this card and 1 card from your hand, then place that target on top of the Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 3657444
@@ -2323,7 +2324,7 @@
       "level": 3,
       "atk": 700,
       "def": 1200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● Your opponent takes all Battle Damage that you would have taken from a battle involving this card.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf Your opponent takes all Battle Damage that you would have taken from a battle involving this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 3918345
@@ -3598,7 +3599,7 @@
       "level": 10,
       "atk": 4000,
       "def": 4000,
-      "desc": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by sending 3 monsters you control to the Graveyard, and cannot be Special Summoned by other ways. When this card is Special Summoned: Toss a coin and gain the appropriate effect.\n● Heads: When this card destroys an opponent's monster by battle and sends it to the Graveyard: You can target 1 card in your Graveyard; add that target to your hand.\n● Tails: During either player's turn, when a Spell/Trap Card, or monster effect, that targets this card is activated: This card loses exactly 1000 ATK and you negate the activation, and if you do, destroy it.",
+      "desc": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by sending 3 monsters you control to the Graveyard, and cannot be Special Summoned by other ways. When this card is Special Summoned: Toss a coin and gain the appropriate effect.\n\u25cf Heads: When this card destroys an opponent's monster by battle and sends it to the Graveyard: You can target 1 card in your Graveyard; add that target to your hand.\n\u25cf Tails: During either player's turn, when a Spell/Trap Card, or monster effect, that targets this card is activated: This card loses exactly 1000 ATK and you negate the activation, and if you do, destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 5861892
@@ -3643,7 +3644,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Each time a face-up Plant-Type monster(s) on the field is destroyed, place 1 Flower Counter on this card. You can remove any number of Flower Counters from this card to activate these effects.\n● 1 Counter: Target 1 Plant-Type monster on the field; that target gains 400 ATK and DEF until the end of this turn. (This ATK gain remains even if this card leaves the field.)\n● 2 Counters: Target 1 card on the field; destroy that target.\n● 3 Counters: Target 1 Plant-Type monster in your Graveyard; Special Summon that target.",
+      "desc": "Each time a face-up Plant-Type monster(s) on the field is destroyed, place 1 Flower Counter on this card. You can remove any number of Flower Counters from this card to activate these effects.\n\u25cf 1 Counter: Target 1 Plant-Type monster on the field; that target gains 400 ATK and DEF until the end of this turn. (This ATK gain remains even if this card leaves the field.)\n\u25cf 2 Counters: Target 1 card on the field; destroy that target.\n\u25cf 3 Counters: Target 1 Plant-Type monster in your Graveyard; Special Summon that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 5973663
@@ -4138,7 +4139,7 @@
       "level": 4,
       "atk": 1200,
       "def": 600,
-      "desc": "This card gains effects based on the number of \"Harpie\" monsters you control, except \"Harpie's Pet Baby Dragon\".\n● 1 or more: Your opponent cannot target \"Harpie\" monsters you control for attacks, except \"Harpie's Pet Baby Dragon\".\n● 2 or more: Double the original ATK and DEF of this card.\n● 3 or more: Once per turn: You can target 1 card your opponent controls; destroy that target.",
+      "desc": "This card gains effects based on the number of \"Harpie\" monsters you control, except \"Harpie's Pet Baby Dragon\".\n\u25cf 1 or more: Your opponent cannot target \"Harpie\" monsters you control for attacks, except \"Harpie's Pet Baby Dragon\".\n\u25cf 2 or more: Double the original ATK and DEF of this card.\n\u25cf 3 or more: Once per turn: You can target 1 card your opponent controls; destroy that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 6924874
@@ -4153,7 +4154,7 @@
       "level": 3,
       "atk": 1200,
       "def": 1000,
-      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n● Target 1 Spell/Trap Card on the field; destroy that target.\n● Send the top 2 cards of their Deck to the Graveyard.",
+      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n\u25cf Target 1 Spell/Trap Card on the field; destroy that target.\n\u25cf Send the top 2 cards of their Deck to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 6967870
@@ -4381,7 +4382,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner monsters\nWhen this card destroys an opponent's monster by battle and sends it to the Graveyard, you can Special Summon that monster to your side of the field in face-up Defense Position.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 7391448
+      "imageId": 7391448,
+      "preErrataText": true
     },
     {
       "passcode": 7459013,
@@ -4858,7 +4860,7 @@
       "level": 4,
       "atk": 1100,
       "def": 1100,
-      "desc": "When this card is Summoned, toss a coin:\n● Heads: When a Spell Card is activated, this card's ATK becomes double its original ATK until the End Phase of that turn.\n● Tails: When a Spell Card is activated, your opponent gains 500 Life Points.",
+      "desc": "When this card is Summoned, toss a coin:\n\u25cf Heads: When a Spell Card is activated, this card's ATK becomes double its original ATK until the End Phase of that turn.\n\u25cf Tails: When a Spell Card is activated, your opponent gains 500 Life Points.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 8396952
@@ -5083,7 +5085,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate 1 of these effects;\n● Gain 1200 LP.\n● Inflict 800 damage to your opponent.",
+      "desc": "Activate 1 of these effects;\n\u25cf Gain 1200 LP.\n\u25cf Inflict 800 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 8842266
@@ -5191,7 +5193,8 @@
       "desc": "You can discard 1 WATER monster to Special Summon this card from your hand. When this card is Summoned, you can select and send 1 Level 2 or lower Aqua-Type WATER monster from your Deck or your side of the field to the Graveyard. Once per turn, you can return 1 monster you control to your hand to Normal Summon 1 \"Frog\" monster, except \"Swap Frog\" or \"Frog the Jam\", in addition to your Normal Summon or Set this turn.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 9126351
+      "imageId": 9126351,
+      "preErrataText": true
     },
     {
       "passcode": 9145181,
@@ -5728,7 +5731,7 @@
       "level": 5,
       "atk": 1500,
       "def": 900,
-      "desc": "When this card is Normal Summoned, it gets 1 of the following effects for each \"Divine Dragon - Excelion\" in your Graveyard when this effect resolves (your choice). These effects cannot accumulate. ● This card gains 1000 ATK. ● If this card destroys an opponent's monster by battle, it can attack once again in a row. ● When this card destroys a monster by battle and sends it to the Graveyard, inflict damage to your opponent equal to the ATK of the destroyed monster.",
+      "desc": "When this card is Normal Summoned, it gets 1 of the following effects for each \"Divine Dragon - Excelion\" in your Graveyard when this effect resolves (your choice). These effects cannot accumulate. \u25cf This card gains 1000 ATK. \u25cf If this card destroys an opponent's monster by battle, it can attack once again in a row. \u25cf When this card destroys a monster by battle and sends it to the Graveyard, inflict damage to your opponent equal to the ATK of the destroyed monster.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 10032958
@@ -6118,7 +6121,7 @@
       "level": 3,
       "atk": 800,
       "def": 1400,
-      "desc": "● While in Attack Position: Once per turn, you can Special Summon 1 Level 4 \"Morphtronic\" monster from your hand. Destroy it during the End Phase.\n● While in Defense Position: While this card is in face-up Defense Position, it is Level 4.",
+      "desc": "\u25cf While in Attack Position: Once per turn, you can Special Summon 1 Level 4 \"Morphtronic\" monster from your hand. Destroy it during the End Phase.\n\u25cf While in Defense Position: While this card is in face-up Defense Position, it is Level 4.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 10591919
@@ -7171,7 +7174,8 @@
       "desc": "If this card is in your Graveyard during your Standby Phase and there are no Spell or Trap Cards on your side of the field, you can Special Summon this card to your side of the field. This effect cannot be activated if there is a face-up \"Treeborn Frog\" on your side of the field.",
       "banlist": "semi",
       "aliasOf": null,
-      "imageId": 12538374
+      "imageId": 12538374,
+      "preErrataText": true
     },
     {
       "passcode": 12580477,
@@ -7813,7 +7817,7 @@
       "level": 4,
       "atk": 500,
       "def": 1100,
-      "desc": "This card's name is also treated as \"Neo-Spacian Glow Moss\". This card cannot be Special Summoned except with \"NEX\". When this card attacks or is attacked, draw 1 card. Reveal that card, and based on its type apply the proper effect: ● Monster: End the Battle Phase. ● Spell: You can change this card's attack to a direct attack. ● Trap: This monster is changed to Defense Position.",
+      "desc": "This card's name is also treated as \"Neo-Spacian Glow Moss\". This card cannot be Special Summoned except with \"NEX\". When this card attacks or is attacked, draw 1 card. Reveal that card, and based on its type apply the proper effect: \u25cf Monster: End the Battle Phase. \u25cf Spell: You can change this card's attack to a direct attack. \u25cf Trap: This monster is changed to Defense Position.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 13857930
@@ -8386,7 +8390,8 @@
       "desc": "Send this face-up card on your side of the field to the Graveyard to Special Summon 2 Level 3 or lower Beast-Type monsters from your Deck to the field. The monsters Special Summoned in this way are destroyed during the End Phase.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 14878871
+      "imageId": 14878871,
+      "preErrataText": true
     },
     {
       "passcode": 14898066,
@@ -8848,7 +8853,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During your opponent's Battle Phase (except during the Damage Step): Your opponent chooses 1 of these effects.\n● Halve the ATK of all monsters they currently control, until the end of the Battle Phase.\n● End the Battle Phase.",
+      "desc": "During your opponent's Battle Phase (except during the Damage Step): Your opponent chooses 1 of these effects.\n\u25cf Halve the ATK of all monsters they currently control, until the end of the Battle Phase.\n\u25cf End the Battle Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 15552258
@@ -9523,7 +9528,7 @@
       "level": 8,
       "atk": 3000,
       "def": 2500,
-      "desc": "This card cannot be Normal Summoned or Set. This card cannot be Special Summoned except with the effect of \"Summon Reactor・SK\". Once per turn, you can send 1 card from your hand to the Graveyard to destroy 1 card your opponent controls. Once during each of your opponent's turns, you can activate 1 of the following effects:\n● When your opponent Normal Summons or Special Summons a monster, destroy it and inflict 800 damage to your opponent.\n● When your opponent Sets a card, destroy it and inflict 800 damage to your opponent.",
+      "desc": "This card cannot be Normal Summoned or Set. This card cannot be Special Summoned except with the effect of \"Summon Reactor\u30fbSK\". Once per turn, you can send 1 card from your hand to the Graveyard to destroy 1 card your opponent controls. Once during each of your opponent's turns, you can activate 1 of the following effects:\n\u25cf When your opponent Normal Summons or Special Summons a monster, destroy it and inflict 800 damage to your opponent.\n\u25cf When your opponent Sets a card, destroy it and inflict 800 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 16898077
@@ -9628,7 +9633,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● You can Tribute this card, then target 1 Gemini monster in your Graveyard, except \"Blazewing Butterfly\"; Special Summon that target, and if you do, it becomes an Effect Monster, and gains its effect.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf You can Tribute this card, then target 1 Gemini monster in your Graveyard, except \"Blazewing Butterfly\"; Special Summon that target, and if you do, it becomes an Effect Monster, and gains its effect.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 16984449
@@ -9658,7 +9663,7 @@
       "level": 9,
       "atk": 3000,
       "def": 2500,
-      "desc": "\"Elemental HERO Neos\" + \"Neo-Spacian Dark Panther\" + \"Neo-Spacian Glow Moss\"\nMust first be Special Summoned (from your Extra Deck) by shuffling the above cards you control into the Deck. (You do not use \"Polymerization\".) Once per turn, during the End Phase: Shuffle this card into the Extra Deck, and if you do, Set all face-up monsters on the field. Once per turn, during your Main Phase 1: You can toss a coin 3 times.\n● 3 Heads: Destroy all monsters your opponent controls.\n● 2 Heads: For the rest of this turn, the effects of all face-up monsters your opponent controls are negated.\n● 1 Head: Return all monsters you control to the hand.",
+      "desc": "\"Elemental HERO Neos\" + \"Neo-Spacian Dark Panther\" + \"Neo-Spacian Glow Moss\"\nMust first be Special Summoned (from your Extra Deck) by shuffling the above cards you control into the Deck. (You do not use \"Polymerization\".) Once per turn, during the End Phase: Shuffle this card into the Extra Deck, and if you do, Set all face-up monsters on the field. Once per turn, during your Main Phase 1: You can toss a coin 3 times.\n\u25cf 3 Heads: Destroy all monsters your opponent controls.\n\u25cf 2 Heads: For the rest of this turn, the effects of all face-up monsters your opponent controls are negated.\n\u25cf 1 Head: Return all monsters you control to the hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 17032740
@@ -10153,7 +10158,7 @@
       "level": 3,
       "atk": 300,
       "def": 900,
-      "desc": "If this card attacks or is attacked: Your opponent draws 1 card and shows it, then, based on its type apply this effect.\r\n● Monster: End the Battle Phase of this turn.\r\n● Spell: If this card is attacking, you can change it to a direct attack instead.\r\n● Trap: Change this card to Defense Position.",
+      "desc": "If this card attacks or is attacked: Your opponent draws 1 card and shows it, then, based on its type apply this effect.\r\n\u25cf Monster: End the Battle Phase of this turn.\r\n\u25cf Spell: If this card is attacking, you can change it to a direct attack instead.\r\n\u25cf Trap: Change this card to Defense Position.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 17732278
@@ -10805,7 +10810,7 @@
     },
     {
       "passcode": 19028307,
-      "name": "Beast Machine King Barbaros Ür",
+      "name": "Beast Machine King Barbaros \u00dcr",
       "frame": "effect",
       "isExtraDeck": false,
       "race": "Beast-Warrior",
@@ -10963,7 +10968,7 @@
       "level": 4,
       "atk": 1600,
       "def": 400,
-      "desc": "This card's effect changes depending on the number of DARK monsters in your Graveyard. ● 1 or fewer: This card loses 400 ATK. ● 2 to 4: This card gains 400 ATK. ● 5 or more: You can send this card to the Graveyard to destroy all face-down monsters your opponent controls.",
+      "desc": "This card's effect changes depending on the number of DARK monsters in your Graveyard. \u25cf 1 or fewer: This card loses 400 ATK. \u25cf 2 to 4: This card gains 400 ATK. \u25cf 5 or more: You can send this card to the Graveyard to destroy all face-down monsters your opponent controls.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 19357125
@@ -11548,7 +11553,7 @@
       "level": 5,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● Once per turn, you can inflict 1000 damage to your opponent.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf Once per turn, you can inflict 1000 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 20438745
@@ -11623,7 +11628,7 @@
       "level": 5,
       "atk": 2400,
       "def": 1000,
-      "desc": "If you Tribute Summon this card by Tributing 1 of the following monsters, it gains the appropriate effect:\n● Batteryman D: Negate the effect of a Spell or Trap Card that targets this 1 card.\n● Batteryman C: During battle between this attacking card and a Defense Position monster whose DEF is lower than the ATK of this card, inflict the difference as Battle Damage to your opponent.\n● Batteryman AA: This card gains 1000 ATK.",
+      "desc": "If you Tribute Summon this card by Tributing 1 of the following monsters, it gains the appropriate effect:\n\u25cf Batteryman D: Negate the effect of a Spell or Trap Card that targets this 1 card.\n\u25cf Batteryman C: During battle between this attacking card and a Defense Position monster whose DEF is lower than the ATK of this card, inflict the difference as Battle Damage to your opponent.\n\u25cf Batteryman AA: This card gains 1000 ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 20529766
@@ -11851,7 +11856,8 @@
       "desc": "You can send 1 monster from your hand to the Graveyard and Special Summon this card from your hand. You can substitute this card for any 1 \"Synchron\" Tuner monster for a Synchro Summon. This card cannot be used as a Synchro Material Monster, except for the Synchro Summon of a monster that lists a \"Synchron\" monster as a Tuner monster.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 20932152
+      "imageId": 20932152,
+      "preErrataText": true
     },
     {
       "passcode": 20939559,
@@ -11983,7 +11989,7 @@
       "level": 4,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● The original ATK of this card becomes 2100.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf The original ATK of this card becomes 2100.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 21155323
@@ -12271,7 +12277,8 @@
       "desc": "FLIP: You can destroy 1 card on the field. Send the top 3 cards of your Deck to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 21502796
+      "imageId": 21502796,
+      "preErrataText": true
     },
     {
       "passcode": 21558682,
@@ -12718,7 +12725,7 @@
       "level": 4,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● When this card destroys an opponent's monster by battle and sends it to the Graveyard, they discard 1 random card.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf When this card destroys an opponent's monster by battle and sends it to the Graveyard, they discard 1 random card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 22377815
@@ -13168,7 +13175,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: ● EARTH: Negate the effect of an Effect Monster that this card destroyed by battle. ● WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
+      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: \u25cf EARTH: Negate the effect of an Effect Monster that this card destroyed by battle. \u25cf WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 23118924
@@ -13633,7 +13640,7 @@
       "level": 8,
       "atk": 3100,
       "def": 3100,
-      "desc": "When this card is Summoned, toss a coin: ● Heads: During your End Phase, you can send 2 monsters you control to the Graveyard to skip your opponent's next turn. ● Tails: During your opponent's Draw Phase, add the top card of their Graveyard to their hand.",
+      "desc": "When this card is Summoned, toss a coin: \u25cf Heads: During your End Phase, you can send 2 monsters you control to the Graveyard to skip your opponent's next turn. \u25cf Tails: During your opponent's Draw Phase, add the top card of their Graveyard to their hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 23846921
@@ -14128,7 +14135,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When an opponent's monster declares an attack: Target the attacking monster; negate the attack, and if you do, change it to Defense Position and it cannot change its battle position while it is face-up on the field. Then, your opponent chooses 1 of these effects.\n● You (the opponent of this card's activator) gain LP equal to half the target's ATK.\n● Your opponent (the activator of this card) takes damage equal to half the target's ATK.",
+      "desc": "When an opponent's monster declares an attack: Target the attacking monster; negate the attack, and if you do, change it to Defense Position and it cannot change its battle position while it is face-up on the field. Then, your opponent chooses 1 of these effects.\n\u25cf You (the opponent of this card's activator) gain LP equal to half the target's ATK.\n\u25cf Your opponent (the activator of this card) takes damage equal to half the target's ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 24673894
@@ -14173,7 +14180,7 @@
       "level": 8,
       "atk": 2800,
       "def": 2500,
-      "desc": "If you negate the activation of an opponent's Spell/Trap Card(s), or opponent's monster effect(s), with a Counter Trap Card (except during the Damage Step): You can Special Summon this card from your hand. If Summoned this way, activate these effects and resolve in sequence, depending on the type of card(s) negated by that Counter Trap:\n● Spell: Inflict 1500 damage to your opponent.\n● Trap: Target 1 card your opponent controls; destroy that target.\n● Monster: Target 1 monster in your Graveyard; Special Summon it.",
+      "desc": "If you negate the activation of an opponent's Spell/Trap Card(s), or opponent's monster effect(s), with a Counter Trap Card (except during the Damage Step): You can Special Summon this card from your hand. If Summoned this way, activate these effects and resolve in sequence, depending on the type of card(s) negated by that Counter Trap:\n\u25cf Spell: Inflict 1500 damage to your opponent.\n\u25cf Trap: Target 1 card your opponent controls; destroy that target.\n\u25cf Monster: Target 1 monster in your Graveyard; Special Summon it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 24857466
@@ -14281,7 +14288,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner LIGHT monsters\nWhen you declare an attack, you can activate this card's effect. If you do, this card loses 500 ATK and DEF (permanently), and the monster it is battling loses 1500 ATK and DEF until the End Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 25132288
+      "imageId": 25132288,
+      "preErrataText": true
     },
     {
       "passcode": 25171661,
@@ -14701,7 +14709,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can Special Summon 1 Level 4 or lower monster from your hand. You cannot conduct your Battle Phase the turn you activate this effect. Once per turn, you can destroy a Field Spell Card. If you do, gain 1000 Life Points, and you can add 1 Field Spell Card from your Deck to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 25862681
+      "imageId": 25862681,
+      "preErrataText": true
     },
     {
       "passcode": 25880422,
@@ -14896,7 +14905,8 @@
       "desc": "When this card is sent from the field to the Graveyard, move 1 monster with an ATK of 1500 or less from your Deck to your hand. Your Deck is then shuffled.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 26202165
+      "imageId": 26202165,
+      "preErrataText": true
     },
     {
       "passcode": 26205777,
@@ -14923,7 +14933,7 @@
       "level": 4,
       "atk": 1800,
       "def": 1400,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● During battle between this attacking card and a Defense Position monster whose DEF is lower than the ATK of this card, inflict the difference as Battle Damage to your opponent.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf During battle between this attacking card and a Defense Position monster whose DEF is lower than the ATK of this card, inflict the difference as Battle Damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 26254876
@@ -15223,7 +15233,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Select and activate 1 of the following effects:\n● Equip 1 Union Monster on your side of the field to an appropriate monster on your side of the field as an Equip Spell Card.\n● Unequip 1 of your equipped Union Monsters and Special Summon it to your side of the field in face-up Attack Position.",
+      "desc": "Select and activate 1 of the following effects:\n\u25cf Equip 1 Union Monster on your side of the field to an appropriate monster on your side of the field as an Equip Spell Card.\n\u25cf Unequip 1 of your equipped Union Monsters and Special Summon it to your side of the field in face-up Attack Position.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 26931058
@@ -15733,7 +15743,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Each time a \"Six Samurai\" monster(s) is Normal or Special Summoned, place 2 Bushido Counters on this card. You can remove Bushido Counters from your field to activate these effects.\r\n● 2 Counters: Target 1 \"Six Samurai\" or \"Shien\" Effect Monster; that target gains 500 ATK until the end of this turn.\r\n● 4 Counters: Add 1 \"Six Samurai\" monster from your Deck or GY to your hand.\r\n● 6 Counters: Target 1 \"Shien\" Effect Monster in your GY; Special Summon that target.",
+      "desc": "Each time a \"Six Samurai\" monster(s) is Normal or Special Summoned, place 2 Bushido Counters on this card. You can remove Bushido Counters from your field to activate these effects.\r\n\u25cf 2 Counters: Target 1 \"Six Samurai\" or \"Shien\" Effect Monster; that target gains 500 ATK until the end of this turn.\r\n\u25cf 4 Counters: Add 1 \"Six Samurai\" monster from your Deck or GY to your hand.\r\n\u25cf 6 Counters: Target 1 \"Shien\" Effect Monster in your GY; Special Summon that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 27970830
@@ -15838,7 +15848,7 @@
       "level": 2,
       "atk": 800,
       "def": 600,
-      "desc": "● While in Attack Position: When this card is destroyed by battle, you can Special Summon 1 Level 4 or lower \"Morphtronic\" monster from your hand or Graveyard, except \"Morphtronic Cameran\". ● While in Defense Position: \"Morphtronic\" monsters on the field cannot be targeted by effects.",
+      "desc": "\u25cf While in Attack Position: When this card is destroyed by battle, you can Special Summon 1 Level 4 or lower \"Morphtronic\" monster from your hand or Graveyard, except \"Morphtronic Cameran\". \u25cf While in Defense Position: \"Morphtronic\" monsters on the field cannot be targeted by effects.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 28124263
@@ -16291,7 +16301,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner monsters\nOnce per turn, you can equip this card to a monster OR unequip it to Special Summon this card in face-up Attack Position. While equipped to a monster by this effect, that monster gains 1000 ATK. When the equipped monster destroys a monster by battle and sends it to the Graveyard, inflict damage to your opponent equal to the destroyed monster's ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 29071332
+      "imageId": 29071332,
+      "preErrataText": true
     },
     {
       "passcode": 29088922,
@@ -16708,7 +16719,7 @@
       "level": 3,
       "atk": 800,
       "def": 800,
-      "desc": "● While in Attack Position: If your opponent controls a face-up monster, this card can only select their highest ATK monster as an attack target. ● While in Defense Position: Your opponent cannot select another monster as an attack target.",
+      "desc": "\u25cf While in Attack Position: If your opponent controls a face-up monster, this card can only select their highest ATK monster as an attack target. \u25cf While in Defense Position: Your opponent cannot select another monster as an attack target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 29947751
@@ -16918,7 +16929,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: ● FIRE: This card gains 500 ATK. ● WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
+      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: \u25cf FIRE: This card gains 500 ATK. \u25cf WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 30314994
@@ -17023,7 +17034,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate 1 of these effects:\n● Draw 1 card.\n● Activate only if your opponent controls a face-up Spirit monster. Draw 2 cards.",
+      "desc": "Activate 1 of these effects:\n\u25cf Draw 1 card.\n\u25cf Activate only if your opponent controls a face-up Spirit monster. Draw 2 cards.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 30461781
@@ -19138,7 +19149,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During each of your End Phases, pay 500 Life Points or destroy this card. Each player receives effects, depending on the monster Attributes they control. ● LIGHT: Play with your hand revealed at all times. ● DARK: If you control 2 or more monsters, you cannot declare an attack. ● EARTH: During your Standby Phase: Target 1 face-up Defense Position monster you control; destroy that target. ● WATER: During your End Phase: Discard 1 card. ● FIRE: During your End Phase: Take 1000 damage. ● WIND: You must pay 500 Life Points to activate a Spell Card.",
+      "desc": "During each of your End Phases, pay 500 Life Points or destroy this card. Each player receives effects, depending on the monster Attributes they control. \u25cf LIGHT: Play with your hand revealed at all times. \u25cf DARK: If you control 2 or more monsters, you cannot declare an attack. \u25cf EARTH: During your Standby Phase: Target 1 face-up Defense Position monster you control; destroy that target. \u25cf WATER: During your End Phase: Discard 1 card. \u25cf FIRE: During your End Phase: Take 1000 damage. \u25cf WIND: You must pay 500 Life Points to activate a Spell Card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 33900648
@@ -19516,7 +19527,8 @@
       "desc": "This card's ATK and DEF are equal to its Level x 200. During each of your Standby Phases, increase the Level of this card by 1 (max 12). When this card is removed from the field by a card effect, you can Special Summon 1 \"Fortune Lady\" monster from your Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 34471458
+      "imageId": 34471458,
+      "preErrataText": true
     },
     {
       "passcode": 34487429,
@@ -19528,7 +19540,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "You must have this many \"Crystal Beast\" cards in your Spell & Trap Card Zone to activate and to resolve these effects. ● 1+: This card cannot be destroyed by card effects. ● 2+: Once per turn (including the opponent's) you can halve the Battle Damage you take. ● 3+: During either player's turn, when a Spell/Trap Card is activated: You can send 1 \"Crystal Beast\" monster you control to the Graveyard; negate the activation, and if you do, destroy it. ● 4+: Once per turn, during your Main Phase: You can draw 1 card. ● 5: Once per turn, during your Main Phase: You can target 1 \"Crystal Beast\" card in your Spell & Trap Card Zone; Special Summon that target.",
+      "desc": "You must have this many \"Crystal Beast\" cards in your Spell & Trap Card Zone to activate and to resolve these effects. \u25cf 1+: This card cannot be destroyed by card effects. \u25cf 2+: Once per turn (including the opponent's) you can halve the Battle Damage you take. \u25cf 3+: During either player's turn, when a Spell/Trap Card is activated: You can send 1 \"Crystal Beast\" monster you control to the Graveyard; negate the activation, and if you do, destroy it. \u25cf 4+: Once per turn, during your Main Phase: You can draw 1 card. \u25cf 5: Once per turn, during your Main Phase: You can target 1 \"Crystal Beast\" card in your Spell & Trap Card Zone; Special Summon that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 34487429
@@ -19573,7 +19585,7 @@
       "level": 4,
       "atk": 1700,
       "def": 1700,
-      "desc": "When this card is Summoned, toss a coin:\n● Heads: If this card destroys an opponent's monster by battle, you can Special Summon that monster to your side of the field.\n● Tails: Your opponent gains control of this card.",
+      "desc": "When this card is Summoned, toss a coin:\n\u25cf Heads: If this card destroys an opponent's monster by battle, you can Special Summon that monster to your side of the field.\n\u25cf Tails: Your opponent gains control of this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 34568403
@@ -19993,7 +20005,7 @@
       "level": 4,
       "atk": 1200,
       "def": 800,
-      "desc": "If this card destroys an opponent's monster by battle, select and activate 1 of these effects:\n● You can attack once again in a row. ● Select and destroy 1 Set card on the field. ● Special Summon 1 \"Multi Token\" (Machine-Type/LIGHT/Level 4/ATK 1200/DEF 1200).",
+      "desc": "If this card destroys an opponent's monster by battle, select and activate 1 of these effects:\n\u25cf You can attack once again in a row. \u25cf Select and destroy 1 Set card on the field. \u25cf Special Summon 1 \"Multi Token\" (Machine-Type/LIGHT/Level 4/ATK 1200/DEF 1200).",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 35514096
@@ -20098,7 +20110,7 @@
       "level": 4,
       "atk": 1300,
       "def": 1300,
-      "desc": "When this card is Summoned, toss a coin: ● Heads: Each time your opponent Normal Summons or Sets a monster, you can Special Summon 1 \"Arcana Force\" monster from your hand. ● Tails: Each time your opponent Normal Summons or Sets a monster, send 1 card from your hand to the Graveyard.",
+      "desc": "When this card is Summoned, toss a coin: \u25cf Heads: Each time your opponent Normal Summons or Sets a monster, you can Special Summon 1 \"Arcana Force\" monster from your hand. \u25cf Tails: Each time your opponent Normal Summons or Sets a monster, send 1 card from your hand to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 35781051
@@ -20968,7 +20980,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate 1 or both of these effects (simultaneously).\n● When an opponent's monster declares an attack: Target the attacking monster; change that target to Defense Position.\n● Target 1 face-up monster you control; equip this card to that target. It gains 500 ATK.",
+      "desc": "Activate 1 or both of these effects (simultaneously).\n\u25cf When an opponent's monster declares an attack: Target the attacking monster; change that target to Defense Position.\n\u25cf Target 1 face-up monster you control; equip this card to that target. It gains 500 ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 37390589
@@ -21268,7 +21280,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Toss a coin: ● Heads: Draw 2 cards. ● Tails: Your opponent draws 2 cards.",
+      "desc": "Toss a coin: \u25cf Heads: Draw 2 cards. \u25cf Tails: Your opponent draws 2 cards.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 37812118
@@ -21523,7 +21535,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate 1 of these effects.\n● When a Spell Card is activated that targets exactly 1 monster on the field: Negate the activation, and if you do, destroy it.\n● When a Spell Card is activated: Send 1 Spell Card from your hand to the Graveyard; negate the activation, and if you do, destroy it.",
+      "desc": "Activate 1 of these effects.\n\u25cf When a Spell Card is activated that targets exactly 1 monster on the field: Negate the activation, and if you do, destroy it.\n\u25cf When a Spell Card is activated: Send 1 Spell Card from your hand to the Graveyard; negate the activation, and if you do, destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 38275183
@@ -21658,7 +21670,7 @@
       "level": 4,
       "atk": 1600,
       "def": 700,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● During your Main Phase, you can select 1 monster your opponent controls with an A-Counter(s), and take control of it while this card is on the field. During each of your End Phases, remove 1 A-Counter from each controlled monster. If all A-Counters are removed from one of these monsters, destroy it.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf During your Main Phase, you can select 1 monster your opponent controls with an A-Counter(s), and take control of it while this card is on the field. During each of your End Phases, remove 1 A-Counter from each controlled monster. If all A-Counters are removed from one of these monsters, destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 38468214
@@ -22123,7 +22135,7 @@
       "level": 7,
       "atk": 2300,
       "def": 500,
-      "desc": "Once per turn, you can select and activate 1 of these effects: ● Move this card to an adjacent (horizontal) unoccupied Monster Card Zone. ● Return 1 Spell, Trap or Monster Card on your opponent's side of the field in the same column as this card to its owner's hand.",
+      "desc": "Once per turn, you can select and activate 1 of these effects: \u25cf Move this card to an adjacent (horizontal) unoccupied Monster Card Zone. \u25cf Return 1 Spell, Trap or Monster Card on your opponent's side of the field in the same column as this card to its owner's hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 39188539
@@ -22168,7 +22180,7 @@
       "level": 4,
       "atk": 1800,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 39303359
@@ -22513,7 +22525,7 @@
       "level": 4,
       "atk": 1400,
       "def": 1000,
-      "desc": "If this card is Summoned: Activate 1 of these effects.\r\n● Target 1 Equip Card on the field; destroy that target.\r\n● Target 1 Equip Card on the field; equip that target to this card.",
+      "desc": "If this card is Summoned: Activate 1 of these effects.\r\n\u25cf Target 1 Equip Card on the field; destroy that target.\r\n\u25cf Target 1 Equip Card on the field; equip that target to this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 39978267
@@ -22558,7 +22570,7 @@
       "level": 4,
       "atk": 1800,
       "def": 300,
-      "desc": "When this card is Normal or Special Summoned: You can activate 1 of these effects.\r\n● Destroy Spells/Traps on the field, up to the number of \"HERO\" monsters you control, except this card.\r\n● Add 1 \"HERO\" monster from your Deck to your hand.",
+      "desc": "When this card is Normal or Special Summoned: You can activate 1 of these effects.\r\n\u25cf Destroy Spells/Traps on the field, up to the number of \"HERO\" monsters you control, except this card.\r\n\u25cf Add 1 \"HERO\" monster from your Deck to your hand.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 40044918
@@ -23191,7 +23203,8 @@
       "desc": "You can remove this card from play until the End Phase of this turn by removing 2 DARK monsters in your Graveyard from play. You can use this effect during either player's turn. You can only use this effect once per turn.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 41006930
+      "imageId": 41006930,
+      "preErrataText": true
     },
     {
       "passcode": 41089128,
@@ -23383,7 +23396,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate only when an opponent's monster declares an attack. Monsters cannot be destroyed by this battle. After damage calculation, Special Summon 1 \"Summon Reactor・SK\" from your hand or Graveyard.",
+      "desc": "Activate only when an opponent's monster declares an attack. Monsters cannot be destroyed by this battle. After damage calculation, Special Summon 1 \"Summon Reactor\u30fbSK\" from your hand or Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 41234315
@@ -24331,7 +24344,8 @@
       "desc": "When this card is Normal Summoned, you can add 1 \"Machina\" monster, except \"Machina Gearframe\", from your Deck to your hand. Once per turn, during your Main Phase, you can equip this card to a Machine-Type monster you control as an Equip Card, OR unequip it to Special Summon this card in face-up Attack Position. (A monster can only be equipped with 1 Union Monster at a time. If the equipped monster would be destroyed, destroy this card instead.)",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 42940404
+      "imageId": 42940404,
+      "preErrataText": true
     },
     {
       "passcode": 42941100,
@@ -24433,7 +24447,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate only while you have no cards in your hand. Roll a six-sided die 3 times, and inflict damage to your opponent equal to the sum of the die rolls × 100.",
+      "desc": "Activate only while you have no cards in your hand. Roll a six-sided die 3 times, and inflict damage to your opponent equal to the sum of the die rolls \u00d7 100.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 43061293
@@ -24463,7 +24477,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1000,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● The original ATK of this card becomes 2300. If this card attacks, it is changed to Defense Position at the end of the Battle Phase. This card's battle position cannot be changed until the end of your next turn, except with a card effect.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf The original ATK of this card becomes 2300. If this card attacks, it is changed to Defense Position at the end of the Battle Phase. This card's battle position cannot be changed until the end of your next turn, except with a card effect.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 43191636
@@ -25153,7 +25167,7 @@
       "level": 7,
       "atk": 2700,
       "def": 2500,
-      "desc": "When you take damage from a card in your opponent's possession: You can Special Summon this card from your hand. You must control no cards to activate and to resolve this effect. If Summoned this way, activate the appropriate effect, based on the type of damage:\r\n● Battle damage: Special Summon 1 \"Emissary of Darkness Token\" (Fairy-Type/LIGHT/Level 7/ATK ?/DEF ?). Its ATK and DEF are each equal to the amount of battle damage you took.\r\n● Effect damage: Inflict damage to your opponent equal to the amount of damage you took.",
+      "desc": "When you take damage from a card in your opponent's possession: You can Special Summon this card from your hand. You must control no cards to activate and to resolve this effect. If Summoned this way, activate the appropriate effect, based on the type of damage:\r\n\u25cf Battle damage: Special Summon 1 \"Emissary of Darkness Token\" (Fairy-Type/LIGHT/Level 7/ATK ?/DEF ?). Its ATK and DEF are each equal to the amount of battle damage you took.\r\n\u25cf Effect damage: Inflict damage to your opponent equal to the amount of damage you took.",
       "banlist": "limited",
       "aliasOf": null,
       "imageId": 44330098
@@ -25186,7 +25200,8 @@
       "desc": "Face-up Machine-Type monsters you control with 1200 or less ATK cannot be destroyed by the effects of Trap Cards. When this face-up card is destroyed by battle and sent to the Graveyard, you can add 1 Level 4 LIGHT Machine-Type monster from your Deck to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 44364207
+      "imageId": 44364207,
+      "preErrataText": true
     },
     {
       "passcode": 44424095,
@@ -25303,7 +25318,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "If \"The Sanctuary in the Sky\" is on the field: Discard 1 LIGHT monster to the GY; apply 1 of the following effects.\r\n● Look at your opponent's hand and discard 1 card from their hand.\r\n● Send 1 card your opponent controls to the GY.",
+      "desc": "If \"The Sanctuary in the Sky\" is on the field: Discard 1 LIGHT monster to the GY; apply 1 of the following effects.\r\n\u25cf Look at your opponent's hand and discard 1 card from their hand.\r\n\u25cf Send 1 card your opponent controls to the GY.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 44595286
@@ -25666,7 +25681,8 @@
       "desc": "Remove from play 1 Plant-Type monster from your Graveyard and equip this card to a monster your opponent controls. Gain control of the equipped monster. During your End Phase, give control of the equipped monster to your opponent. During your Standby Phase, gain control of the equipped monster.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 45247637
+      "imageId": 45247637,
+      "preErrataText": true
     },
     {
       "passcode": 45305419,
@@ -25798,7 +25814,7 @@
       "level": 1,
       "atk": 100,
       "def": 100,
-      "desc": "● While in Attack Position: Once per turn, if you control exactly 2 other face-up Attack Position monsters, and no additional monsters, this card gains the combined ATK of the other two monsters you control until the End Phase. The other two monsters cannot attack the turn you activate this effect.\n● While in Defense Position: Monsters you control cannot attack.",
+      "desc": "\u25cf While in Attack Position: Once per turn, if you control exactly 2 other face-up Attack Position monsters, and no additional monsters, this card gains the combined ATK of the other two monsters you control until the End Phase. The other two monsters cannot attack the turn you activate this effect.\n\u25cf While in Defense Position: Monsters you control cannot attack.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 45593005
@@ -25828,7 +25844,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Select 1 \"Cloudian\" monster you control. Reduce that monster's ATK by 1000 or 2000 points, and apply the appropriate effect:\n● 1000 points: Destroy 1 Spell or Trap Card your opponent controls.\n● 2000 points: Destroy 2 cards your opponent controls.",
+      "desc": "Select 1 \"Cloudian\" monster you control. Reduce that monster's ATK by 1000 or 2000 points, and apply the appropriate effect:\n\u25cf 1000 points: Destroy 1 Spell or Trap Card your opponent controls.\n\u25cf 2000 points: Destroy 2 cards your opponent controls.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 45653036
@@ -25873,7 +25889,7 @@
       "level": 4,
       "atk": 100,
       "def": -1,
-      "desc": "The original DEF of this card equals the number of your banished Rock-Type monsters × 700.",
+      "desc": "The original DEF of this card equals the number of your banished Rock-Type monsters \u00d7 700.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 45871897
@@ -26746,7 +26762,8 @@
       "desc": "This card cannot be Special Summoned. While this card is face-up on the field its Attribute is also treated as DARK. When a Spell or Trap Card is activated, or the effect of an Effect Monster is activated, that activation is negated and this card loses 500 ATK and DEF. When this card is destroyed and sent to the Graveyard, select 1 monster in your Graveyard. Then destroy all cards you control, and Special Summon that monster.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 47297616
+      "imageId": 47297616,
+      "preErrataText": true
     },
     {
       "passcode": 47325505,
@@ -26776,7 +26793,8 @@
       "desc": "As long as this card remains face-up on the field, all effects of Magic, Trap and/or Effect Monster Cards that involve Graveyards are negated and neither player can remove cards in the Graveyards from play. In addition, increase the ATK and DEF of all monsters that includes \"Gravekeeper's\" in their card name by 500 points.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 47355498
+      "imageId": 47355498,
+      "preErrataText": true
     },
     {
       "passcode": 47372349,
@@ -26863,7 +26881,7 @@
       "level": 4,
       "atk": 1800,
       "def": 1600,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● This card is treated as a Tuner monster.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf This card is treated as a Tuner monster.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 47459126
@@ -27151,7 +27169,8 @@
       "desc": "If this face-up card on your side of the field is removed from play, this card is Special Summoned to the owner's side of the field during the End Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 48092532
+      "imageId": 48092532,
+      "preErrataText": true
     },
     {
       "passcode": 48094997,
@@ -27358,7 +27377,7 @@
       "level": 3,
       "atk": 500,
       "def": 1800,
-      "desc": "● While in Attack Position: \"Morphtronic\" monsters you control can attack your opponent directly.\n● While in Defense Position: Other \"Morphtronic\" monsters you control cannot be destroyed by battle.",
+      "desc": "\u25cf While in Attack Position: \"Morphtronic\" monsters you control can attack your opponent directly.\n\u25cf While in Defense Position: Other \"Morphtronic\" monsters you control cannot be destroyed by battle.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 48381268
@@ -27418,7 +27437,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "When a monster you control that's equipped with this card is destroyed by battle, and this card is sent to the Graveyard, you can either:\n● Draw 1 card. OR\n● Discard 1 random card from your opponent's hand.",
+      "desc": "When a monster you control that's equipped with this card is destroyed by battle, and this card is sent to the Graveyard, you can either:\n\u25cf Draw 1 card. OR\n\u25cf Discard 1 random card from your opponent's hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 48576971
@@ -27598,7 +27617,7 @@
       "level": 5,
       "atk": 1800,
       "def": 1500,
-      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n● Target 1 monster your opponent controls; return that target to the top of the Deck.\n● Send the top card of their Deck to the Graveyard.",
+      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n\u25cf Target 1 monster your opponent controls; return that target to the top of the Deck.\n\u25cf Send the top card of their Deck to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 48768179
@@ -28396,7 +28415,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner monsters\nYou can discard any number of cards to return the same number of cards from the field to the hand.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 50321796
+      "imageId": 50321796,
+      "preErrataText": true
     },
     {
       "passcode": 50323155,
@@ -28678,7 +28698,7 @@
       "level": 8,
       "atk": 3000,
       "def": 2000,
-      "desc": "If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step. This card gains the appropriate effects if you Normal Summon it by Tributing these monsters.\n● Green Gadget: If this card attacks a Defense Position monster, inflict piercing battle damage to your opponent. \n● Red Gadget: If this card inflicts battle damage to your opponent: Inflict 400 damage to your opponent. \n● Yellow Gadget: If this card destroys an opponent's monster by battle: Inflict 600 damage to your opponent.",
+      "desc": "If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step. This card gains the appropriate effects if you Normal Summon it by Tributing these monsters.\n\u25cf Green Gadget: If this card attacks a Defense Position monster, inflict piercing battle damage to your opponent. \n\u25cf Red Gadget: If this card inflicts battle damage to your opponent: Inflict 400 damage to your opponent. \n\u25cf Yellow Gadget: If this card destroys an opponent's monster by battle: Inflict 600 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 50933533
@@ -28888,7 +28908,7 @@
       "level": 7,
       "atk": 2450,
       "def": 1700,
-      "desc": "At the end of the Battle Phase, if this card destroyed a monster(s) by battle and sent it to the Graveyard this Battle Phase: Equip all those monsters from the Graveyard to this card as an Equip Spell Card(s) with this effect.\n● The equipped monster gains 200 ATK.",
+      "desc": "At the end of the Battle Phase, if this card destroyed a monster(s) by battle and sent it to the Graveyard this Battle Phase: Equip all those monsters from the Graveyard to this card as an Equip Spell Card(s) with this effect.\n\u25cf The equipped monster gains 200 ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 51345461
@@ -29998,7 +30018,7 @@
       "level": 6,
       "atk": 2400,
       "def": 1200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● Once per turn: You can Special Summon 1 Insect or Plant monster from your hand or GY.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf Once per turn: You can Special Summon 1 Insect or Plant monster from your hand or GY.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 53257892
@@ -30943,7 +30963,7 @@
       "level": 4,
       "atk": 1000,
       "def": 900,
-      "desc": "● While in Attack Position: \"Morphtronic\" monsters you control gain 800 ATK. ● While in Defense Position: \"Morphtronic\" monsters you control gain 1000 DEF.",
+      "desc": "\u25cf While in Attack Position: \"Morphtronic\" monsters you control gain 800 ATK. \u25cf While in Defense Position: \"Morphtronic\" monsters you control gain 1000 DEF.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 55119278
@@ -31408,7 +31428,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Pay half of your Life Points. Select and activate an appropriate effect which can be applied:\n● If \"Yu-Jo Friendship\" is in your Graveyard, until the end of this turn: your opponent cannot Normal Summon, Set, Flip Summon, or Special Summon a monster(s) or activate an Effect Monster's effect.\n● If \"Unity\" is in your Graveyard, until the end of this turn: negate the effects of all Spell and Trap Cards on your opponent's side of the field, and your opponent cannot activate or Set Spell or Trap Cards.",
+      "desc": "Pay half of your Life Points. Select and activate an appropriate effect which can be applied:\n\u25cf If \"Yu-Jo Friendship\" is in your Graveyard, until the end of this turn: your opponent cannot Normal Summon, Set, Flip Summon, or Special Summon a monster(s) or activate an Effect Monster's effect.\n\u25cf If \"Unity\" is in your Graveyard, until the end of this turn: negate the effects of all Spell and Trap Cards on your opponent's side of the field, and your opponent cannot activate or Set Spell or Trap Cards.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 55948544
@@ -31438,7 +31458,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "If you control a Dragon monster: Activate 1 of these effects;\r\n● Inflict 800 damage to your opponent.\r\n● Target 1 monster with 800 or less DEF; destroy that target.",
+      "desc": "If you control a Dragon monster: Activate 1 of these effects;\r\n\u25cf Inflict 800 damage to your opponent.\r\n\u25cf Target 1 monster with 800 or less DEF; destroy that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 55991637
@@ -31933,7 +31953,7 @@
       "level": 7,
       "atk": 2500,
       "def": 1500,
-      "desc": "When this card is Tribute Summoned, it gains the following effect: ● The effects of Effect Monsters cannot be activated.",
+      "desc": "When this card is Tribute Summoned, it gains the following effect: \u25cf The effects of Effect Monsters cannot be activated.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 56784842
@@ -32158,7 +32178,7 @@
       "level": 3,
       "atk": 300,
       "def": 1200,
-      "desc": "● Once per turn, while in Attack Position: You can target 1 \"Morphtronic\" monster in your Graveyard; banish that target and add 1 \"Morphtronic\" monster with the same Level as the target from your Deck to your hand.\n● Once per turn, while in Defense Position: You can send 1 \"Morphtronic\" monster from your hand to the Graveyard and add 1 other \"Morphtronic\" monster with the same Level as that monster from your Graveyard to your hand.",
+      "desc": "\u25cf Once per turn, while in Attack Position: You can target 1 \"Morphtronic\" monster in your Graveyard; banish that target and add 1 \"Morphtronic\" monster with the same Level as the target from your Deck to your hand.\n\u25cf Once per turn, while in Defense Position: You can send 1 \"Morphtronic\" monster from your hand to the Graveyard and add 1 other \"Morphtronic\" monster with the same Level as that monster from your Graveyard to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 57108202
@@ -32398,7 +32418,7 @@
       "level": 3,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● The original DEF of this card becomes 2300.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf The original DEF of this card becomes 2300.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 57549932
@@ -32563,7 +32583,7 @@
       "level": 4,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● Once per turn, you can select 1 face-up Level 4 or lower DARK monster you control. It can attack your opponent directly this turn.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf Once per turn, you can select 1 face-up Level 4 or lower DARK monster you control. It can attack your opponent directly this turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 57827484
@@ -34145,7 +34165,7 @@
     },
     {
       "passcode": 60802233,
-      "name": "Kuwagata α",
+      "name": "Kuwagata \u03b1",
       "frame": "normal",
       "isExtraDeck": false,
       "race": "Insect",
@@ -34273,7 +34293,7 @@
       "level": 6,
       "atk": 2400,
       "def": 2400,
-      "desc": "During damage calculation, in either player's turn: You can discard this card; you take no Battle Damage from that battle. When this card is Summoned: Toss a coin and apply this effect. The effect lasts while this card is face-up on the field.\n● Heads: Halve all Battle Damage you take.\n● Tails: Halve all Battle Damage your opponent takes.",
+      "desc": "During damage calculation, in either player's turn: You can discard this card; you take no Battle Damage from that battle. When this card is Summoned: Toss a coin and apply this effect. The effect lasts while this card is face-up on the field.\n\u25cf Heads: Halve all Battle Damage you take.\n\u25cf Tails: Halve all Battle Damage your opponent takes.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 60953118
@@ -34378,7 +34398,7 @@
       "level": 4,
       "atk": 1400,
       "def": 1400,
-      "desc": "When this card is Summoned, toss a coin: ● Heads: All \"Arcana Force\" monsters you control gain 500 ATK. ● Tails: All \"Arcana Force\" monsters you control lose 500 ATK.",
+      "desc": "When this card is Summoned, toss a coin: \u25cf Heads: All \"Arcana Force\" monsters you control gain 500 ATK. \u25cf Tails: All \"Arcana Force\" monsters you control lose 500 ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 61175706
@@ -34558,7 +34578,7 @@
       "level": 3,
       "atk": 1000,
       "def": 1000,
-      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n● Target 1 card on the field; return that target to the hand.\n● Look at the top card of their Deck, then return it to the top or bottom of the Deck.",
+      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n\u25cf Target 1 card on the field; return that target to the hand.\n\u25cf Look at the top card of their Deck, then return it to the top or bottom of the Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 61587183
@@ -35143,7 +35163,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During your opponent's Standby Phase, toss a coin. ● Heads: Your opponent cannot Normal Summon or Flip Summon until the End Phase. ● Tails: You cannot Normal Summon or Flip Summon during your next turn.",
+      "desc": "During your opponent's Standby Phase, toss a coin. \u25cf Heads: Your opponent cannot Normal Summon or Flip Summon until the End Phase. \u25cf Tails: You cannot Normal Summon or Flip Summon during your next turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 62784717
@@ -35218,7 +35238,7 @@
       "level": 1,
       "atk": 0,
       "def": 0,
-      "desc": "This card cannot be destroyed by battle. This card cannot be changed to Defense Position, except with a card effect. When this card is Summoned: Toss a coin and gain the appropriate effect. ● Heads: Negate your card effects that target this card, and destroy them. ● Tails: Negate your opponent's card effects that target this card, and destroy them.",
+      "desc": "This card cannot be destroyed by battle. This card cannot be changed to Defense Position, except with a card effect. When this card is Summoned: Toss a coin and gain the appropriate effect. \u25cf Heads: Negate your card effects that target this card, and destroy them. \u25cf Tails: Negate your opponent's card effects that target this card, and destroy them.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 62892347
@@ -35728,7 +35748,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Equip only to a \"Power Tool Dragon\" or Level 4 or higher Machine-Type \"Morphtronic\" monster you control. While equipped: ● During your turn: It gains 1000 ATK. If it attacks, any effects of the attack target that activate or apply on the field are negated during that Battle Phase. ● During your opponent's turn: Your opponent cannot select a monster other than the equipped monster as an attack target. An opponent's monster that battles the equipped monster is destroyed at the end of the Damage Step.",
+      "desc": "Equip only to a \"Power Tool Dragon\" or Level 4 or higher Machine-Type \"Morphtronic\" monster you control. While equipped: \u25cf During your turn: It gains 1000 ATK. If it attacks, any effects of the attack target that activate or apply on the field are negated during that Battle Phase. \u25cf During your opponent's turn: Your opponent cannot select a monster other than the equipped monster as an attack target. An opponent's monster that battles the equipped monster is destroyed at the end of the Damage Step.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 63730624
@@ -36463,7 +36483,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: ● WATER: Control of this card cannot switch. ● WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
+      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: \u25cf WATER: Control of this card cannot switch. \u25cf WIND: If this card destroyed your opponent's monster by battle, it can attack once again in a row.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 65260293
@@ -36568,7 +36588,7 @@
       "level": 4,
       "atk": 1500,
       "def": 800,
-      "desc": "Once per turn: You can activate 1 of these effects.\n● Banish 2 Zombie monsters from your GY; draw 1 card.\n● Target 1 of your banished Zombie monsters; place that target on the top of your Deck.",
+      "desc": "Once per turn: You can activate 1 of these effects.\n\u25cf Banish 2 Zombie monsters from your GY; draw 1 card.\n\u25cf Target 1 of your banished Zombie monsters; place that target on the top of your Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 65422840
@@ -36868,7 +36888,7 @@
       "level": 3,
       "atk": 1200,
       "def": 600,
-      "desc": "● While in Attack Position: Once per turn, you can Tribute 1 monster to inflict 600 damage to your opponent. ● While in Defense Position: Once per turn, you can inflict 300 damage to your opponent.",
+      "desc": "\u25cf While in Attack Position: Once per turn, you can Tribute 1 monster to inflict 600 damage to your opponent. \u25cf While in Defense Position: Once per turn, you can inflict 300 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 66331855
@@ -37078,7 +37098,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: ● WATER: Control of this card cannot switch. ● EARTH: Negate the effect of an Effect Monster that this card destroyed by battle.",
+      "desc": "This monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field: \u25cf WATER: Control of this card cannot switch. \u25cf EARTH: Negate the effect of an Effect Monster that this card destroyed by battle.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 66712593
@@ -37801,7 +37821,8 @@
       "desc": "Select an opponent's monster and use it as a Tribute in place of one of your own. You must skip your Battle Phase for the turn in which this card is activated.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 68005187
+      "imageId": 68005187,
+      "preErrataText": true
     },
     {
       "passcode": 68007326,
@@ -38038,7 +38059,7 @@
       "level": 2,
       "atk": 500,
       "def": 300,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● Once per turn, if this card would be destroyed by battle, it is not destroyed. If this card battles, after damage calculation, you can Special Summon 1 Level 4 or lower Gemini monster from your Deck, except \"Gemini Soldier\".",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf Once per turn, if this card would be destroyed by battle, it is not destroyed. If this card battles, after damage calculation, you can Special Summon 1 Level 4 or lower Gemini monster from your Deck, except \"Gemini Soldier\".",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 68366996
@@ -38293,7 +38314,7 @@
       "level": 4,
       "atk": 1500,
       "def": 500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● When this card destroys an opponent's monster by battle and sends it to the Graveyard, draw 1 card.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf When this card destroys an opponent's monster by battle and sends it to the Graveyard, draw 1 card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 68762510
@@ -38641,7 +38662,8 @@
       "desc": "When your opponent activates a card that has the effect that destroys 1 or more monsters on the field, pay 1500 Life Points to negate the activation of the card and destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 69279219
+      "imageId": 69279219,
+      "preErrataText": true
     },
     {
       "passcode": 69296555,
@@ -38758,7 +38780,7 @@
       "level": 8,
       "atk": 2800,
       "def": 2200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● If your opponent activates a Spell Card: You can target 1 Gemini monster in your Graveyard; Special Summon that target. During either player's turn, when a Spell/Trap Card is activated that targets a monster(s) on the field: You can send 1 face-up Equip Card you control to the Graveyard; negate the activation, and if you do, destroy it.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf If your opponent activates a Spell Card: You can target 1 Gemini monster in your Graveyard; Special Summon that target. During either player's turn, when a Spell/Trap Card is activated that targets a monster(s) on the field: You can send 1 face-up Equip Card you control to the Graveyard; negate the activation, and if you do, destroy it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 69488544
@@ -38938,7 +38960,7 @@
       "level": 10,
       "atk": 4000,
       "def": 4000,
-      "desc": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by sending 3 monsters you control to the Graveyard, and cannot be Special Summoned by other ways. When this card is Special Summoned: Toss a coin and gain the appropriate effect.\n● Heads: This card can make a second attack during each Battle Phase, but if it does so using this effect, change it to Defense Position at the end of the Battle Phase. Its battle position cannot be changed until the end of your next turn.\n● Tails: If this card is destroyed, destroy all cards on the field.",
+      "desc": "Cannot be Normal Summoned/Set. Must be Special Summoned (from your hand) by sending 3 monsters you control to the Graveyard, and cannot be Special Summoned by other ways. When this card is Special Summoned: Toss a coin and gain the appropriate effect.\n\u25cf Heads: This card can make a second attack during each Battle Phase, but if it does so using this effect, change it to Defense Position at the end of the Battle Phase. Its battle position cannot be changed until the end of your next turn.\n\u25cf Tails: If this card is destroyed, destroy all cards on the field.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 69831560
@@ -38968,7 +38990,7 @@
       "level": 4,
       "atk": 1900,
       "def": 1300,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n● This card's name becomes \"Elemental HERO Neos\" while on the field.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n\u25cf This card's name becomes \"Elemental HERO Neos\" while on the field.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 69884162
@@ -39313,7 +39335,7 @@
       "level": 6,
       "atk": 2100,
       "def": 800,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n● Once per turn: You can Special Summon 1 Zombie monster from your hand or either GY, but if this card leaves the field, destroy all Zombie monsters Special Summoned by this effect.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n\u25cf Once per turn: You can Special Summon 1 Zombie monster from your hand or either GY, but if this card leaves the field, destroy all Zombie monsters Special Summoned by this effect.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 70595331
@@ -39886,7 +39908,8 @@
       "desc": "When a monster is Normal or Special Summoned, except by the effect of \"Black Garden\", halve its ATK and Special Summon 1 \"Rose Token\" (Plant-Type/DARK/Level 2/ATK 800/DEF 800) to its controller's opponent's side of the field, in Attack Position. You can destroy this card and all face-up Plant-Type monsters on the field and Special Summon 1 monster with ATK equal to the total ATK of those monsters from your Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 71645242
+      "imageId": 71645242,
+      "preErrataText": true
     },
     {
       "passcode": 71652522,
@@ -40483,7 +40506,7 @@
       "level": 8,
       "atk": 3000,
       "def": 2500,
-      "desc": "Cannot be Normal Summoned/Set. Must first be Special Summoned (from your hand) by banishing 1 LIGHT and 1 DARK monster from your GY. Once per turn, you can activate 1 of these effects.\r\n● Target 1 monster on the field; banish it. This card cannot attack the turn this effect is activated.\r\n● If this attacking card destroys an opponent's monster by battle: It can make a second attack in a row.",
+      "desc": "Cannot be Normal Summoned/Set. Must first be Special Summoned (from your hand) by banishing 1 LIGHT and 1 DARK monster from your GY. Once per turn, you can activate 1 of these effects.\r\n\u25cf Target 1 monster on the field; banish it. This card cannot attack the turn this effect is activated.\r\n\u25cf If this attacking card destroys an opponent's monster by battle: It can make a second attack in a row.",
       "banlist": "forbidden",
       "aliasOf": null,
       "imageId": 72989439
@@ -40648,7 +40671,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During your Standby Phase, toss a coin. If the result is Tails, the following effects are negated until your next Standby Phase:\n● When you Summon an \"Arcana Force\" monster, choose which effect to apply without tossing a coin. If an \"Arcana Force\" monster destroys an opponent's monster by battle, you gain Life Points equal to the destroyed monster's original ATK.",
+      "desc": "During your Standby Phase, toss a coin. If the result is Tails, the following effects are negated until your next Standby Phase:\n\u25cf When you Summon an \"Arcana Force\" monster, choose which effect to apply without tossing a coin. If an \"Arcana Force\" monster destroys an opponent's monster by battle, you gain Life Points equal to the destroyed monster's original ATK.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 73206827
@@ -41008,7 +41031,7 @@
       "level": 4,
       "atk": 1900,
       "def": 1200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n● Once per turn: You can target 1 face-up card on the field that you can place a Spell Counter on; place 1 Spell Counter on it, and if you do, this card gains 600 ATK until the end of this turn.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the GY. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\r\n\u25cf Once per turn: You can target 1 face-up card on the field that you can place a Spell Counter on; place 1 Spell Counter on it, and if you do, this card gains 600 ATK until the end of this turn.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 73853830
@@ -41203,7 +41226,7 @@
       "level": 4,
       "atk": 1000,
       "def": 1800,
-      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n● Add 1 \"Dark Scorpion\" card from your Deck to your hand.\n● Target 1 \"Dark Scorpion\" card in your Graveyard; add that target to your hand.",
+      "desc": "When this card inflicts Battle Damage to your opponent, you can activate 1 of these effects:\n\u25cf Add 1 \"Dark Scorpion\" card from your Deck to your hand.\n\u25cf Target 1 \"Dark Scorpion\" card in your Graveyard; add that target to your hand.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 74153887
@@ -41563,7 +41586,7 @@
       "level": 6,
       "atk": 2200,
       "def": 1600,
-      "desc": "This card cannot be Special Summoned. If you Tribute Summon this card by Tributing 1 of the following monsters, this card gets the appropriate effect:\n● LIGHT Fairy-Type monster: Negate the effects of all Spell Cards.\n● DARK Fiend-Type monster: Negate the effects of all Trap Cards.",
+      "desc": "This card cannot be Special Summoned. If you Tribute Summon this card by Tributing 1 of the following monsters, this card gets the appropriate effect:\n\u25cf LIGHT Fairy-Type monster: Negate the effects of all Spell Cards.\n\u25cf DARK Fiend-Type monster: Negate the effects of all Trap Cards.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 74841885
@@ -42118,7 +42141,7 @@
       "level": 4,
       "atk": 1200,
       "def": 800,
-      "desc": "● While in Attack Position: Once per turn, you can Tribute 1 \"Morphtronic\" monster, except \"Morphtronic Slingen\", to destroy 1 card on the field.\n● While in Defense Position: If this card would be destroyed, you can destroy another \"Morphtronic\" monster you control instead.",
+      "desc": "\u25cf While in Attack Position: Once per turn, you can Tribute 1 \"Morphtronic\" monster, except \"Morphtronic Slingen\", to destroy 1 card on the field.\n\u25cf While in Defense Position: If this card would be destroyed, you can destroy another \"Morphtronic\" monster you control instead.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 75775867
@@ -42451,7 +42474,8 @@
       "desc": "\"Destiny Hero - Plasma\" + \"Destiny Hero - Dogma\"\nA Fusion Summon of this monster can only be conducted with the above Fusion Material Monsters. Once per turn, you can destroy 1 monster your opponent controls and inflict damage to your opponent equal to its ATK. If you activate this effect, you cannot conduct your Battle Phase this turn. During your Standby Phase, if this card is in your Graveyard you can remove from play 1 \"Destiny Hero\" card from your Graveyard to Special Summon this card.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 76263644
+      "imageId": 76263644,
+      "preErrataText": true
     },
     {
       "passcode": 76297408,
@@ -42598,7 +42622,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● When this card declares an attack, you can change the battle position of 1 face-up monster your opponent controls.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf When this card declares an attack, you can change the battle position of 1 face-up monster your opponent controls.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 76520646
@@ -42688,7 +42712,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "You can select and activate 1 of the following effects:\n● Increase the ATK of all face-up monsters on your side of the field by 200 points until the End Phase of the turn this card is activated.\n● Increase the DEF of all face-up monsters on your side of the field by 500 points until the End Phase of the turn this card is activated.",
+      "desc": "You can select and activate 1 of the following effects:\n\u25cf Increase the ATK of all face-up monsters on your side of the field by 200 points until the End Phase of the turn this card is activated.\n\u25cf Increase the DEF of all face-up monsters on your side of the field by 500 points until the End Phase of the turn this card is activated.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 76754619
@@ -42823,7 +42847,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "During each of your Standby Phases: Roll a six-sided die and apply the result.\n● 1: Discard 1 card.\n● 2: Your opponent discards 1 card.\n● 3: Draw 1 card.\n● 4: Your opponent draws 1 card.\n● 5: Destroy 1 monster your opponent controls.\n● 6: Destroy this card.",
+      "desc": "During each of your Standby Phases: Roll a six-sided die and apply the result.\n\u25cf 1: Discard 1 card.\n\u25cf 2: Your opponent discards 1 card.\n\u25cf 3: Draw 1 card.\n\u25cf 4: Your opponent draws 1 card.\n\u25cf 5: Destroy 1 monster your opponent controls.\n\u25cf 6: Destroy this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 76895648
@@ -42868,7 +42892,7 @@
       "level": 4,
       "atk": 1400,
       "def": 1500,
-      "desc": "When this card inflicts battle damage to your opponent: You can activate 1 of these effects;\r\n● Discard 1 random card from their hand.\r\n● Send the top 2 cards of their Deck to the GY.",
+      "desc": "When this card inflicts battle damage to your opponent: You can activate 1 of these effects;\r\n\u25cf Discard 1 random card from their hand.\r\n\u25cf Send the top 2 cards of their Deck to the GY.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 76922029
@@ -43216,7 +43240,8 @@
       "desc": "Send, from your Deck to the Graveyard, Fusion Material Monsters that are listed on a Fusion Monster Card, and select that 1 Fusion Monster from your Fusion Deck. Special Summon the selected Fusion Monster during your 2nd Standby Phase after this card's activation. (This Special Summon is treated as a Fusion Summon.) When this card is removed from the field, destroy that monster. When the monster is destroyed, destroy this card.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 77565204
+      "imageId": 77565204,
+      "preErrataText": true
     },
     {
       "passcode": 77584012,
@@ -44746,7 +44771,8 @@
       "desc": "Discard 2 cards from your hand. Select 1 face-up monster and flip it face-down, but do not change its battle position.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 80168720
+      "imageId": 80168720,
+      "preErrataText": true
     },
     {
       "passcode": 80186010,
@@ -44956,7 +44982,8 @@
       "desc": "At the cost of 500 Life Points per monster, a player is allowed an extra Normal Summon or Set.",
       "banlist": "semi",
       "aliasOf": null,
-      "imageId": 80604092
+      "imageId": 80604092,
+      "preErrataText": true
     },
     {
       "passcode": 80637190,
@@ -45166,7 +45193,8 @@
       "desc": "Both players can Normal Summon or Set monsters without Tribute(s) by paying 1000 Life Points x the number of monsters needed to Tribute Summon them.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 80921533
+      "imageId": 80921533,
+      "preErrataText": true
     },
     {
       "passcode": 80925836,
@@ -46588,7 +46616,7 @@
       "level": 4,
       "atk": 1800,
       "def": 1050,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● Once, while this card is face-up on the field: You can place 1 Spell Counter on it. This card gains 300 ATK for each Spell Counter on it. You can remove 1 Spell Counter from this card, then target 1 monster on the field; destroy that target.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf Once, while this card is face-up on the field: You can place 1 Spell Counter on it. This card gains 300 ATK for each Spell Counter on it. You can remove 1 Spell Counter from this card, then target 1 monster on the field; destroy that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 83269557
@@ -47248,7 +47276,7 @@
       "level": 4,
       "atk": 1000,
       "def": 1000,
-      "desc": "● While in Attack Position: This card gains 800 ATK for each Equip Card equipped to it. \n● While in Defense Position: This card gains 800 DEF for each Equip Card equipped to it.",
+      "desc": "\u25cf While in Attack Position: This card gains 800 ATK for each Equip Card equipped to it. \n\u25cf While in Defense Position: This card gains 800 DEF for each Equip Card equipped to it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 84592800
@@ -47728,7 +47756,7 @@
       "level": 7,
       "atk": 2500,
       "def": 2000,
-      "desc": "\"Elemental HERO Neos\" + \"Neo-Spacian Glow Moss\"\nMust first be Special Summoned (from your Extra Deck) by shuffling the above cards you control into the Deck. (You do not use \"Polymerization\".) During the End Phase: Shuffle this card into the Extra Deck. Once per turn, during your Main Phase 1: You can target 1 face-up card your opponent controls; destroy that target, then apply the effect based on its type. ● Monster: This card cannot attack this turn. ● Spell: This card can attack your opponent directly this turn. ● Trap: Change this card to Defense Position.",
+      "desc": "\"Elemental HERO Neos\" + \"Neo-Spacian Glow Moss\"\nMust first be Special Summoned (from your Extra Deck) by shuffling the above cards you control into the Deck. (You do not use \"Polymerization\".) During the End Phase: Shuffle this card into the Extra Deck. Once per turn, during your Main Phase 1: You can target 1 face-up card your opponent controls; destroy that target, then apply the effect based on its type. \u25cf Monster: This card cannot attack this turn. \u25cf Spell: This card can attack your opponent directly this turn. \u25cf Trap: Change this card to Defense Position.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 85507811
@@ -48043,7 +48071,7 @@
       "level": 4,
       "atk": 1200,
       "def": 800,
-      "desc": "If this card destroys an opponent's monster by battle: Activate 1 of these effects.\n● Send 1 LIGHT Machine-Type monster with 1200 or less ATK from your Deck to your Graveyard.\n● Target 1 LIGHT Machine-Type monster with 1200 or less ATK in your Graveyard; Special Summon that target.",
+      "desc": "If this card destroys an opponent's monster by battle: Activate 1 of these effects.\n\u25cf Send 1 LIGHT Machine-Type monster with 1200 or less ATK from your Deck to your Graveyard.\n\u25cf Target 1 LIGHT Machine-Type monster with 1200 or less ATK in your Graveyard; Special Summon that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 86170989
@@ -48163,7 +48191,7 @@
       "level": 6,
       "atk": 2300,
       "def": 1300,
-      "desc": "This card gains the appropriate effects if you Normal Summon it by Tributing these monsters.\n● Green Gadget: This card gains 300 ATK.\n● Red Gadget: If this card inflicts battle damage to your opponent by a direct attack: Inflict 500 damage to your opponent.\n● Yellow Gadget: If this card destroys an opponent's monster by battle: Inflict 700 damage to your opponent.",
+      "desc": "This card gains the appropriate effects if you Normal Summon it by Tributing these monsters.\n\u25cf Green Gadget: This card gains 300 ATK.\n\u25cf Red Gadget: If this card inflicts battle damage to your opponent by a direct attack: Inflict 500 damage to your opponent.\n\u25cf Yellow Gadget: If this card destroys an opponent's monster by battle: Inflict 700 damage to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 86321248
@@ -48208,7 +48236,7 @@
       "level": 10,
       "atk": 4500,
       "def": 3000,
-      "desc": "\"Elemental HERO Neos\" + 1 \"Ultimate Crystal\" monster\nMust be Fusion Summoned with the above Fusion Material Monsters and cannot be Special Summoned by other ways. Once per turn: You can activate 1 of these effects. ● Send 1 monster you control to the Graveyard; shuffle all monsters your opponent controls into the Deck. ● Send 1 Spell/Trap Card you control to the Graveyard; shuffle all Spell and Trap Cards your opponent controls into the Deck. ● Send 1 card from the top of your Deck to the Graveyard; shuffle all cards in your opponent's Graveyard into the Deck.",
+      "desc": "\"Elemental HERO Neos\" + 1 \"Ultimate Crystal\" monster\nMust be Fusion Summoned with the above Fusion Material Monsters and cannot be Special Summoned by other ways. Once per turn: You can activate 1 of these effects. \u25cf Send 1 monster you control to the Graveyard; shuffle all monsters your opponent controls into the Deck. \u25cf Send 1 Spell/Trap Card you control to the Graveyard; shuffle all Spell and Trap Cards your opponent controls into the Deck. \u25cf Send 1 card from the top of your Deck to the Graveyard; shuffle all cards in your opponent's Graveyard into the Deck.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 86346643
@@ -48841,7 +48869,8 @@
       "desc": "Pay 800 Life Points. Select 1 face-up monster on your opponent's side of the field. Take control of the selected card until the End Phase of the turn this card is activated.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 87910978
+      "imageId": 87910978,
+      "preErrataText": true
     },
     {
       "passcode": 87978805,
@@ -48976,7 +49005,8 @@
       "desc": "You can remove from play 1 Dragon-Type monster you control to Special Summon this card. Once per turn, you can Special Summon 1 Dragon-Type monster except \"Red-Eyes Darkness Metal Dragon\" from your hand or Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 88264978
+      "imageId": 88264978,
+      "preErrataText": true
     },
     {
       "passcode": 88279736,
@@ -49126,7 +49156,8 @@
       "desc": "1 Tuner + 1 or more non-Tuner DARK monsters\nOnce per turn, you can have this card lose 500 ATK and DEF, and send 1 monster your opponent controls to the Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 88643579
+      "imageId": 88643579,
+      "preErrataText": true
     },
     {
       "passcode": 88650530,
@@ -49441,7 +49472,8 @@
       "desc": "Once per turn, you can reveal 1 Fusion Monster from your Fusion Deck and send 1 of the Fusion Material Monsters listed on that card from your Deck to the Graveyard. Until the End Phase, this card's name is treated as the sent monster's name.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 89312388
+      "imageId": 89312388,
+      "preErrataText": true
     },
     {
       "passcode": 89386122,
@@ -49483,7 +49515,7 @@
       "level": 5,
       "atk": 2000,
       "def": 1400,
-      "desc": "The first time a monster(s) is Summoned to your opponent's side of the field each turn, inflict 800 damage to your opponent. During the Battle Phase of the turn this effect is activated, you can negate the attack of 1 monster your opponent controls. You can send 1 face-up \"Trap Reactor・Y FI\", 1 face-up \"Spell Reactor・RE\" and this face-up card you control to the Graveyard to Special Summon 1 \"Flying Fortress SKY FIRE\" from your hand, Deck, or Graveyard.",
+      "desc": "The first time a monster(s) is Summoned to your opponent's side of the field each turn, inflict 800 damage to your opponent. During the Battle Phase of the turn this effect is activated, you can negate the attack of 1 monster your opponent controls. You can send 1 face-up \"Trap Reactor\u30fbY FI\", 1 face-up \"Spell Reactor\u30fbRE\" and this face-up card you control to the Graveyard to Special Summon 1 \"Flying Fortress SKY FIRE\" from your hand, Deck, or Graveyard.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 89493368
@@ -50083,7 +50115,7 @@
       "level": 4,
       "atk": 1600,
       "def": 1200,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● Once per turn: You can banish 1 monster from your Graveyard to target 1 face-up monster on the field; destroy that target.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf Once per turn: You can banish 1 monster from your Graveyard to target 1 face-up monster on the field; destroy that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 90642597
@@ -50563,7 +50595,7 @@
       "level": 2,
       "atk": 600,
       "def": 1100,
-      "desc": "● While in Attack Position: This card gains 500 ATK for each Morph Counter on it. ● While in Defense Position: Once per turn, you can place 1 Morph Counter on this card. You can Tribute this card to inflict 1000 damage to your opponent for each Morph Counter on it.",
+      "desc": "\u25cf While in Attack Position: This card gains 500 ATK for each Morph Counter on it. \u25cf While in Defense Position: Once per turn, you can place 1 Morph Counter on this card. You can Tribute this card to inflict 1000 damage to your opponent for each Morph Counter on it.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 91607976
@@ -51013,7 +51045,7 @@
       "level": 4,
       "atk": 1200,
       "def": 400,
-      "desc": "● While in Attack Position, this card can attack twice during each Battle Phase.\n● Once per turn, while in Defense Position, when a face-up \"Morphtronic\" monster you control is targeted for an attack: You can negate the attack.",
+      "desc": "\u25cf While in Attack Position, this card can attack twice during each Battle Phase.\n\u25cf Once per turn, while in Defense Position, when a face-up \"Morphtronic\" monster you control is targeted for an attack: You can negate the attack.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 92720564
@@ -51058,7 +51090,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "Gains the following effect(s) while there is a monster(s) with the following Attribute(s) on the field.\r\n● FIRE: This card gains 500 ATK.\r\n● EARTH: Negate the effects of Effect Monsters destroyed by battle with this card.",
+      "desc": "Gains the following effect(s) while there is a monster(s) with the following Attribute(s) on the field.\r\n\u25cf FIRE: This card gains 500 ATK.\r\n\u25cf EARTH: Negate the effects of Effect Monsters destroyed by battle with this card.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 92755808
@@ -51223,7 +51255,7 @@
       "level": 4,
       "atk": 1200,
       "def": 1000,
-      "desc": "If this card destroys an opponent's monster by battle: Activate 1 of these effects.\n● This card gains 400 ATK.\n● Target 1 face-up Spell/Trap Card on the field; destroy that target.\n● Special Summon 1 \"Option Token\". Its Type, Attribute, Level, ATK and DEF are always the same as this card, but it leaves the field if this card is no longer face-up on the field.",
+      "desc": "If this card destroys an opponent's monster by battle: Activate 1 of these effects.\n\u25cf This card gains 400 ATK.\n\u25cf Target 1 face-up Spell/Trap Card on the field; destroy that target.\n\u25cf Special Summon 1 \"Option Token\". Its Type, Attribute, Level, ATK and DEF are always the same as this card, but it leaves the field if this card is no longer face-up on the field.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 93130021
@@ -51448,7 +51480,7 @@
       "level": 1,
       "atk": 100,
       "def": 100,
-      "desc": "● While in Attack Position: Once per turn, you can roll a six-sided die. Reveal cards from top of your Deck equal to the roll and Special Summon 1 Level 4 or lower \"Morphtronic\" monster from among them, ignoring the Summoning conditions. Shuffle the rest into the Deck.\n● While in Defense Position: Once per turn, you can roll a six-sided die. Look at cards from top of your Deck equal to the roll, then return them in the same order.",
+      "desc": "\u25cf While in Attack Position: Once per turn, you can roll a six-sided die. Reveal cards from top of your Deck equal to the roll and Special Summon 1 Level 4 or lower \"Morphtronic\" monster from among them, ignoring the Summoning conditions. Shuffle the rest into the Deck.\n\u25cf While in Defense Position: Once per turn, you can roll a six-sided die. Look at cards from top of your Deck equal to the roll, then return them in the same order.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 93542102
@@ -52006,7 +52038,8 @@
       "desc": "Activate only during the Battle Phase. Synchro Summon 1 Synchro Monster. (Send the appropriate Synchro Material Monsters to the Graveyard.)",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 94634433
+      "imageId": 94634433,
+      "preErrataText": true
     },
     {
       "passcode": 94662235,
@@ -52273,7 +52306,7 @@
       "level": 6,
       "atk": 2400,
       "def": 2000,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● Once per turn: You can Special Summon 1 Fiend-Type monster from your hand or from either Graveyard. When this card leaves the field, destroy all Fiend-Type monsters Special Summoned by this effect.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is a Normal Monster on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf Once per turn: You can Special Summon 1 Fiend-Type monster from your hand or from either Graveyard. When this card leaves the field, destroy all Fiend-Type monsters Special Summoned by this effect.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 94944637
@@ -52363,7 +52396,7 @@
       "level": 6,
       "atk": 1900,
       "def": 1700,
-      "desc": "\"Kuwagata α\" + \"Hercules Beetle\"",
+      "desc": "\"Kuwagata \u03b1\" + \"Hercules Beetle\"",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 95144193
@@ -52378,7 +52411,7 @@
       "level": 5,
       "atk": 2350,
       "def": 1000,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● This card can attack all monsters your opponent controls once each.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf This card can attack all monsters your opponent controls once each.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 95166228
@@ -52651,7 +52684,8 @@
       "desc": "Once per turn, you can discard 1 card to Special Summon 1 Level 4 or lower \"Lightsworn\" monster from your Graveyard. During each of your End Phases, send the top 3 cards of your Deck to the Graveyard.",
       "banlist": "limited",
       "aliasOf": null,
-      "imageId": 95503687
+      "imageId": 95503687,
+      "preErrataText": true
     },
     {
       "passcode": 95507060,
@@ -52801,7 +52835,8 @@
       "desc": "Offer 1 monster on your side of the field as a Tribute to inflict Direct Damage equal to half of the Tribute monster's ATK to your opponent's Life Points. Monsters used for a Tribute Summon or that are offered as Tributes due to other cards' effects are excluded.",
       "banlist": "unlimited",
       "aliasOf": null,
-      "imageId": 95727991
+      "imageId": 95727991,
+      "preErrataText": true
     },
     {
       "passcode": 95744531,
@@ -52888,7 +52923,7 @@
       "level": 6,
       "atk": 2400,
       "def": 1500,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n● This card can attack twice during the same Battle Phase.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it be treated as an Effect Monster with this effect:\n\u25cf This card can attack twice during the same Battle Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 95888876
@@ -53353,7 +53388,7 @@
       "level": 4,
       "atk": 1900,
       "def": 900,
-      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n● You can send 1 face-up Equip Card you control to the Graveyard, then target 1 card your opponent controls; destroy that target.",
+      "desc": "This card is treated as a Normal Monster while face-up on the field or in the Graveyard. While this card is face-up on the field, you can Normal Summon it to have it become an Effect Monster with this effect.\n\u25cf You can send 1 face-up Equip Card you control to the Graveyard, then target 1 card your opponent controls; destroy that target.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 96872283
@@ -53743,7 +53778,7 @@
       "level": 7,
       "atk": 2800,
       "def": 2800,
-      "desc": "When this card is Summoned, toss a coin: ● Heads: During your Standby Phase, you can Special Summon 1 \"Moon Token\" (Fairy-Type/LIGHT/Level 1/ATK 0/DEF 0). ● Tails: During each of your End Phases, select 1 monster you control and give control of it to your opponent.",
+      "desc": "When this card is Summoned, toss a coin: \u25cf Heads: During your Standby Phase, you can Special Summon 1 \"Moon Token\" (Fairy-Type/LIGHT/Level 1/ATK 0/DEF 0). \u25cf Tails: During each of your End Phases, select 1 monster you control and give control of it to your opponent.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 97452817
@@ -53773,7 +53808,7 @@
       "level": 4,
       "atk": 1600,
       "def": 1600,
-      "desc": "When this card is Summoned, toss a coin: ● Heads: This card can be treated as 2 Tributes for the Tribute Summon of an \"Arcana Force\" monster. ● Tails: You cannot Tribute Summon \"Arcana Force\" monsters.",
+      "desc": "When this card is Summoned, toss a coin: \u25cf Heads: This card can be treated as 2 Tributes for the Tribute Summon of an \"Arcana Force\" monster. \u25cf Tails: You cannot Tribute Summon \"Arcana Force\" monsters.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 97574404
@@ -53803,7 +53838,7 @@
       "level": 4,
       "atk": 1500,
       "def": 1200,
-      "desc": "(This card is not treated as a \"Valkyrie\" card.)\r\nThis monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field:\r\n● FIRE: This card gains 500 ATK.\r\n● WATER: Control of this card cannot switch.",
+      "desc": "(This card is not treated as a \"Valkyrie\" card.)\r\nThis monster gets the following effect(s) while there is a monster(s) with the following Attribute(s) on the field:\r\n\u25cf FIRE: This card gains 500 ATK.\r\n\u25cf WATER: Control of this card cannot switch.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 97623219
@@ -53983,7 +54018,7 @@
       "level": null,
       "atk": null,
       "def": null,
-      "desc": "Activate 1 of these effects.\n● Target 1 face-up monster your opponent controls; change that target's battle position.\n● Tribute 1 monster, then target 1 face-up monster your opponent controls; take control of that target until the End Phase.",
+      "desc": "Activate 1 of these effects.\n\u25cf Target 1 face-up monster your opponent controls; change that target's battle position.\n\u25cf Tribute 1 monster, then target 1 face-up monster your opponent controls; take control of that target until the End Phase.",
       "banlist": "unlimited",
       "aliasOf": null,
       "imageId": 98045062

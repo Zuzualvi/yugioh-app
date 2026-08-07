@@ -64,7 +64,7 @@ describe.skipIf(!WASM_AVAILABLE)(
         const state = buildStateForSeat(lib, handle, 0, phaseInfo);
         const mzone = state.zones.p0_mzone ?? [];
         // Find the card with the real code (non-zero)
-        const monster = mzone.find((c) => c.code !== 0);
+        const monster = mzone.find((c) => c !== null && c.code !== 0);
 
         expect(monster).toBeDefined();
         expect(monster!.code).toBe(MONSTER_CODE);
@@ -93,7 +93,7 @@ describe.skipIf(!WASM_AVAILABLE)(
         // Viewer is player 0; card is in p1_mzone (opponent of viewer 0)
         const state = buildStateForSeat(lib, handle, 0, phaseInfo);
         const mzone = state.zones.p1_mzone ?? [];
-        const monster = mzone.find((c) => c.position !== undefined);
+        const monster = mzone.find((c) => c !== null && c.position !== undefined);
 
         // Face-up opponent card must be visible (real code, not redacted to 0)
         expect(monster).toBeDefined();
@@ -128,14 +128,16 @@ describe.skipIf(!WASM_AVAILABLE)(
         // From opponent's perspective (viewer=0): code must be 0 (redacted)
         const stateViewer = buildStateForSeat(lib, handle, 0, phaseInfo);
         const mzoneViewer = stateViewer.zones.p1_mzone ?? [];
-        const cardForViewer = mzoneViewer.find((c) => c.position !== undefined);
+        const cardForViewer = mzoneViewer.find((c) => c !== null && c.position !== undefined);
         expect(cardForViewer).toBeDefined();
         expect(cardForViewer!.code).toBe(0);
 
         // From controller's perspective (viewer=1): code must be real
         const stateController = buildStateForSeat(lib, handle, 1, phaseInfo);
         const mzoneController = stateController.zones.p1_mzone ?? [];
-        const cardForController = mzoneController.find((c) => c.position !== undefined);
+        const cardForController = mzoneController.find(
+          (c) => c !== null && c.position !== undefined,
+        );
         expect(cardForController).toBeDefined();
         expect(cardForController!.code).toBe(MONSTER_CODE);
       } finally {

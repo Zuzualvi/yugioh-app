@@ -33,6 +33,8 @@ export interface CardDTO {
   banlist: Banlist;
   aliasOf: number | null;
   imageId: number;
+  /** True when the catalog substituted this card's text from preErrataDescOverrides.json. */
+  preErrataText?: boolean;
 }
 
 export interface CardCatalog {

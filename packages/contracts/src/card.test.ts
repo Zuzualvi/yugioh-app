@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CardSearchSchema } from "./card.js";
+import { CardSearchSchema, CardDTOSchema } from "./card.js";
 
 describe("CardSearchSchema — passcodes field", () => {
   it('parses "1,2,3" → [1, 2, 3]', () => {
@@ -40,5 +40,44 @@ describe("CardSearchSchema — passcodes field", () => {
     if (result.success) {
       expect(result.data.passcodes).toBeUndefined();
     }
+  });
+});
+
+// ── CardDTOSchema.preErrataText ──────────────────────────────────────────────
+
+const BASE_CARD = {
+  passcode: 26202165,
+  name: "Sangan",
+  frame: "effect" as const,
+  isExtraDeck: false,
+  race: "Fiend",
+  attribute: "DARK",
+  level: 3,
+  atk: 1000,
+  def: 600,
+  desc: "...",
+  banlist: "forbidden" as const,
+  aliasOf: null,
+  imageId: 26202165,
+};
+
+describe("CardDTOSchema — C4 preErrataText", () => {
+  it("parses a card without preErrataText (optional field absent)", () => {
+    const result = CardDTOSchema.parse(BASE_CARD);
+    expect(result.preErrataText).toBeUndefined();
+  });
+
+  it("parses preErrataText: true", () => {
+    const result = CardDTOSchema.parse({ ...BASE_CARD, preErrataText: true });
+    expect(result.preErrataText).toBe(true);
+  });
+
+  it("parses preErrataText: false", () => {
+    const result = CardDTOSchema.parse({ ...BASE_CARD, preErrataText: false });
+    expect(result.preErrataText).toBe(false);
+  });
+
+  it("rejects non-boolean preErrataText", () => {
+    expect(() => CardDTOSchema.parse({ ...BASE_CARD, preErrataText: "yes" })).toThrow();
   });
 });

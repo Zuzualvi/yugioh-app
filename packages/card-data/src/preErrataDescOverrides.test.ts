@@ -87,3 +87,45 @@ describe("Susa Soldier (40473581) — no-override card is present and unchanged"
     expect(card!.desc).toBe(susaEntry!.ourCurrentDesc);
   });
 });
+
+describe("C4 preErrataText — catalog flag derived from override set", () => {
+  it("Sangan (26202165) has preErrataText: true in catalog", () => {
+    const card = cardMap.get(26202165);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBe(true);
+  });
+
+  it("Caius the Shadow Monarch (9748752) does NOT have preErrataText set", () => {
+    const card = cardMap.get(9748752);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBeFalsy();
+  });
+
+  it("all 35 needsOverride:true cards have preErrataText: true in catalog", () => {
+    const needsOverrideEntries = Object.entries(overridesJson).filter(
+      ([, v]) => v.needsOverride === true,
+    );
+    for (const [passcodeStr] of needsOverrideEntries) {
+      const passcode = Number(passcodeStr);
+      const card = cardMap.get(passcode);
+      expect(card, `card ${passcode} missing from catalog`).toBeDefined();
+      expect(card!.preErrataText, `card ${passcode} missing preErrataText`).toBe(true);
+    }
+  });
+
+  // This test guards the 35-vs-36 distinction: Susa Soldier (40473581) is
+  // present in preErrataDescOverrides.json but with needsOverride:false and
+  // preErrataDescClean:null — its text was investigated but not substituted.
+  // preErrataText must be falsy for it; a badge on Susa Soldier would assert
+  // our text differs from the original printing when it does not (req H).
+  // If someone "fixes" the count to 36, this test explains why 35 is correct.
+  it("Susa Soldier (40473581) is in the overrides JSON with needsOverride:false — and is falsy in catalog", () => {
+    // Must be present in the JSON file
+    expect(overridesJson["40473581"]).toBeDefined();
+    expect(overridesJson["40473581"]!.needsOverride).toBe(false);
+    // Must NOT have preErrataText in the catalog
+    const card = cardMap.get(40473581);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBeFalsy();
+  });
+});

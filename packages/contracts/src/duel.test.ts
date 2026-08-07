@@ -128,6 +128,33 @@ describe("ZoneCardSchema", () => {
   it("rejects missing code", () => {
     expect(() => ZoneCardSchema.parse({ position: 2 })).toThrow();
   });
+  it("C1 — parses optional fields: sequence, attack, defense, level, isPublic", () => {
+    const result = ZoneCardSchema.parse({
+      code: 32864,
+      position: 2,
+      sequence: 1,
+      attack: 1400,
+      defense: 1200,
+      level: 4,
+      isPublic: true,
+    });
+    expect(result.sequence).toBe(1);
+    expect(result.attack).toBe(1400);
+    expect(result.defense).toBe(1200);
+    expect(result.level).toBe(4);
+    expect(result.isPublic).toBe(true);
+  });
+  it("C1 — optional fields absent when not provided", () => {
+    const result = ZoneCardSchema.parse({ code: 32864, position: 2 });
+    expect(result.sequence).toBeUndefined();
+    expect(result.attack).toBeUndefined();
+    expect(result.isPublic).toBeUndefined();
+  });
+  it("C1 — attack/defense accept null", () => {
+    const result = ZoneCardSchema.parse({ code: 32864, position: 2, attack: null, defense: null });
+    expect(result.attack).toBeNull();
+    expect(result.defense).toBeNull();
+  });
 });
 
 // ── DuelZonesSchema ──────────────────────────────────────────────────────────
@@ -147,13 +174,67 @@ const EMPTY_ZONES = {
   p1_extra: [],
 };
 
+const DENSE_EMPTY_ZONES = {
+  ...EMPTY_ZONES,
+  p0_mzone: [null, null, null, null, null],
+  p1_mzone: [null, null, null, null, null],
+  p0_szone: [null, null, null, null, null],
+  p1_szone: [null, null, null, null, null],
+  p0_fzone: null,
+  p1_fzone: null,
+  p0_deckCount: 0,
+  p1_deckCount: 0,
+};
+
 describe("DuelZonesSchema", () => {
-  it("parses empty zones", () => {
+  it("parses empty zones (backwards compat — new optional fields absent)", () => {
     expect(DuelZonesSchema.parse(EMPTY_ZONES)).toMatchObject({ p0_hand: [] });
   });
   it("rejects missing zone key", () => {
     const { p0_hand: _omit, ...partial } = EMPTY_ZONES;
     expect(() => DuelZonesSchema.parse(partial)).toThrow();
+  });
+  it("C2 — parses dense zones with null slots", () => {
+    const result = DuelZonesSchema.parse(DENSE_EMPTY_ZONES);
+    expect(result.p0_mzone.length).toBe(5);
+    expect(result.p0_mzone[0]).toBeNull();
+    expect(result.p0_szone.length).toBe(5);
+  });
+  it("C2 — parses mzone with a card at index 2, null elsewhere", () => {
+    const zones = {
+      ...DENSE_EMPTY_ZONES,
+      p0_mzone: [null, null, { code: 32864, position: 2 }, null, null],
+    };
+    const result = DuelZonesSchema.parse(zones);
+    expect(result.p0_mzone[1]).toBeNull();
+    expect(result.p0_mzone[2]).not.toBeNull();
+    expect(result.p0_mzone[2]!.code).toBe(32864);
+    expect(result.p0_mzone.length).toBe(5);
+  });
+  it("C2 — p0_fzone can be null or a ZoneCard", () => {
+    const withFzone = {
+      ...DENSE_EMPTY_ZONES,
+      p0_fzone: { code: 22702055, position: 5 },
+    };
+    const result = DuelZonesSchema.parse(withFzone);
+    expect(result.p0_fzone).not.toBeNull();
+    expect(result.p0_fzone!.code).toBe(22702055);
+  });
+  it("C2 — p0_deckCount accepts zero and positive integers", () => {
+    const result = DuelZonesSchema.parse({
+      ...DENSE_EMPTY_ZONES,
+      p0_deckCount: 20,
+      p1_deckCount: 15,
+    });
+    expect(result.p0_deckCount).toBe(20);
+    expect(result.p1_deckCount).toBe(15);
+  });
+  it("C2 — no p0_deck or p1_deck array fields accepted (not in schema)", () => {
+    // Adding non-schema keys is fine for passthrough objects, but mzone/szone
+    // schemas do not have deck fields — just verify they're not in the type.
+    const zones = DuelZonesSchema.parse(DENSE_EMPTY_ZONES);
+    expect((zones as Record<string, unknown>)["p0_deck"]).toBeUndefined();
+    expect((zones as Record<string, unknown>)["p1_deck"]).toBeUndefined();
   });
 });
 
@@ -182,6 +263,18 @@ describe("DuelStateSnapshotSchema", () => {
   it("rejects missing lp field", () => {
     const { lp: _omit, ...rest } = VALID_SNAPSHOT;
     expect(() => DuelStateSnapshotSchema.parse(rest)).toThrow();
+  });
+  it("C3 — parses turnNumber as optional positive integer", () => {
+    const result = DuelStateSnapshotSchema.parse({ ...VALID_SNAPSHOT, turnNumber: 4 });
+    expect(result.turnNumber).toBe(4);
+  });
+  it("C3 — turnNumber absent when not provided (backwards compat)", () => {
+    const result = DuelStateSnapshotSchema.parse(VALID_SNAPSHOT);
+    expect(result.turnNumber).toBeUndefined();
+  });
+  it("C3 — rejects turnNumber ≤ 0", () => {
+    expect(() => DuelStateSnapshotSchema.parse({ ...VALID_SNAPSHOT, turnNumber: 0 })).toThrow();
+    expect(() => DuelStateSnapshotSchema.parse({ ...VALID_SNAPSHOT, turnNumber: -1 })).toThrow();
   });
 });
 

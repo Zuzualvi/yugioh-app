@@ -52,7 +52,14 @@ const PASSCODE_CORRECTIONS = {
 
 // ---------------------------------------------------------------------------
 // Load pre-errata desc overrides (keyed by passcode string)
-// Only entries with needsOverride===true are applied; Susa Soldier (40473581) is skipped.
+//
+// The override set contains 36 entries, but the flag tracks ACTUAL TEXT
+// SUBSTITUTION — not membership in the set. Susa Soldier (40473581) is the
+// one entry where they differ: it is present in the JSON with
+// needsOverride:false and preErrataDescClean:null because its text was
+// investigated but ultimately left unchanged. Setting preErrataText on it
+// would assert that our text differs from the original printing when it does
+// not — a false claim. So only needsOverride===true entries (35) set the flag.
 // ---------------------------------------------------------------------------
 const _rawOverrides = JSON.parse(
   fs.readFileSync(path.join(ROOT, "src/preErrataDescOverrides.json"), "utf8"),
@@ -272,6 +279,9 @@ async function main() {
       banlist: resolveBanlist(allowlistPc),
       aliasOf: null,
       imageId,
+      // preErrataText: true only when this card's text was ACTUALLY SUBSTITUTED
+      // (needsOverride:true). 35 cards, not 36 — see comment above.
+      ...(OVERRIDES[String(catalogPc)] !== undefined ? { preErrataText: true } : {}),
     };
     catalogCards.push(dto);
   }
