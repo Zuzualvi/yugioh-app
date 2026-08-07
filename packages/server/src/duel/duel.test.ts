@@ -897,3 +897,225 @@ describe("Reconnection", () => {
     });
   });
 });
+
+// ── Per-handover clock tests (ZUH-94, criterion 8) ──────────────────────────
+
+describe("Per-handover clock: computeDeadline fires once per handover, not per decision", () => {
+  it(
+    "same seat making multiple consecutive decisions does not trigger a new deadline (6-decision tribute summon scenario)",
+    async () => {
+      // Simulate a tribute summon: 6 waiting steps all for seat 0, then ended.
+      // Deadline should be computed once (on first handover from null→seat0),
+      // not 6 times.
+      const tributeSummonDuel = new FakeEdisonDuel([
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "IdleCommand",
+            player: 0,
+            summons: [],
+            specialSummons: [],
+            posChanges: [],
+            monsterSets: [],
+            spellSets: [],
+            activates: [],
+            toBattlePhase: false,
+            toEndPhase: false,
+          },
+        },
+        { status: "ended", messages: [] },
+      ]);
+
+      manager = new DuelManager(async () => {
+        return tributeSummonDuel as DuelEngine;
+      }, fakeReplay);
+      app = createApp(db, catalog, manager);
+      const setup = await joinDuel(await createDuelAsAlice());
+
+      await withServer(async (port) => {
+        const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+        const _s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+
+        // Wait for first CLOCK (from initial connection)
+        const firstClock = await waitForMessage(s0, (m) => m.type === "CLOCK");
+        expect(firstClock.type).toBe("CLOCK");
+        const firstDeadline = firstClock.type === "CLOCK" ? firstClock.deadlineAt : 0;
+        expect(firstDeadline).toBeGreaterThan(0);
+
+        // Helper: wait until session.messages has at least N CLOCKs
+        const waitForNCLocks = (n: number): Promise<void> =>
+          new Promise((resolve) => {
+            const check = () => {
+              if (s0.messages.filter((m) => m.type === "CLOCK").length >= n) {
+                resolve();
+              }
+            };
+            check();
+            s0.ws.on("message", check);
+          });
+
+        // Send 5 more responses (6 total decisions for seat 0)
+        for (let i = 0; i < 5; i++) {
+          s0.ws.send(
+            JSON.stringify({
+              type: "DECISION_RESPONSE",
+              response: { kind: "SelectYesNo", yes: true },
+            }),
+          );
+        }
+
+        // Wait until we have 6 CLOCKs total
+        await waitForNCLocks(6);
+
+        // All CLOCK frames for seat 0 decisions should have the SAME deadline
+        const clocks = s0.messages.filter((m) => m.type === "CLOCK");
+        expect(clocks.length).toBeGreaterThanOrEqual(6);
+
+        const deadlines = clocks.map((m) => (m.type === "CLOCK" ? m.deadlineAt : 0));
+        // All deadlines should be equal (same handover window — one computeDeadline call)
+        const uniqueDeadlines = new Set(deadlines);
+        expect(uniqueDeadlines.size).toBe(1);
+
+        s0.close();
+        _s1.close();
+      });
+    },
+    { timeout: 15_000 },
+  );
+});
+
+// ── C8.1: empty SelectZone/SelectDisfield rejected at socket level ───────────
+
+describe("C8.1: empty SELECT_PLACE rejected at socket with ERROR", () => {
+  it(
+    "DECISION_RESPONSE with SelectZone and empty indices returns ERROR (not forwarded to engine)",
+    async () => {
+      // Script the engine to expect a SelectZone decision
+      const selectZoneDuel = new FakeEdisonDuel([
+        {
+          status: "waiting",
+          messages: [],
+          awaiting: { seat: 0 },
+          decision: {
+            kind: "SelectZone",
+            player: 0,
+            count: 1,
+            zones: [{ controller: 0, location: "MZONE", sequence: 0 }],
+          },
+        },
+        { status: "ended", messages: [] },
+      ]);
+
+      manager = new DuelManager(async () => selectZoneDuel as DuelEngine, fakeReplay);
+      app = createApp(db, catalog, manager);
+      const setup = await joinDuel(await createDuelAsAlice());
+
+      await withServer(async (port) => {
+        const s0 = await connectWs(port, setup.duelId, setup.seat0Token);
+        const _s1 = await connectWs(port, setup.duelId, setup.seat1Token!);
+        await waitForMessage(s0, (m) => m.type === "CLOCK");
+
+        s0.ws.send(
+          JSON.stringify({
+            type: "DECISION_RESPONSE",
+            response: { kind: "SelectZone", indices: [] },
+          }),
+        );
+
+        const error = await waitForMessage(s0, (m) => m.type === "ERROR");
+        expect(error.type).toBe("ERROR");
+
+        s0.close();
+        _s1.close();
+      });
+    },
+    { timeout: 10_000 },
+  );
+});

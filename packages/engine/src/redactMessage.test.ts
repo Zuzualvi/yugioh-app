@@ -18,15 +18,16 @@ const POS_FACEDOWN_ATTACK = 0x2;
 const POS_FACEDOWN_DEFENSE = 0x8;
 const POS_FACEUP_ATTACK = 0x1;
 
-// ocgcore message type numbers
+// ocgcore message type numbers — verified against OcgMessageType enum in ocgcore-wasm.
+// The original table had wrong values; corrected by ZUH-94.
 const MSG_DRAW = 90;
 const MSG_MOVE = 50;
 const MSG_SET = 54;
 const MSG_SELECT_CHAIN = 16;
-const MSG_CONFIRM_CARDS = 83;
-const MSG_HINT = 1;
-const MSG_FLIPSUMMONING = 43;
-const MSG_SUMMONED = 40;
+const MSG_CONFIRM_CARDS = 31; // real CONFIRM_CARDS; 83 is BECOME_TARGET
+const MSG_HINT = 2; // real OcgMessageType.HINT; 1 is RETRY
+const MSG_FLIPSUMMONING = 64; // real FLIPSUMMONING; 43 has no mapping in current enum
+const MSG_SUMMONED = 61; // real SUMMONED; 40 is NEW_TURN
 
 // ── DRAW ─────────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ describe("SET (type 54) — code zeroed for non-owner", () => {
 
 // ── Decision routing ──────────────────────────────────────────────────────────
 
-describe("SELECT_CHAIN (type 16) — routed to player only", () => {
+describe("SELECT_CHAIN (type 16 — correct) — routed to player only", () => {
   const selectMsg: RawEngineMessage = {
     type: MSG_SELECT_CHAIN,
     name: "SELECT_CHAIN",
@@ -166,7 +167,7 @@ describe("SELECT_CHAIN (type 16) — routed to player only", () => {
 
 // ── Reveal routing ────────────────────────────────────────────────────────────
 
-describe("CONFIRM_CARDS (type 83) — routed to player only", () => {
+describe("CONFIRM_CARDS (type 31 — corrected from wrong 83) — routed to player only", () => {
   const confirmMsg: RawEngineMessage = {
     type: MSG_CONFIRM_CARDS,
     name: "CONFIRM_CARDS",
@@ -185,7 +186,7 @@ describe("CONFIRM_CARDS (type 83) — routed to player only", () => {
 
 // ── Hint routing ──────────────────────────────────────────────────────────────
 
-describe("HINT (type 1) — routed to player only", () => {
+describe("HINT (type 2 — corrected from wrong 1) — routed to player only", () => {
   const hintMsg: RawEngineMessage = {
     type: MSG_HINT,
     name: "HINT",
@@ -205,7 +206,7 @@ describe("HINT (type 1) — routed to player only", () => {
 
 // ── Broadcast face-up events ─────────────────────────────────────────────────
 
-describe("FLIPSUMMONING (type 43) — broadcast to both seats", () => {
+describe("FLIPSUMMONING (type 64 — corrected from wrong 43) — broadcast to both seats", () => {
   const flipMsg: RawEngineMessage = {
     type: MSG_FLIPSUMMONING,
     name: "FLIPSUMMONING",
@@ -231,7 +232,7 @@ describe("FLIPSUMMONING (type 43) — broadcast to both seats", () => {
 
 // ── Broadcast summon event ────────────────────────────────────────────────────
 
-describe("SUMMONED (type 40) — broadcast to both seats", () => {
+describe("SUMMONED (type 61 — corrected from wrong 40) — broadcast to both seats", () => {
   const summonMsg: RawEngineMessage = {
     type: MSG_SUMMONED,
     name: "SUMMONED",
@@ -246,6 +247,62 @@ describe("SUMMONED (type 40) — broadcast to both seats", () => {
   });
 });
 
+// ── Previously-broken broadcast events (ZUH-94 fix) ──────────────────────────
+// These were incorrectly dropped for both seats due to wrong msg numbers in the
+// original table. They must now reach both seats.
+
+describe("SUMMONING (type 60) — broadcast to both seats (was broken)", () => {
+  const summoningMsg: RawEngineMessage = {
+    type: 60, // OcgMessageType.SUMMONING
+    name: "SUMMONING",
+    code: 9411399,
+    controller: 0,
+    location: LOC_MZONE,
+    sequence: 0,
+    position: 1,
+  };
+
+  it("reaches seat 0", () => {
+    expect(redactMessageForSeat(summoningMsg, 0)).not.toBeNull();
+  });
+
+  it("reaches seat 1", () => {
+    expect(redactMessageForSeat(summoningMsg, 1)).not.toBeNull();
+  });
+});
+
+describe("BECOME_TARGET (type 83) — broadcast to both seats (was broken)", () => {
+  const becomeTargetMsg: RawEngineMessage = {
+    type: 83, // OcgMessageType.BECOME_TARGET
+    name: "BECOME_TARGET",
+    cards: [{ controller: 0, location: LOC_MZONE, sequence: 0, position: 1 }],
+  };
+
+  it("reaches seat 0", () => {
+    expect(redactMessageForSeat(becomeTargetMsg, 0)).not.toBeNull();
+  });
+
+  it("reaches seat 1", () => {
+    expect(redactMessageForSeat(becomeTargetMsg, 1)).not.toBeNull();
+  });
+});
+
+describe("CARD_SELECTED (type 80) — broadcast to both seats (was broken)", () => {
+  const cardSelectedMsg: RawEngineMessage = {
+    type: 80, // OcgMessageType.CARD_SELECTED
+    name: "CARD_SELECTED",
+    cards: [{ controller: 0, location: LOC_MZONE, sequence: 0, position: 1 }],
+  };
+
+  it("reaches seat 0", () => {
+    expect(redactMessageForSeat(cardSelectedMsg, 0)).not.toBeNull();
+  });
+
+  it("reaches seat 1", () => {
+    expect(redactMessageForSeat(cardSelectedMsg, 1)).not.toBeNull();
+  });
+});
+
 // ── Envelope correctness ──────────────────────────────────────────────────────
 
 describe("RedactedEngineMessage envelope", () => {
@@ -257,6 +314,6 @@ describe("RedactedEngineMessage envelope", () => {
     const result = redactMessageForSeat(msg, 0)!;
     expect(typeof result.name).toBe("string");
     expect(typeof result.engineType).toBe("number");
-    expect(result.engineType).toBe(MSG_SUMMONED);
+    expect(result.engineType).toBe(61); // SUMMONED = 61
   });
 });
