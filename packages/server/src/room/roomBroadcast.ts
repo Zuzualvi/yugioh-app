@@ -160,3 +160,24 @@ export function clearDeadlineTimer(roomId: string): void {
     registry.deadlineTimer = null;
   }
 }
+
+/**
+ * Clear every pending away timer and deadline timer across all rooms.
+ *
+ * Call this in test teardown BEFORE closing the DB so that timers armed
+ * by ws.on('close') callbacks cannot fire against a closed connection.
+ * This is a test-lifecycle escape hatch; production code never calls it.
+ */
+export function clearAllTimers(): void {
+  for (const registry of rooms.values()) {
+    for (const timer of registry.awayTimers.values()) {
+      clearTimeout(timer);
+    }
+    registry.awayTimers.clear();
+    if (registry.deadlineTimer) {
+      clearTimeout(registry.deadlineTimer);
+      registry.deadlineTimer = null;
+    }
+  }
+  rooms.clear();
+}
