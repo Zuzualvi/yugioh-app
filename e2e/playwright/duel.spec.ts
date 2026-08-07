@@ -1,38 +1,33 @@
 import { test, expect, type Page } from "@playwright/test";
 
 // ---------------------------------------------------------------------------
-// Live 2-player duel BACKBONE — new pre-duel room flow.
+// Live 2-player duel — new interaction grammar
 //
-// Drives the full path from room creation through the board:
-//   Alice creates a room (timer only) → gets a join link
-//   Bob opens the link → claims the room → both land in RoomScreen
-//   Both pick a deck and ready up
-//   Coin flip resolves → flip winner chooses a seat
-//   Both are handed off to the board (3-2-1 countdown)
-//   Board-level coverage: summon → battle phase → direct attack → LP drops
-//   Resign round-trip: BOTH players receive DUEL_END
+// Drives the design as specified in docs/specs/2026-08-06-duel-ui-design.md.
 //
-// Also covers:
-//   INVITE-01 — a logged-out visitor opening a join link is shown the
-//               challenger's name ("challenged") and prompted to sign in;
-//               after login they resume back on the join route.
-//   Timer visibility — the per-move timer is visible in the room before
-//                      either player commits by readying up.
+// ACT mode (§3): the player clicks a card they control → a VerbChipCluster
+// appears anchored at that card → the player clicks a verb chip.
+// IdleCommand and BattleCommand are NEVER rendered as a bottom panel (A1).
 //
-// Engine / implementation notes (unchanged from Phase 3 diagnostic):
-//   • Normal Summon → SelectZone → card placed; SelectPosition is NOT emitted
-//     for Simple Normal Monsters in the Edison engine.
-//   • duelQueryLocation returns code=0 for MZONE cards (known limitation of the
-//     current STATE snapshot); the card renders as face-down-card even when
-//     face-up. The observable proof of placement is the empty-zone disappearing.
-//   • currentPhase tracking is not yet wired (always 0); the phase ribbon never
-//     shows "Battle". Proof of entering Battle Phase is the attack button
-//     appearing in Alice's ActionPanel (BattleCommand decision delivered).
-//   • Turn 1 has the first-player attack restriction (Edison OCG rules):
-//     toBattlePhase=false. Alice can only End Phase on turn 1; she attacks on
-//     turn 2 after Bob skips his turn.
-//   • LP IS tracked correctly (via DAMAGE messages in updatePhaseFromMessage);
-//     the LP drop is a reliable real-progress assertion.
+// ANSWER mode (§4): when the engine emits a non-idle decision, exactly one
+// QuestionBar docks bottom-centre and the board dims (A5, Law 2).
+//
+// Flows driven:
+//   1. Backbone: two players connect, board renders, a decision is delivered,
+//      resign ends the duel (two-step in-app confirm) naming the cause (D5/D6).
+//   2. INVITE-01: logged-out visitor sees challenger name and resumes after login.
+//   3. ACT-mode grammar: A1 assertion (no question surface in IdleCommand mode),
+//      hand card → verb-chip-cluster → Normal Summon chip → SelectZone →
+//      zone-option → card placed. mzone assertion: summoned slot occupied,
+//      index === sequence, four remaining slots legitimately empty.
+//   4. Turn play-through: Normal Summon → End Phase → End Phase → Battle Phase
+//      → direct attack → opponent LP drops.
+//
+// NOT tested here (explicitly untested per spec §1 CTO note / PRD G1):
+//   - All timing and motion, damage-number animation, audio.
+//   - Anything below 1440×900.
+//   - The chain decline path.
+//   - The forfeit (timeout) experience.
 // ---------------------------------------------------------------------------
 
 const PASSWORD = "e2e-pass-12345";
@@ -45,50 +40,42 @@ async function login(page: Page, displayName: string): Promise<void> {
   await page.waitForURL((u) => u.pathname === "/");
 }
 
-/** Pass any ChainPrompt that may have surfaced to the given player. No-op if none. */
-async function passIfChain(page: Page): Promise<void> {
-  try {
-    await page.getByTestId("pass-option").first().waitFor({ state: "visible", timeout: 1_000 });
-    await page.getByTestId("pass-option").first().click();
-  } catch {
-    // No chain prompt — expected for Normal-monster-only decks.
-  }
+/** Create a room as Alice and return the join-link path. */
+async function createRoomAsAlice(alice: Page): Promise<string> {
+  await alice.goto("/duel/new");
+  await alice.getByRole("radio", { name: "5 min", exact: true }).click();
+  await alice.getByRole("button", { name: /create challenge link/i }).click();
+  await alice.waitForURL((u) => u.pathname.includes("/room"));
+  const linkText = (await alice.getByTestId("join-link").textContent())?.trim() ?? "";
+  expect(linkText).toContain("/duel/join/");
+  return new URL(linkText).pathname;
 }
 
 /**
- * Drive both players through the room pre-flight (deck pick + ready + flip + seat
- * choice + handoff) and return once both are on the board at /duel/:id.
- *
- * The flip winner is non-deterministic; we check both pages for seat-choice
- * buttons and whichever player has them makes the choice.
+ * Drive both players from the room pre-flight through to the live board.
+ * Returns { goesFirst, goesSecond } — the player at seat 0 and seat 1.
  */
-async function enterRoomAndReachBoard(alice: Page, bob: Page): Promise<void> {
-  // Both players are already in the room at /duel/:roomId/room.
-  // Timer should be visible to both (checked in the test body for the main
-  // test; here we just proceed).
-
-  // Pick a deck on each side (the deck radio input is inside a label[data-testid="deck-option"]).
-  // The E2E seed creates one deck per user named "E2E Test Deck".
+async function enterRoomAndReachBoard(
+  alice: Page,
+  bob: Page,
+): Promise<{ goesFirst: Page; goesSecond: Page }> {
   await alice.getByTestId("deck-option").filter({ hasText: "E2E Test Deck" }).click();
   await bob.getByTestId("deck-option").filter({ hasText: "E2E Test Deck" }).click();
 
-  // Wait for the API round-trip to update the snapshot (deck-option now highlighted).
-  // Then ready up on both sides.
   await alice.getByTestId("room-ready-btn").click();
   await bob.getByTestId("room-ready-btn").click();
 
-  // Room transitions to awaiting_choice (flip phase ~1.1s) then choice phase.
-  // Wait for seat-choice buttons to appear on one of the two pages.
-  // The flip is non-deterministic — poll both.
-  const seatFirstBtns = [alice.getByTestId("seat-first-btn"), bob.getByTestId("seat-first-btn")];
-
+  // Flip is non-deterministic — poll both pages for the seat-choice button.
   let winner: Page | null = null;
-  // Allow up to 15s for the flip animation + server round-trip.
   const deadline = Date.now() + 15_000;
   while (!winner && Date.now() < deadline) {
-    for (const [i, btn] of seatFirstBtns.entries()) {
-      const visible = await btn.isVisible().catch(() => false);
-      if (visible) {
+    for (const [i, p] of [alice, bob].entries()) {
+      if (
+        await p
+          .getByTestId("seat-first-btn")
+          .isVisible()
+          .catch(() => false)
+      ) {
         winner = i === 0 ? alice : bob;
         break;
       }
@@ -97,40 +84,28 @@ async function enterRoomAndReachBoard(alice: Page, bob: Page): Promise<void> {
   }
   if (!winner) throw new Error("Seat-choice buttons never appeared on either player's screen");
 
-  // Flip winner chooses "Go first".
   await winner.getByTestId("seat-first-btn").click();
 
-  // RoomHandoff shows a 3-2-1 countdown then navigates to /duel/:id.
   await alice.waitForURL((u) => u.pathname.startsWith("/duel/") && !u.pathname.includes("/room"));
   await bob.waitForURL((u) => u.pathname.startsWith("/duel/") && !u.pathname.includes("/room"));
 
   await expect(alice.getByTestId("duel-board")).toBeVisible();
   await expect(bob.getByTestId("duel-board")).toBeVisible();
+
+  // Seat 0 is whoever clicked seat-first-btn (the flip winner).
+  const goesFirst = winner;
+  const goesSecond = winner === alice ? bob : alice;
+  return { goesFirst, goesSecond };
 }
 
 // ---------------------------------------------------------------------------
-// Helpers to build a room and return the join link path (used by several tests).
+// TEST 1 — Backbone: connect → render → decision delivered → resign round-trip
+//
+// Covers D5/D6: duel-end-reason must name the cause ("resign").
+// Resign is a two-step in-app confirm (SettingsPopover), not a native dialog.
 // ---------------------------------------------------------------------------
 
-async function createRoomAsAlice(alice: Page): Promise<string> {
-  await alice.goto("/duel/new");
-  // Select the 5-min timer preset (role=radio inside a radiogroup). exact:true
-  // prevents "15 min" matching as a superset of "5 min".
-  await alice.getByRole("radio", { name: "5 min", exact: true }).click();
-  await alice.getByRole("button", { name: /create challenge link/i }).click();
-  // Alice lands in the room at /duel/:roomId/room.
-  await alice.waitForURL((u) => u.pathname.includes("/room"));
-  // The join link is shown in the share block (creator, status=open).
-  const linkText = (await alice.getByTestId("join-link").textContent())?.trim() ?? "";
-  expect(linkText).toContain("/duel/join/");
-  return new URL(linkText).pathname;
-}
-
-// ---------------------------------------------------------------------------
-// TEST 1 — Happy path: connect → render → decision delivered → resign
-// ---------------------------------------------------------------------------
-
-test("two-player live duel backbone: connect, render, decision delivered, resign round-trips", async ({
+test("backbone: two players connect, board renders, decision delivered, resign round-trips with cause text", async ({
   browser,
 }) => {
   const ctxA = await browser.newContext();
@@ -142,37 +117,52 @@ test("two-player live duel backbone: connect, render, decision delivered, resign
     await login(alice, "e2e_alice");
     await login(bob, "e2e_bob");
 
-    // ── Alice creates a room (5-min timer, no deck at create time) ─────────
     const joinPath = await createRoomAsAlice(alice);
 
-    // Timer is visible to Alice in the room before she commits.
+    // Timer visible to Alice before she commits.
     await expect(alice.getByTestId("room-timer-strip")).toContainText(/5 min per move/i);
 
-    // ── Bob opens the join link ────────────────────────────────────────────
     await bob.goto(joinPath);
-    // Bob is authenticated → JoinLandingScreen claims and redirects to the room.
     await bob.waitForURL((u) => u.pathname.includes("/room"));
 
-    // Timer is visible to Bob (the invitee) before he commits.
+    // Timer visible to Bob (the invitee) before he commits.
     await expect(bob.getByTestId("room-timer-strip")).toContainText(/5 min per move/i);
 
-    // ── Both players reach the board via the room pre-flight ───────────────
     await enterRoomAndReachBoard(alice, bob);
 
-    // Fix #2: the on-clock seat (seat 0) receives its pending decision on
-    // connect — the ActionPanel is NOT stuck on the "Waiting for engine…"
-    // placeholder. We don't know which player is seat 0, so we check both are
-    // live and that at least one has an active decision.
+    // Both have an action-panel (always mounted while duel is active).
     await expect(alice.getByTestId("action-panel")).toBeVisible();
     await expect(bob.getByTestId("action-panel")).toBeVisible();
 
-    // Client→server→broadcast round-trip: Alice resigns; BOTH clients get DUEL_END.
-    alice.on("dialog", (d) => void d.accept());
-    await alice.getByTestId("resign-btn").click();
+    // A decision was delivered: the on-clock seat's action-panel is not stuck
+    // on no-decision. We cannot know which player is on clock, so check both
+    // and assert at least one is NOT showing the no-decision placeholder.
+    const aliceNoDecision = alice.getByTestId("no-decision");
+    const bobNoDecision = bob.getByTestId("no-decision");
+    const aliceHasDecision =
+      (await aliceNoDecision.count()) === 0 || !(await aliceNoDecision.isVisible());
+    const bobHasDecision =
+      (await bobNoDecision.count()) === 0 || !(await bobNoDecision.isVisible());
+    expect(aliceHasDecision || bobHasDecision).toBe(true);
 
+    // ── Two-step in-app resign (SettingsPopover) ─────────────────────────
+    // Step 1: open settings
+    await alice.getByTestId("settings-btn").click();
+    await expect(alice.getByTestId("settings-popover")).toBeVisible();
+
+    // Step 2: click Resign inside the popover (first click → confirm state)
+    await alice.getByTestId("settings-popover").getByTestId("resign-btn").click();
+    // The confirm/cancel pair appears.
+    await expect(alice.getByTestId("resign-confirm")).toBeVisible();
+
+    // Step 3: confirm
+    await alice.getByTestId("resign-confirm").click();
+
+    // Both seats receive DUEL_END.
     await expect(alice.getByTestId("duel-end-overlay")).toBeVisible();
     await expect(bob.getByTestId("duel-end-overlay")).toBeVisible();
-    // Alice resigned → both banners reference the resign.
+
+    // D5/D6: the cause text must reference "resign" on both boards.
     await expect(alice.getByTestId("duel-end-reason")).toContainText(/resign/i);
     await expect(bob.getByTestId("duel-end-reason")).toContainText(/resign/i);
   } finally {
@@ -182,7 +172,7 @@ test("two-player live duel backbone: connect, render, decision delivered, resign
 });
 
 // ---------------------------------------------------------------------------
-// TEST 2 — INVITE-01: logged-out visitor sees challenger name and signs in
+// TEST 2 — INVITE-01: logged-out visitor sees challenger name and resumes after login
 // ---------------------------------------------------------------------------
 
 test("INVITE-01: a duel link opened while logged-out shows challenger name and resumes after login", async ({
@@ -200,28 +190,24 @@ test("INVITE-01: a duel link opened while logged-out shows challenger name and r
   }
 
   // Fresh, logged-OUT context opens the link.
-  // JoinLandingScreen shows the public landing (D5) with the challenger's name.
   const ctxC = await browser.newContext();
   const carol = await ctxC.newPage();
   try {
     await carol.goto(joinPath);
-    // Public landing — no redirect; user sees the challenger's name.
+    // Public landing — shows the challenger's name.
     await expect(carol.getByText(/challenged/i)).toBeVisible();
 
-    // Carol clicks "Sign in to join ›" → navigates to /login.
+    // Sign-in prompt.
     await carol.getByRole("button", { name: /sign in to join/i }).click();
     await carol.waitForURL((u) => u.pathname === "/login");
 
-    // Carol logs in as bob (who is a member).
     await carol.getByTestId("display-name-input").fill("e2e_bob");
     await carol.getByTestId("password-input").fill(PASSWORD);
     await carol.getByTestId("login-submit").click();
 
-    // After login, LoginScreen redirects back to the join route.
+    // After login, redirects back to join route, then into the room.
     await carol.waitForURL((u) => u.pathname === joinPath, { timeout: 10_000 });
-    // JoinLandingScreen then claims the room and redirects to the room screen.
     await carol.waitForURL((u) => u.pathname.includes("/room"), { timeout: 10_000 });
-    // Carol is now in the room — the room screen is visible.
     await expect(carol.getByTestId("room-timer-strip")).toBeVisible();
   } finally {
     await ctxC.close();
@@ -229,27 +215,21 @@ test("INVITE-01: a duel link opened while logged-out shows challenger name and r
 });
 
 // ---------------------------------------------------------------------------
-// Phase 3 — real-turn play-through (desktop + mobile viewports via projects).
+// TEST 3 — ACT-mode grammar: A1 assertion + verb chip flow + mzone assertion
 //
-// Proves a complete turn sequence through the real panel UI:
+// Design §3: clicking a card you control opens a VerbChipCluster anchored at
+// that card. IdleCommand/BattleCommand are NEVER rendered as a question panel.
 //
-//   TURN 1 (seat 0):
-//     IdleCommand → Normal Summon → SelectZone → card placed in MZONE
-//     (first-player attack restriction: cannot battle on turn 1) → End Phase
+// A1: "no question surface is on screen" when IdleCommand is pending.
+// A5: at most one QuestionBar exists — checked implicitly (question-bar absent
+//     in act mode, present in answer mode).
 //
-//   TURN 1 (seat 1):
-//     IdleCommand → End Phase immediately
-//
-//   TURN 2 (seat 0):
-//     IdleCommand → Proceed to Battle Phase
-//     BattleCommand → direct attack (opponent has no monsters)
-//     Opponent's LP drops below 8000 — confirmed in STATE on BOTH boards
-//
-// The seat assignment is determined by the flip winner's choice, so we track
-// which Page ended up at seat 0 (goes first) and which ended up at seat 1.
+// mzone: after one Normal Summon the summoned slot is occupied; the other four
+// remain empty. This is correct for a dense 5-slot row — the old test asserting
+// `empty-zone` count === 0 was arithmetically wrong.
 // ---------------------------------------------------------------------------
 
-test("real-turn play-through: normal summon → battle phase → direct attack → LP drops", async ({
+test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone placed, mzone correct", async ({
   browser,
 }) => {
   const ctxA = await browser.newContext();
@@ -258,141 +238,87 @@ test("real-turn play-through: normal summon → battle phase → direct attack �
   const bob = await ctxB.newPage();
 
   try {
-    // ── Login ──────────────────────────────────────────────────────────────
     await login(alice, "e2e_alice");
     await login(bob, "e2e_bob");
 
-    // ── Alice creates room ─────────────────────────────────────────────────
     const joinPath = await createRoomAsAlice(alice);
-
-    // ── Bob joins ──────────────────────────────────────────────────────────
     await bob.goto(joinPath);
     await bob.waitForURL((u) => u.pathname.includes("/room"));
 
-    // ── Room pre-flight: deck pick + ready + flip + seat choice + handoff ──
-    // We need to know who went first (seat 0) to drive the right player.
-    // After enterRoomAndReachBoard both are on the board.
-    //
-    // To find out who is seat 0, we check who has the no-decision count == 0
-    // AND the Normal Summon button visible (seat 0 gets the first IdleCommand).
+    const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
+    void goesSecond; // used only to prevent teardown before the board is stable
 
-    // Pick decks and ready up.
-    await alice.getByTestId("deck-option").filter({ hasText: "E2E Test Deck" }).click();
-    await bob.getByTestId("deck-option").filter({ hasText: "E2E Test Deck" }).click();
-    await alice.getByTestId("room-ready-btn").click();
-    await bob.getByTestId("room-ready-btn").click();
+    // ── A1: no question surface in ACT mode ───────────────────────────────
+    // The QuestionBar (ANSWER-mode surface) must be absent when IdleCommand
+    // is pending. If question-bar is visible here, A1 is violated.
+    await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible();
 
-    // Wait for flip winner's seat-choice buttons.
-    let winner: Page | null = null;
-    const deadline = Date.now() + 15_000;
-    while (!winner && Date.now() < deadline) {
-      const aVisible = await alice
-        .getByTestId("seat-first-btn")
-        .isVisible()
-        .catch(() => false);
-      if (aVisible) {
-        winner = alice;
-        break;
-      }
-      const bVisible = await bob
-        .getByTestId("seat-first-btn")
-        .isVisible()
-        .catch(() => false);
-      if (bVisible) {
-        winner = bob;
-        break;
-      }
-      await alice.waitForTimeout(200);
-    }
-    if (!winner) throw new Error("Seat-choice buttons never appeared");
+    // A1 strict: the action-panel must NOT surface IdleCommand choices as a
+    // bottom panel. Under the new grammar the panel is empty (no-decision or
+    // waiting placeholder) in act mode — verb chips live on the board.
+    // This assertion is deliberately assertive: it FAILS if renderActButtons()
+    // or equivalent puts "Normal Summon" text into the action-panel, which is
+    // the "rebuilt panel" defect PRD A1 was written to prevent.
+    await expect(goesFirst.getByTestId("action-panel")).not.toContainText(/Normal Summon/i);
 
-    // Winner always chooses "Go first" so we know seat 0 = winner's player.
-    const goesFirst = winner;
-    const goesSecond = winner === alice ? bob : alice;
-    await winner.getByTestId("seat-first-btn").click();
+    // ── Verb chip flow ────────────────────────────────────────────────────
+    // Click the first card in own hand → verb-chip-cluster should appear.
+    const handRow = goesFirst.getByTestId("own-hand-row");
+    await expect(handRow).toBeVisible();
+    const firstHandCard = handRow.getByRole("button").first();
+    await firstHandCard.click();
 
-    // Wait for handoff navigation.
-    await alice.waitForURL((u) => u.pathname.startsWith("/duel/") && !u.pathname.includes("/room"));
-    await bob.waitForURL((u) => u.pathname.startsWith("/duel/") && !u.pathname.includes("/room"));
+    // VerbChipCluster appears anchored at the card (design §3).
+    await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
 
-    await expect(alice.getByTestId("duel-board")).toBeVisible();
-    await expect(bob.getByTestId("duel-board")).toBeVisible();
+    // No question-bar while verb cluster is open (Law 1 — ACT and ANSWER
+    // cannot be live simultaneously).
+    await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible();
 
-    // ── Assert the on-clock seat has a live IdleCommand ───────────────────
-    await expect(goesFirst.getByTestId("action-panel")).toBeVisible();
-    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
-    // IdleCommand populates summons[] from the hand.
-    await expect(goesFirst.getByRole("button", { name: /Normal Summon/i }).first()).toBeVisible();
-
-    // ════════════════════════════════════════════════════════════════════════
-    // TURN 1 (seat 0 = goesFirst): Normal Summon → End Phase
-    // First-player attack restriction: toBattlePhase=false on turn 1.
-    // ════════════════════════════════════════════════════════════════════════
-
+    // Click the "Normal Summon" verb chip.
     await goesFirst
-      .getByRole("button", { name: /Normal Summon/i })
+      .getByTestId("verb-chip-cluster")
+      .getByRole("menuitem", { name: /Normal Summon/i })
       .first()
       .click();
 
-    // SelectZone: choose the first available monster zone slot.
-    // zone-option buttons carry the select-zone-pulse CSS animation; use force.
+    // ── After summon intent: SelectZone decision ──────────────────────────
+    // The engine follows up with SelectZone. In answer mode:
+    //   - question-bar should appear (A5: exactly one)
+    //   - verb-chip-cluster must be dismissed (Law 1)
+    await expect(goesFirst.getByTestId("question-bar")).toBeVisible();
+    await expect(goesFirst.getByTestId("verb-chip-cluster")).not.toBeVisible();
+
+    // A5: exactly one question-bar at any instant.
+    await expect(goesFirst.getByTestId("question-bar")).toHaveCount(1);
+
+    // ── Zone selection ────────────────────────────────────────────────────
+    // zone-option buttons are rendered by DecisionRenderer for SelectZone
+    // when prefs.chooseZones === true (set in DuelStage).
     await expect(goesFirst.getByTestId("zone-option").first()).toBeVisible();
-    await goesFirst.getByTestId("zone-option").first().click({ force: true });
+    const zoneOptions = goesFirst.getByTestId("zone-option");
+    const firstZone = zoneOptions.first();
+    await firstZone.click({ force: true });
 
-    // Assert: the monster zone slot is occupied.
-    await expect(
-      goesFirst.locator('[data-testid="my-mzone"]').getByTestId("empty-zone"),
-    ).toHaveCount(0);
+    // ── mzone assertion: summoned card is in zone 0, four others empty ────
+    // Design C2 (dense arrays): index === sequence. Clicking zone-option[0]
+    // places the card at sequence 0. The remaining four slots are legitimately
+    // empty — asserting empty-zone count === 0 was wrong (old test defect).
+    const myMzone = goesFirst.locator('[data-testid="my-mzone"]');
+    await expect(myMzone).toBeVisible();
 
-    // goesSecond's board re-renders from the STATE broadcast.
+    // Zone 0 must be occupied (aria-label contains "zone 0", not "Empty").
+    // ZoneSlot renders empty as: aria-label="Empty MZONE zone 0"
+    // ZoneSlot renders occupied as: aria-label="Card in MZONE zone 0"
+    const zone0 = myMzone.locator('[aria-label*="MZONE zone 0"]');
+    await expect(zone0).toBeVisible();
+    await expect(zone0).not.toHaveAttribute("data-testid", "empty-zone");
+
+    // Four remaining zone slots (1–4) remain legitimately empty.
+    await expect(myMzone.getByTestId("empty-zone")).toHaveCount(4);
+
+    // Board on goesSecond's side still renders (STATE broadcast received).
     await expect(goesSecond.getByTestId("duel-board")).toBeVisible();
-
-    // End Phase — no Battle Phase available on turn 1 (toBattlePhase=false).
-    await expect(goesFirst.getByRole("button", { name: "End Phase" })).toBeVisible();
-    await goesFirst.getByRole("button", { name: "End Phase" }).click();
-
-    // ════════════════════════════════════════════════════════════════════════
-    // TURN 1 (seat 1 = goesSecond): Skip immediately — End Phase
-    // ════════════════════════════════════════════════════════════════════════
-
-    await expect(goesSecond.getByTestId("no-decision")).toHaveCount(0);
-    await expect(goesSecond.getByRole("button", { name: "End Phase" })).toBeVisible();
-    await goesSecond.getByRole("button", { name: "End Phase" }).click();
-
-    // ════════════════════════════════════════════════════════════════════════
-    // TURN 2 (seat 0 = goesFirst): Battle Phase → direct attack → LP drops
-    // ════════════════════════════════════════════════════════════════════════
-
-    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
-
-    // Advance to Battle Phase.
-    await expect(goesFirst.getByRole("button", { name: "Proceed to Battle Phase" })).toBeVisible();
-    await goesFirst.getByRole("button", { name: "Proceed to Battle Phase" }).click();
-
-    // Proof of entering Battle Phase: BattleCommand with attack option.
-    await expect(goesFirst.getByRole("button", { name: /Attack with/i }).first()).toBeVisible();
-    await goesFirst
-      .getByRole("button", { name: /Attack with/i })
-      .first()
-      .click();
-
-    // Safety net: pass any ChainPrompt (DECK40 is all Normal monsters — should never fire).
-    await passIfChain(goesSecond);
-
-    // ── Assert real game progress ──────────────────────────────────────────
-    // After the direct attack, the engine broadcasts a STATE with the opponent's
-    // updated LP. goesSecond's LP should drop below 8000.
-
-    // On goesFirst's board: opponent strip (top) shows goesSecond's LP.
-    await expect(goesFirst.locator('[aria-label^="LP: "]').first()).not.toHaveAttribute(
-      "aria-label",
-      "LP: 8000",
-    );
-    // On goesSecond's own board: "You" section (bottom) shows their LP.
-    await expect(goesSecond.locator('[aria-label^="LP: "]').last()).not.toHaveAttribute(
-      "aria-label",
-      "LP: 8000",
-    );
   } finally {
     await ctxA.close();
     await ctxB.close();
@@ -400,71 +326,138 @@ test("real-turn play-through: normal summon → battle phase → direct attack �
 });
 
 // ---------------------------------------------------------------------------
-// W1 F12: elementFromPoint — every interactive control W1 renders receives its
-// own clicks. DimScrim (pointer-events: none) must never intercept them.
+// TEST 4 — Turn play-through: Normal Summon → End Phase → Battle Phase
+//          → direct attack → opponent LP drops
 //
-// This test requires a running duel so elementFromPoint works in a real browser.
-// Run with the full server stack (npm run test:e2e).
+// Proves a complete turn sequence via the new verb chip grammar.
 //
-// Scope: W1 controls only — VerbChipCluster, PhaseRail End Turn, PileBadge.
-// Full-flow F12 (across all slices) is QA's gate at integration.
+// TURN 1 (seat 0):
+//   Normal Summon via verb chip → zone placed → End Turn
+// TURN 1 (seat 1):
+//   End Turn immediately
+// TURN 2 (seat 0):
+//   Battle Phase via phase rail → direct attack via verb chip →
+//   opponent LP drops below 8000
 // ---------------------------------------------------------------------------
 
-/** Helper: resolves the hit element at a bounding rect's centre. Reserved for W2 wiring. */
-async function _hitAt(page: Page, selector: string): Promise<string> {
-  return page.evaluate((sel: string) => {
-    const el = document.querySelector(sel);
-    if (!el) return "NOT_FOUND";
-    const rect = el.getBoundingClientRect();
-    const cx = Math.round(rect.left + rect.width / 2);
-    const cy = Math.round(rect.top + rect.height / 2);
-    const hit = document.elementFromPoint(cx, cy);
-    if (!hit) return "NULL";
-    // Accept: the element itself or any descendant
-    if (el === hit || el.contains(hit)) return "OK";
-    return `OCCLUDED_BY:${hit.tagName}[data-testid=${hit.getAttribute("data-testid") ?? "-"}]`;
-  }, selector);
-}
+test("play-through: Normal Summon → End Phase → Battle Phase → direct attack → LP drops", async ({
+  browser,
+}) => {
+  // This test drives two full turns with multiple server round-trips; raise the
+  // test-level timeout above the 60s config default.
+  test.setTimeout(120_000);
+  const ctxA = await browser.newContext();
+  const ctxB = await browser.newContext();
+  const alice = await ctxA.newPage();
+  const bob = await ctxB.newPage();
 
-test.describe("W1 F12: elementFromPoint — own controls receive their own clicks", () => {
-  test("DimScrim pointer-events: none verified in Chromium — sibling button is hittable", async ({
-    page,
-  }) => {
-    // Navigate to a route that renders a DimScrim (the duel screen in answer mode).
-    // For a static check we just verify the CSS at the component level.
-    // This test runs whenever the server stack is available.
-    await page.goto("/");
-    // The app shell loads — verify the global CSS vars W1 declares are present.
-    const ownVar = await page.evaluate(() =>
-      getComputedStyle(document.documentElement).getPropertyValue("--own").trim(),
+  try {
+    await login(alice, "e2e_alice");
+    await login(bob, "e2e_bob");
+
+    const joinPath = await createRoomAsAlice(alice);
+    await bob.goto(joinPath);
+    await bob.waitForURL((u) => u.pathname.includes("/room"));
+
+    const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
+
+    // ══════════════════════════════════════════════════════════════════════
+    // TURN 1 (seat 0 = goesFirst): Normal Summon via verb chip → End Phase
+    // First-player attack restriction: toBattlePhase=false on turn 1.
+    // ══════════════════════════════════════════════════════════════════════
+
+    // Wait for action-panel to be in act mode (not waiting for engine).
+    // The on-clock player should NOT show no-decision.
+    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
+
+    // Verb chip: click first hand card.
+    const handRow1 = goesFirst.getByTestId("own-hand-row");
+    await expect(handRow1).toBeVisible();
+    await handRow1.getByRole("button").first().click();
+    await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
+
+    // Click "Normal Summon" chip.
+    await goesFirst
+      .getByTestId("verb-chip-cluster")
+      .getByRole("menuitem", { name: /Normal Summon/i })
+      .first()
+      .click();
+
+    // SelectZone — pick first available zone.
+    await expect(goesFirst.getByTestId("zone-option").first()).toBeVisible();
+    await goesFirst.getByTestId("zone-option").first().click({ force: true });
+
+    // Zone 0 is occupied; four others empty (dense-array C2 invariant).
+    await expect(
+      goesFirst.locator('[data-testid="my-mzone"]').locator('[aria-label*="MZONE zone 0"]'),
+    ).not.toHaveAttribute("data-testid", "empty-zone");
+    await expect(
+      goesFirst.locator('[data-testid="my-mzone"]').getByTestId("empty-zone"),
+    ).toHaveCount(4);
+
+    // End Turn (phase rail end-turn-btn).
+    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+    await goesFirst.getByTestId("end-turn-btn").click();
+
+    // ══════════════════════════════════════════════════════════════════════
+    // TURN 1 (seat 1 = goesSecond): End Turn immediately
+    // ══════════════════════════════════════════════════════════════════════
+
+    await expect(goesSecond.getByTestId("no-decision")).toHaveCount(0);
+    await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
+    await goesSecond.getByTestId("end-turn-btn").click();
+
+    // ══════════════════════════════════════════════════════════════════════
+    // TURN 2 (seat 0 = goesFirst): Battle Phase → direct attack → LP drops
+    // ══════════════════════════════════════════════════════════════════════
+
+    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
+
+    // Advance to Battle Phase via the phase rail.
+    // PhaseRail renders BP cell as: aria-label="Battle Phase — advance here"
+    const bpButton = goesFirst.getByRole("button", { name: /Battle Phase.*advance/i });
+    await expect(bpButton).toBeVisible();
+    await bpButton.click();
+
+    // In Battle Phase, click the summoned monster to get verb chips.
+    const myMzone2 = goesFirst.locator('[data-testid="my-mzone"]');
+    const summonedCard = myMzone2.locator('button[aria-label*="MZONE zone 0"]');
+    await expect(summonedCard).toBeVisible();
+    await summonedCard.click();
+    await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
+
+    // Click "Attack" or "Attack directly" verb chip.
+    await goesFirst
+      .getByTestId("verb-chip-cluster")
+      .getByRole("menuitem", { name: /Attack/i })
+      .first()
+      .click();
+
+    // Safety net: pass any ChainPrompt (all-Normal-monster deck — should not fire).
+    try {
+      await goesFirst
+        .getByTestId("pass-option")
+        .first()
+        .waitFor({ state: "visible", timeout: 1_000 });
+      await goesFirst.getByTestId("pass-option").first().click();
+    } catch {
+      // Expected: no chain prompt with Normal monsters.
+    }
+
+    // ── Assert real game progress ─────────────────────────────────────────
+    // Opponent's LP plate aria-label is "{name} LP: {lp}" (LifePointPlate).
+    // Assert that LP dropped from 8000 by checking aria-label no longer ends
+    // with "LP: 8000".
+    await expect(goesFirst.locator('[data-testid="opp-lp-plate"]')).not.toHaveAttribute(
+      "aria-label",
+      /LP: 8000$/,
     );
-    // --own is declared on the duel screen, not globally, so it may be empty here.
-    // Presence check is done in the full duel flow below.
-    expect(typeof ownVar).toBe("string");
-  });
-
-  test("W1 controls are hittable with DimScrim active (requires full duel)", async ({ page }) => {
-    // This test is a placeholder that documents the elementFromPoint assertion
-    // pattern. It runs green unconditionally here and is wired to real assertions
-    // in the two-player backbone test where a live duel is available.
-    //
-    // Assertion pattern (copy into backbone when W2/W3 land):
-    //
-    //   // With scrim DOWN (act mode) — wire in once W2 DuelDock is on integration:
-    //   expect(await _hitAt(goesFirst, "[data-testid=end-turn-btn]")).toBe("OK");
-    //   expect(await _hitAt(goesFirst, "[data-testid=pile-badge-gy]")).toBe("OK");
-    //
-    //   // With scrim UP (answer mode — send a SelectYesNo decision):
-    //   expect(await _hitAt(goesFirst, "[data-testid=end-turn-btn]")).toBe("OK");
-    //
-    //   // DimScrim itself must have pointer-events: none:
-    //   const pe = await page.evaluate(() =>
-    //     (document.querySelector("[data-testid=dim-scrim]") as HTMLElement | null)
-    //       ?.style.pointerEvents,
-    //   );
-    //   expect(pe).toBe("none");
-    //
-    await page.goto("/");
-    expect(true).toBe(true); // placeholder — see comment above
-  });
+    await expect(goesSecond.locator('[data-testid="own-lp-plate"]')).not.toHaveAttribute(
+      "aria-label",
+      /LP: 8000$/,
+    );
+  } finally {
+    await ctxA.close();
+    await ctxB.close();
+  }
 });
