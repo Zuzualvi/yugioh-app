@@ -135,23 +135,41 @@ export function HandRow({ cards, controller, mySeat, candidates, onCardClick }: 
                 🂠
               </div>
             ) : (
-              <img
-                data-testid="face-up-card"
-                src={cardImageUrl(card.code)}
-                alt={`Hand card ${i + 1}`}
+              /*
+               * Size-anchored wrapper (F12 / ZUH-108): the wrapper keeps the
+               * button at 46×66px even when the img gets display:none via
+               * onError. Without it, a failed image collapses the button to 0
+               * height, making elementFromPoint return the ancestor row div
+               * instead of the button or a descendant — an F12 violation that
+               * prevents the verb-chip click from reaching the server.
+               */
+              <div
                 style={{
                   width: 46,
                   height: 66,
                   borderRadius: 4,
-                  objectFit: "cover",
+                  overflow: "hidden",
                   border: `1px solid ${cand ? "var(--own)" : "var(--border)"}`,
-                  display: "block",
+                  background: "var(--bg-3)",
+                  flexShrink: 0,
                 }}
-                loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
+              >
+                <img
+                  data-testid="face-up-card"
+                  src={cardImageUrl(card.code)}
+                  alt={`Hand card ${i + 1}`}
+                  style={{
+                    width: 46,
+                    height: 66,
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
             )}
           </button>
         );

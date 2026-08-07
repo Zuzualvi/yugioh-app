@@ -240,10 +240,11 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
   const inspectedLoading =
     inspectedCode !== null && inspectedCode !== 0 ? cardCache.isLoading(inspectedCode) : false;
 
-  // Show no-decision only when there's genuinely no action available for this player.
-  // ACT mode (IdleCommand/BattleCommand) is expressed via VerbChipCluster on the board
-  // (design spec A1/A5) — no panel content needed.
-  const showNoDecision = mode === "waiting" || mode === "ended" || mode === "act";
+  // Show no-decision only when the player truly has no action pending.
+  // ACT mode (IdleCommand/BattleCommand): the player's move is expressed via
+  // VerbChipCluster on the board (A1/A5). The action-panel container is still
+  // mounted but shows nothing in that mode.
+  const showNoDecision = mode === "waiting" || mode === "ended";
 
   return (
     <div
