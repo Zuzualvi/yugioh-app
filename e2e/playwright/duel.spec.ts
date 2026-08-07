@@ -32,6 +32,82 @@ import { test, expect, type Page } from "@playwright/test";
 
 const PASSWORD = "e2e-pass-12345";
 
+/**
+ * Click the first button inside the own-hand-row.
+ *
+ * The duel board layout (opponent hand + two field groups + phase rail + own
+ * hand) exceeds the 900px viewport when rendered at 1440×900. The own hand row
+ * sits below the viewport bottom and therefore outside Playwright's hit-test
+ * region. The three-step approach here:
+ *   1. Scroll the board's overflow:auto container by wheeling the mouse at the
+ *      board centre, which brings the hand row into the viewport.
+ *   2. Allow one animation frame for React to re-measure positions.
+ *   3. Dispatch the full mouse event sequence through DOM so React's onClick
+ *      fires with a real rect, which VerbChipCluster uses to anchor itself.
+ *
+ * PRODUCT NOTE (W1): the board height overflows the viewport, meaning the own
+ * hand is unreachable without scrolling. DuelStage's board div should be
+ * constrained to `max-height: calc(100vh - 40px)` (40px = DuelTopBar) so that
+ * it scrolls internally and the hand row stays in the initial viewport.
+ * Filed as a product defect in the report.
+ */
+async function clickSummonableHandCard(page: Page): Promise<void> {
+  // Wheel the board to scroll the hand row into the viewport.
+  // The board layout (two field groups + phase rail) overflows the 900px viewport
+  // at 1440×900 — the own hand row sits ~30-50px below the viewport bottom.
+  // PRODUCT NOTE (W1): DuelStage's overflow:auto board div needs max-height:
+  // calc(100vh - 40px) so the hand row stays within the initial viewport.
+  await page.mouse.move(720, 400);
+  await page.mouse.wheel(0, 600);
+  await page.waitForTimeout(150);
+
+  // Iterate through hand cards (max 6) until one shows a Normal Summon chip.
+  // One card in the 40-card E2E deck is level 7 (Ryu-Ran, passcode 2964201)
+  // and cannot be summoned on turn 1 (no tributes available). Clicking it
+  // produces a refusal chip instead of a verb chip cluster.
+  const MAX_HAND = 6;
+  for (let seq = 0; seq < MAX_HAND; seq++) {
+    await page.evaluate((s: number) => {
+      const btns = document.querySelectorAll("[data-testid='own-hand-row'] button");
+      const btn = btns[s] as HTMLElement | null;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const cx = Math.round(rect.left + rect.width / 2);
+      const cy = Math.round(rect.top + rect.height / 2);
+      for (const t of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+        btn.dispatchEvent(
+          new MouseEvent(t, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX: cx,
+            clientY: cy,
+          }),
+        );
+      }
+    }, seq);
+
+    // Short wait for React to process the click.
+    await page.waitForTimeout(200);
+
+    // Check if a verb chip cluster appeared with a Normal Summon chip.
+    const cluster = page.getByTestId("verb-chip-cluster");
+    const hasCluster = await cluster.isVisible().catch(() => false);
+    if (hasCluster) {
+      const hasSummon =
+        (await cluster.getByRole("menuitem", { name: /Normal Summon/i }).count()) > 0;
+      if (hasSummon) return; // found a summonable card
+    }
+    // Dismiss whatever appeared (refusal chip or wrong cluster) and try the next card.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
+  }
+  throw new Error(
+    "No hand card with Normal Summon found after checking all hand cards — " +
+      "verify the E2E deck contains summonable level-1..4 Normal monsters",
+  );
+}
+
 async function login(page: Page, displayName: string): Promise<void> {
   await page.goto("/login");
   await page.getByTestId("display-name-input").fill(displayName);
@@ -263,13 +339,15 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     await expect(goesFirst.getByTestId("action-panel")).not.toContainText(/Normal Summon/i);
 
     // ── Verb chip flow ────────────────────────────────────────────────────
-    // Click the first card in own hand → verb-chip-cluster should appear.
+    // Click a summonable hand card → verb-chip-cluster appears with Normal Summon.
+    // clickSummonableHandCard scrolls the board and iterates cards until it
+    // finds one with a Normal Summon chip, returning with the cluster visible.
     const handRow = goesFirst.getByTestId("own-hand-row");
     await expect(handRow).toBeVisible();
-    const firstHandCard = handRow.getByRole("button").first();
-    await firstHandCard.click({ force: true });
+    await clickSummonableHandCard(goesFirst);
 
-    // VerbChipCluster appears anchored at the card (design §3).
+    // clickSummonableHandCard returns with the cluster visible and Normal Summon
+    // present — these assertions confirm the product state at return time.
     await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
 
     // No question-bar while verb cluster is open (Law 1 — ACT and ANSWER
@@ -376,7 +454,7 @@ test("play-through: Normal Summon → End Phase → Battle Phase → direct atta
     // Verb chip: click first hand card.
     const handRow1 = goesFirst.getByTestId("own-hand-row");
     await expect(handRow1).toBeVisible();
-    await handRow1.getByRole("button").first().click({ force: true });
+    await clickSummonableHandCard(goesFirst);
     await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
 
     // Click "Normal Summon" chip.
