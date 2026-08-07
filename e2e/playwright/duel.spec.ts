@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // ---------------------------------------------------------------------------
 // Live 2-player duel — new interaction grammar
@@ -32,63 +32,75 @@ import { test, expect, type Page } from "@playwright/test";
 
 const PASSWORD = "e2e-pass-12345";
 
-/**
- * Click the first button inside the own-hand-row.
- *
- * The duel board layout (opponent hand + two field groups + phase rail + own
- * hand) exceeds the 900px viewport when rendered at 1440×900. The own hand row
- * sits below the viewport bottom and therefore outside Playwright's hit-test
- * region. The three-step approach here:
- *   1. Scroll the board's overflow:auto container by wheeling the mouse at the
- *      board centre, which brings the hand row into the viewport.
- *   2. Allow one animation frame for React to re-measure positions.
- *   3. Dispatch the full mouse event sequence through DOM so React's onClick
- *      fires with a real rect, which VerbChipCluster uses to anchor itself.
- *
- * PRODUCT NOTE (W1): the board height overflows the viewport, meaning the own
- * hand is unreachable without scrolling. DuelStage's board div should be
- * constrained to `max-height: calc(100vh - 40px)` (40px = DuelTopBar) so that
- * it scrolls internally and the hand row stays in the initial viewport.
- * Filed as a product defect in the report.
- */
-async function clickSummonableHandCard(page: Page): Promise<void> {
-  // Wheel the board to scroll the hand row into the viewport.
-  // The board layout (two field groups + phase rail) overflows the 900px viewport
-  // at 1440×900 — the own hand row sits ~30-50px below the viewport bottom.
-  // PRODUCT NOTE (W1): DuelStage's overflow:auto board div needs max-height:
-  // calc(100vh - 40px) so the hand row stays within the initial viewport.
-  await page.mouse.move(720, 400);
-  await page.mouse.wheel(0, 600);
-  await page.waitForTimeout(150);
+// ---------------------------------------------------------------------------
+// F12 helper — design spec requirement F12
+//
+// Every visible interactive control must receive its own pointer clicks.
+// document.elementFromPoint at the element's centre must return that element
+// or a descendant — not an overlay, scrim, or action-panel on top of it.
+//
+// Return values:
+//   'OK'                            — element is hittable
+//   'OUTSIDE_VIEWPORT:top=<n>'      — element centre is below/above the viewport
+//   'OCCLUDED_BY:<tag>[testid=<id>] — another element intercepts at the centre
+//   'NOT_FOUND' / 'NULL_HIT'        — locator resolved to nothing / hit is null
+//
+// Usage: expect(await assertF12(locator, "description")).toBe('OK')
+// When the assertion fails the diagnostic string names the defect precisely:
+//   OUTSIDE_VIEWPORT → ZUH-106 (board layout overflow)
+//   OCCLUDED_BY:DIV[testid=action-panel] → ZUH-107 (panel intercepts verb chip)
+// ---------------------------------------------------------------------------
 
-  // Iterate through hand cards (max 6) until one shows a Normal Summon chip.
-  // One card in the 40-card E2E deck is level 7 (Ryu-Ran, passcode 2964201)
-  // and cannot be summoned on turn 1 (no tributes available). Clicking it
-  // produces a refusal chip instead of a verb chip cluster.
+async function assertF12(locator: Locator, description: string): Promise<void> {
+  const result = await locator.evaluate((el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    if (
+      rect.bottom <= 0 ||
+      rect.top >= window.innerHeight ||
+      rect.right <= 0 ||
+      rect.left >= window.innerWidth
+    ) {
+      return `OUTSIDE_VIEWPORT:top=${Math.round(rect.top)},vph=${window.innerHeight}`;
+    }
+    const cx = Math.round(rect.left + rect.width / 2);
+    const cy = Math.round(rect.top + rect.height / 2);
+    const hit = document.elementFromPoint(cx, cy);
+    if (!hit) return "NULL_HIT";
+    if (el === hit || el.contains(hit)) return "OK";
+    const id = hit.getAttribute("data-testid") ?? hit.getAttribute("aria-label") ?? "-";
+    return `OCCLUDED_BY:${hit.tagName}[testid=${id}]`;
+  });
+  expect(result, `F12 — ${description}: ${result}`).toBe("OK");
+}
+
+// ---------------------------------------------------------------------------
+// clickSummonableHandCard
+//
+// Scroll the hand row into view (real scroll via scrollIntoViewIfNeeded),
+// assert F12 (the button must receive its own pointer click — ZUH-106 check),
+// then do a real pointer click. Iterates through up to 6 hand cards to skip
+// any non-summonable card (e.g. Ryu-Ran level 7, passcode 2964201, which has no
+// Normal Summon option on turn 1 with an empty field).
+//
+// Returns with verb-chip-cluster visible and containing a Normal Summon chip.
+// Throws if no summonable card is found among the hand cards.
+// ---------------------------------------------------------------------------
+
+async function clickSummonableHandCard(page: Page): Promise<void> {
   const MAX_HAND = 6;
   for (let seq = 0; seq < MAX_HAND; seq++) {
-    await page.evaluate((s: number) => {
-      const btns = document.querySelectorAll("[data-testid='own-hand-row'] button");
-      const btn = btns[s] as HTMLElement | null;
-      if (!btn) return;
-      const rect = btn.getBoundingClientRect();
-      const cx = Math.round(rect.left + rect.width / 2);
-      const cy = Math.round(rect.top + rect.height / 2);
-      for (const t of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
-        btn.dispatchEvent(
-          new MouseEvent(t, {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            clientX: cx,
-            clientY: cy,
-          }),
-        );
-      }
-    }, seq);
+    const btn = page.getByTestId("own-hand-row").getByRole("button").nth(seq);
 
-    // Short wait for React to process the click.
-    await page.waitForTimeout(200);
+    // Real scroll — ensure the button is in the scrollable container's visible area.
+    await btn.scrollIntoViewIfNeeded();
+
+    // F12: button must receive its own pointer click.
+    // Fails with OUTSIDE_VIEWPORT if ZUH-106 (board overflow) is not fixed.
+    // Fails with OCCLUDED_BY if another element intercepts at the centre.
+    await assertF12(btn, `own-hand-row button[${seq}]`);
+
+    // Real pointer click.
+    await btn.click();
 
     // Check if a verb chip cluster appeared with a Normal Summon chip.
     const cluster = page.getByTestId("verb-chip-cluster");
@@ -96,9 +108,9 @@ async function clickSummonableHandCard(page: Page): Promise<void> {
     if (hasCluster) {
       const hasSummon =
         (await cluster.getByRole("menuitem", { name: /Normal Summon/i }).count()) > 0;
-      if (hasSummon) return; // found a summonable card
+      if (hasSummon) return; // found a summonable card — cluster stays open
     }
-    // Dismiss whatever appeared (refusal chip or wrong cluster) and try the next card.
+    // Dismiss and try the next card.
     await page.keyboard.press("Escape");
     await page.waitForTimeout(100);
   }
@@ -168,7 +180,6 @@ async function enterRoomAndReachBoard(
   await expect(alice.getByTestId("duel-board")).toBeVisible();
   await expect(bob.getByTestId("duel-board")).toBeVisible();
 
-  // Seat 0 is whoever clicked seat-first-btn (the flip winner).
   const goesFirst = winner;
   const goesSecond = winner === alice ? bob : alice;
   return { goesFirst, goesSecond };
@@ -244,7 +255,7 @@ test("backbone: two players connect, board renders, decision delivered, resign r
 });
 
 // ---------------------------------------------------------------------------
-// TEST 2 — INVITE-01: logged-out visitor sees challenger name and resumes after login
+// TEST 2 — INVITE-01: logged-out visitor sees challenger name and signs in
 // ---------------------------------------------------------------------------
 
 test("INVITE-01: a duel link opened while logged-out shows challenger name and resumes after login", async ({
@@ -293,12 +304,12 @@ test("INVITE-01: a duel link opened while logged-out shows challenger name and r
 // that card. IdleCommand/BattleCommand are NEVER rendered as a question panel.
 //
 // A1: "no question surface is on screen" when IdleCommand is pending.
-// A5: at most one QuestionBar exists — checked implicitly (question-bar absent
-//     in act mode, present in answer mode).
+// A5: at most one QuestionBar exists — checked explicitly (count === 1).
+// F12: every control must receive its own pointer click (assertF12 before each).
 //
 // mzone: after one Normal Summon the summoned slot is occupied; the other four
-// remain empty. This is correct for a dense 5-slot row — the old test asserting
-// `empty-zone` count === 0 was arithmetically wrong.
+// remain empty. The old assertion of empty-zone count === 0 was wrong for a
+// dense 5-slot row.
 // ---------------------------------------------------------------------------
 
 test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone placed, mzone correct", async ({
@@ -322,7 +333,7 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
 
     // Wait for the IdleCommand to arrive before asserting on act mode.
     // end-turn-btn is enabled only when legalNextPhases includes EP, which
-    // requires decision.kind==="IdleCommand" with toEndPhase:true (mode==="act").
+    // requires decision.kind === "IdleCommand" with toEndPhase: true.
     await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
 
     // ── A1: no question surface in ACT mode ───────────────────────────────
@@ -333,33 +344,37 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     // A1 strict: the action-panel must NOT surface IdleCommand choices as a
     // bottom panel. Under the new grammar the panel is empty (no-decision or
     // waiting placeholder) in act mode — verb chips live on the board.
-    // This assertion is deliberately assertive: it FAILS if renderActButtons()
-    // or equivalent puts "Normal Summon" text into the action-panel, which is
-    // the "rebuilt panel" defect PRD A1 was written to prevent.
+    // This assertion FAILS if renderActButtons() or equivalent puts "Normal
+    // Summon" text into the action-panel, which is the "rebuilt panel" defect
+    // PRD A1 was written to prevent.
     await expect(goesFirst.getByTestId("action-panel")).not.toContainText(/Normal Summon/i);
 
     // ── Verb chip flow ────────────────────────────────────────────────────
-    // Click a summonable hand card → verb-chip-cluster appears with Normal Summon.
-    // clickSummonableHandCard scrolls the board and iterates cards until it
-    // finds one with a Normal Summon chip, returning with the cluster visible.
+    // clickSummonableHandCard scrolls the hand row into view, asserts F12 on
+    // the button, does a real pointer click, and iterates to find a summonable
+    // card. Returns with verb-chip-cluster visible and Normal Summon chip ready.
+    // Fails with OUTSIDE_VIEWPORT if ZUH-106 (board overflow) is not fixed.
     const handRow = goesFirst.getByTestId("own-hand-row");
     await expect(handRow).toBeVisible();
     await clickSummonableHandCard(goesFirst);
 
-    // clickSummonableHandCard returns with the cluster visible and Normal Summon
-    // present — these assertions confirm the product state at return time.
+    // Cluster is open on return.
     await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
 
-    // No question-bar while verb cluster is open (Law 1 — ACT and ANSWER
+    // Law 1: no question-bar while verb cluster is open (ACT and ANSWER
     // cannot be live simultaneously).
     await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible();
 
-    // Click the "Normal Summon" verb chip.
-    await goesFirst
+    // F12 on the Normal Summon chip before clicking.
+    // Fails with OCCLUDED_BY:DIV[testid=action-panel] if ZUH-107 is present.
+    const summonChip = goesFirst
       .getByTestId("verb-chip-cluster")
       .getByRole("menuitem", { name: /Normal Summon/i })
-      .first()
-      .click();
+      .first();
+    await assertF12(summonChip, "Normal Summon chip");
+
+    // Real pointer click on the chip.
+    await summonChip.click();
 
     // ── After summon intent: SelectZone decision ──────────────────────────
     // The engine follows up with SelectZone. In answer mode:
@@ -374,10 +389,11 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     // ── Zone selection ────────────────────────────────────────────────────
     // zone-option buttons are rendered by DecisionRenderer for SelectZone
     // when prefs.chooseZones === true (set in DuelStage).
-    await expect(goesFirst.getByTestId("zone-option").first()).toBeVisible();
-    const zoneOptions = goesFirst.getByTestId("zone-option");
-    const firstZone = zoneOptions.first();
-    await firstZone.click({ force: true });
+    const firstZoneOption = goesFirst.getByTestId("zone-option").first();
+    await expect(firstZoneOption).toBeVisible();
+    // F12 on zone option button.
+    await assertF12(firstZoneOption, "zone-option[0]");
+    await firstZoneOption.click();
 
     // ── mzone assertion: summoned card is in zone 0, four others empty ────
     // Design C2 (dense arrays): index === sequence. Clicking zone-option[0]
@@ -386,9 +402,7 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     const myMzone = goesFirst.locator('[data-testid="my-mzone"]');
     await expect(myMzone).toBeVisible();
 
-    // Zone 0 must be occupied (aria-label contains "zone 0", not "Empty").
-    // ZoneSlot renders empty as: aria-label="Empty MZONE zone 0"
-    // ZoneSlot renders occupied as: aria-label="Card in MZONE zone 0"
+    // Zone 0 must be occupied (aria-label contains "zone 0", not "Empty MZONE zone 0").
     const zone0 = myMzone.locator('[aria-label*="MZONE zone 0"]');
     await expect(zone0).toBeVisible();
     await expect(zone0).not.toHaveAttribute("data-testid", "empty-zone");
@@ -406,7 +420,7 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
 
 // ---------------------------------------------------------------------------
 // TEST 4 — Turn play-through: Normal Summon → End Phase → Battle Phase
-//          → direct attack → opponent LP drops
+//          → direct attack → LP drops
 //
 // Proves a complete turn sequence via the new verb chip grammar.
 //
@@ -419,128 +433,132 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
 //   opponent LP drops below 8000
 // ---------------------------------------------------------------------------
 
-test("play-through: Normal Summon → End Phase → Battle Phase → direct attack → LP drops", async ({
-  browser,
-}) => {
-  // This test drives two full turns with multiple server round-trips; raise the
-  // test-level timeout above the 60s config default.
-  test.setTimeout(120_000);
-  const ctxA = await browser.newContext();
-  const ctxB = await browser.newContext();
-  const alice = await ctxA.newPage();
-  const bob = await ctxB.newPage();
+test(
+  "play-through: Normal Summon → End Phase → Battle Phase → direct attack → LP drops",
+  { timeout: 120_000 },
+  async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const alice = await ctxA.newPage();
+    const bob = await ctxB.newPage();
 
-  try {
-    await login(alice, "e2e_alice");
-    await login(bob, "e2e_bob");
-
-    const joinPath = await createRoomAsAlice(alice);
-    await bob.goto(joinPath);
-    await bob.waitForURL((u) => u.pathname.includes("/room"));
-
-    const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
-
-    // ══════════════════════════════════════════════════════════════════════
-    // TURN 1 (seat 0 = goesFirst): Normal Summon via verb chip → End Phase
-    // First-player attack restriction: toBattlePhase=false on turn 1.
-    // ══════════════════════════════════════════════════════════════════════
-
-    // Wait for the IdleCommand to arrive: end-turn-btn becomes enabled only
-    // when legalNextPhases includes EP (derived from IdleCommand.toEndPhase).
-    // "no-decision" appears in act/waiting/ended modes alike so it cannot
-    // distinguish a live decision from the waiting state.
-    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
-
-    // Verb chip: click first hand card.
-    const handRow1 = goesFirst.getByTestId("own-hand-row");
-    await expect(handRow1).toBeVisible();
-    await clickSummonableHandCard(goesFirst);
-    await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
-
-    // Click "Normal Summon" chip.
-    await goesFirst
-      .getByTestId("verb-chip-cluster")
-      .getByRole("menuitem", { name: /Normal Summon/i })
-      .first()
-      .click();
-
-    // SelectZone — pick first available zone.
-    await expect(goesFirst.getByTestId("zone-option").first()).toBeVisible();
-    await goesFirst.getByTestId("zone-option").first().click({ force: true });
-
-    // Zone 0 is occupied; four others empty (dense-array C2 invariant).
-    await expect(
-      goesFirst.locator('[data-testid="my-mzone"]').locator('[aria-label*="MZONE zone 0"]'),
-    ).not.toHaveAttribute("data-testid", "empty-zone");
-    await expect(
-      goesFirst.locator('[data-testid="my-mzone"]').getByTestId("empty-zone"),
-    ).toHaveCount(4);
-
-    // End Turn (phase rail end-turn-btn).
-    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
-    await goesFirst.getByTestId("end-turn-btn").click();
-
-    // ══════════════════════════════════════════════════════════════════════
-    // TURN 1 (seat 1 = goesSecond): End Turn immediately
-    // ══════════════════════════════════════════════════════════════════════
-
-    // Wait for goesSecond's IdleCommand: end-turn-btn enabled means the
-    // engine has delivered a decision for this seat.
-    await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
-    await goesSecond.getByTestId("end-turn-btn").click();
-
-    // ══════════════════════════════════════════════════════════════════════
-    // TURN 2 (seat 0 = goesFirst): Battle Phase → direct attack → LP drops
-    // ══════════════════════════════════════════════════════════════════════
-
-    // Wait for turn 2 IdleCommand (toBattlePhase=true → BP button enabled).
-    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
-
-    // Advance to Battle Phase via the phase rail.
-    // PhaseRail renders BP cell as: aria-label="Battle Phase — advance here"
-    const bpButton = goesFirst.getByRole("button", { name: /Battle Phase.*advance/i });
-    await expect(bpButton).toBeVisible();
-    await bpButton.click();
-
-    // In Battle Phase, click the summoned monster to get verb chips.
-    const myMzone2 = goesFirst.locator('[data-testid="my-mzone"]');
-    const summonedCard = myMzone2.locator('button[aria-label*="MZONE zone 0"]');
-    await expect(summonedCard).toBeVisible();
-    await summonedCard.click();
-    await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
-
-    // Click "Attack" or "Attack directly" verb chip.
-    await goesFirst
-      .getByTestId("verb-chip-cluster")
-      .getByRole("menuitem", { name: /Attack/i })
-      .first()
-      .click();
-
-    // Safety net: pass any ChainPrompt (all-Normal-monster deck — should not fire).
     try {
-      await goesFirst
-        .getByTestId("pass-option")
-        .first()
-        .waitFor({ state: "visible", timeout: 1_000 });
-      await goesFirst.getByTestId("pass-option").first().click();
-    } catch {
-      // Expected: no chain prompt with Normal monsters.
-    }
+      await login(alice, "e2e_alice");
+      await login(bob, "e2e_bob");
 
-    // ── Assert real game progress ─────────────────────────────────────────
-    // Opponent's LP plate aria-label is "{name} LP: {lp}" (LifePointPlate).
-    // Assert that LP dropped from 8000 by checking aria-label no longer ends
-    // with "LP: 8000".
-    await expect(goesFirst.locator('[data-testid="opp-lp-plate"]')).not.toHaveAttribute(
-      "aria-label",
-      /LP: 8000$/,
-    );
-    await expect(goesSecond.locator('[data-testid="own-lp-plate"]')).not.toHaveAttribute(
-      "aria-label",
-      /LP: 8000$/,
-    );
-  } finally {
-    await ctxA.close();
-    await ctxB.close();
-  }
-});
+      const joinPath = await createRoomAsAlice(alice);
+      await bob.goto(joinPath);
+      await bob.waitForURL((u) => u.pathname.includes("/room"));
+
+      const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
+
+      // ══════════════════════════════════════════════════════════════════════
+      // TURN 1 (seat 0 = goesFirst): Normal Summon via verb chip → End Phase
+      // First-player attack restriction: toBattlePhase=false on turn 1.
+      // ══════════════════════════════════════════════════════════════════════
+
+      // Wait for the IdleCommand: end-turn-btn enabled means toEndPhase=true.
+      await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+
+      // Verb chip: find a summonable hand card, assert F12, real click.
+      const handRow1 = goesFirst.getByTestId("own-hand-row");
+      await expect(handRow1).toBeVisible();
+      await clickSummonableHandCard(goesFirst);
+      await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
+
+      // F12 on Normal Summon chip before clicking.
+      const summonChip1 = goesFirst
+        .getByTestId("verb-chip-cluster")
+        .getByRole("menuitem", { name: /Normal Summon/i })
+        .first();
+      await assertF12(summonChip1, "Normal Summon chip (turn 1)");
+      await summonChip1.click();
+
+      // SelectZone — pick first available zone.
+      const firstZone1 = goesFirst.getByTestId("zone-option").first();
+      await expect(firstZone1).toBeVisible();
+      await assertF12(firstZone1, "zone-option[0] (turn 1)");
+      await firstZone1.click();
+
+      // Zone 0 is occupied; four others empty (dense-array C2 invariant).
+      await expect(
+        goesFirst.locator('[data-testid="my-mzone"]').locator('[aria-label*="MZONE zone 0"]'),
+      ).not.toHaveAttribute("data-testid", "empty-zone");
+      await expect(
+        goesFirst.locator('[data-testid="my-mzone"]').getByTestId("empty-zone"),
+      ).toHaveCount(4);
+
+      // End Turn (phase rail end-turn-btn).
+      await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+      await assertF12(goesFirst.getByTestId("end-turn-btn"), "end-turn-btn (turn 1)");
+      await goesFirst.getByTestId("end-turn-btn").click();
+
+      // ══════════════════════════════════════════════════════════════════════
+      // TURN 1 (seat 1 = goesSecond): End Turn immediately
+      // ══════════════════════════════════════════════════════════════════════
+
+      await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
+      await assertF12(goesSecond.getByTestId("end-turn-btn"), "end-turn-btn (seat 1 turn 1)");
+      await goesSecond.getByTestId("end-turn-btn").click();
+
+      // ══════════════════════════════════════════════════════════════════════
+      // TURN 2 (seat 0 = goesFirst): Battle Phase → direct attack → LP drops
+      // ══════════════════════════════════════════════════════════════════════
+
+      // Wait for turn 2 IdleCommand.
+      await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+
+      // Advance to Battle Phase via the phase rail.
+      // PhaseRail renders BP cell as: aria-label="Battle Phase — advance here"
+      const bpButton = goesFirst.getByRole("button", { name: /Battle Phase.*advance/i });
+      await expect(bpButton).toBeVisible();
+      await assertF12(bpButton, "Battle Phase advance button");
+      await bpButton.click();
+
+      // In Battle Phase, click the summoned monster for verb chips.
+      const myMzone2 = goesFirst.locator('[data-testid="my-mzone"]');
+      const summonedCard = myMzone2.locator('button[aria-label*="MZONE zone 0"]');
+      await expect(summonedCard).toBeVisible();
+      await summonedCard.scrollIntoViewIfNeeded();
+      await assertF12(summonedCard, "summoned card MZONE zone 0");
+      await summonedCard.click();
+
+      await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
+
+      // F12 on Attack chip before clicking.
+      const attackChip = goesFirst
+        .getByTestId("verb-chip-cluster")
+        .getByRole("menuitem", { name: /Attack/i })
+        .first();
+      await assertF12(attackChip, "Attack chip");
+      await attackChip.click();
+
+      // Safety net: pass any ChainPrompt (all-Normal-monster deck).
+      try {
+        await goesFirst
+          .getByTestId("pass-option")
+          .first()
+          .waitFor({ state: "visible", timeout: 1_000 });
+        await goesFirst.getByTestId("pass-option").first().click();
+      } catch {
+        // Expected: no chain prompt with Normal monsters.
+      }
+
+      // ── Assert real game progress ─────────────────────────────────────────
+      // Opponent's LP plate aria-label is "{name} LP: {lp}" (LifePointPlate).
+      // Assert that LP dropped from 8000 by checking aria-label no longer ends
+      // with "LP: 8000".
+      await expect(goesFirst.locator('[data-testid="opp-lp-plate"]')).not.toHaveAttribute(
+        "aria-label",
+        /LP: 8000$/,
+      );
+      await expect(goesSecond.locator('[data-testid="own-lp-plate"]')).not.toHaveAttribute(
+        "aria-label",
+        /LP: 8000$/,
+      );
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+    }
+  },
+);
