@@ -294,8 +294,14 @@ export function useDuelInteraction({
             r.sequence === ref.sequence,
         );
         if (existing >= 0) {
-          // Radio semantics for max===1: deselecting the only option keeps selection empty
-          // (which disables the confirm button — the correct behavior per spec).
+          // Radio semantics (design spec §0a): when min === max === 1, the already-selected
+          // card cannot be deselected — clicking it again is a no-op. Deselecting the only
+          // option would disable the confirm button and dead-end the step.
+          let min = 1;
+          if (decision.kind === "SelectCard" || decision.kind === "SelectTribute") {
+            min = decision.min;
+          }
+          if (min === 1 && max === 1) return prev; // no-op: radio, never toggle
           return prev.filter((_, i) => i !== existing);
         }
         if (prev.length >= max) {

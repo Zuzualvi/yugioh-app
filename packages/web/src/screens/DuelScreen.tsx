@@ -19,7 +19,7 @@
  *   - role=alert on credential failure
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type {
   DuelClientMessage,
@@ -36,6 +36,9 @@ import { openDuelSocket } from "../api/duelSocket";
 import { getSeatCredential } from "../api/room";
 import type { DuelSettings } from "../components/duel/chrome/SettingsPopover";
 import type { MockDuelSession } from "../mock/duelSession";
+import { EventLogRail } from "../components/duel/log/EventLogRail";
+import { DuelEndOverlay } from "../components/duel/DuelEndOverlay";
+import { createCardCache } from "../duel/cardCache";
 
 // ── CSS custom properties (W1 declares once) ─────────────────────────────────
 const DUEL_CSS = `
@@ -95,6 +98,10 @@ export function DuelScreen() {
 
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
+
+  // Card cache for EventLogRail (W3 — separate from DuelStage's own cache)
+  const [, setLogCacheTick] = useState(0);
+  const logCardCache = useMemo(() => createCardCache(() => setLogCacheTick((n) => n + 1)), []);
 
   // Fetch seat credential if not provided via router state (E45 refresh recovery)
   useEffect(() => {
@@ -357,23 +364,15 @@ export function DuelScreen() {
               />
             </div>
 
-            {/* W3 SLOT: EventLogRail — mounted when logOpen */}
-            {logOpen && (
-              <div
-                data-testid="log-rail-stub"
-                style={{
-                  width: 320,
-                  borderLeft: "1px solid var(--border)",
-                  background: "var(--bg-1)",
-                  padding: 12,
-                  flexShrink: 0,
-                  fontSize: "0.875rem",
-                  color: "var(--text-2)",
-                }}
-              >
-                Event log (W3 coming)
-              </div>
-            )}
+            {/* W3: EventLogRail — overlays right edge; always mounted, open/close via prop */}
+            <EventLogRail
+              events={events}
+              open={logOpen}
+              onOpenChange={setLogOpen}
+              mySeat={effectiveSeat}
+              playerNames={["You", "Opponent"]}
+              lookup={logCardCache}
+            />
           </div>
         ) : (
           <div
@@ -390,91 +389,19 @@ export function DuelScreen() {
           </div>
         )}
 
-        {/* Duel-end overlay (W3 slot — basic version) */}
+        {/* W3: DuelEndOverlay */}
         {duelEnded && (
           <DuelEndOverlay
             winner={duelEnded.winner}
             reason={duelEnded.reason}
             mySeat={effectiveSeat}
+            finalLp={state?.lp ?? [0, 0]}
+            playerNames={["You", "Opponent"]}
             onHome={() => navigate("/")}
+            onOpenLog={() => setLogOpen(true)}
           />
         )}
       </div>
     </>
-  );
-}
-
-// ── DuelEndOverlay (inline for now — W3 will extend) ─────────────────────────
-
-interface DuelEndOverlayProps {
-  winner: Seat | null;
-  reason: string;
-  mySeat: Seat;
-  onHome: () => void;
-}
-
-function DuelEndOverlay({ winner, reason, mySeat, onHome }: DuelEndOverlayProps) {
-  const iWon = winner === mySeat;
-  const isDraw = winner === null;
-
-  let resultText: string;
-  if (isDraw) resultText = "Draw!";
-  else if (iWon) resultText = "You win!";
-  else resultText = "You lose.";
-
-  let reasonText: string;
-  if (reason === "timeout") {
-    reasonText = iWon
-      ? "Opponent's move timer ran out."
-      : "Your move timer ran out — the duel is forfeit.";
-  } else if (reason === "resign") {
-    reasonText = iWon ? "Opponent resigned." : "You resigned.";
-  } else {
-    reasonText = iWon ? "Opponent's LP reached 0." : "Your LP reached 0.";
-  }
-
-  return (
-    <div
-      data-testid="duel-end-banner"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.72)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100,
-      }}
-    >
-      <div
-        style={{
-          background: "var(--bg-1)",
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          padding: 40,
-          textAlign: "center",
-          maxWidth: 400,
-          width: "90%",
-        }}
-      >
-        <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>
-          {isDraw ? "🤝" : iWon ? "🏆" : "💀"}
-        </div>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>{resultText}</h2>
-        <p
-          data-testid="duel-end-reason"
-          style={{ color: "var(--text-1)", fontSize: "1rem", marginBottom: 28 }}
-        >
-          {reasonText}
-        </p>
-        <button
-          className="btn btn-primary"
-          onClick={onHome}
-          style={{ minHeight: 44, padding: "10px 32px", width: "100%" }}
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
   );
 }
