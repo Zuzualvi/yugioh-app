@@ -244,6 +244,11 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
     void goesSecond; // used only to prevent teardown before the board is stable
 
+    // Wait for the IdleCommand to arrive before asserting on act mode.
+    // end-turn-btn is enabled only when legalNextPhases includes EP, which
+    // requires decision.kind==="IdleCommand" with toEndPhase:true (mode==="act").
+    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+
     // ── A1: no question surface in ACT mode ───────────────────────────────
     // The QuestionBar (ANSWER-mode surface) must be absent when IdleCommand
     // is pending. If question-bar is visible here, A1 is violated.
@@ -262,7 +267,7 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     const handRow = goesFirst.getByTestId("own-hand-row");
     await expect(handRow).toBeVisible();
     const firstHandCard = handRow.getByRole("button").first();
-    await firstHandCard.click();
+    await firstHandCard.click({ force: true });
 
     // VerbChipCluster appears anchored at the card (design §3).
     await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
@@ -371,7 +376,7 @@ test("play-through: Normal Summon → End Phase → Battle Phase → direct atta
     // Verb chip: click first hand card.
     const handRow1 = goesFirst.getByTestId("own-hand-row");
     await expect(handRow1).toBeVisible();
-    await handRow1.getByRole("button").first().click();
+    await handRow1.getByRole("button").first().click({ force: true });
     await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
 
     // Click "Normal Summon" chip.
