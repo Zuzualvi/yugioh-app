@@ -544,36 +544,25 @@ function buildDecisionContext(
     }
   }
 
-  // releaseCounts: from SELECT_TRIBUTE messages in pending (only for IdleCommand context)
-  // Check if there is an IdleCommand (SELECT_IDLECMD = 11) in pending messages
-  const idleMsg = pendingMessages.find((m) => m.type === 11);
-  if (idleMsg) {
-    const summons = (idleMsg["summons"] as Array<{ code: number }> | undefined) ?? [];
-    // Derive tribute count from card level (0=none, 1=one tribute, 2=two tributes)
-    const releaseCounts: Record<string, number> = {};
-    for (let i = 0; i < summons.length; i++) {
-      const code = summons[i]?.code ?? 0;
-      releaseCounts[String(i)] = tributeCountForCode(code);
-    }
-    if (Object.keys(releaseCounts).length > 0) {
-      ctx.releaseCounts = releaseCounts;
-    }
-  }
+  // releaseCounts (ND-1): the spec asserts that release_param is on the wire in
+  // SELECT_IDLECMD, but live investigation (nd1.investigation.test.ts, 2026-08-07)
+  // confirms this is WRONG. SELECT_IDLECMD summons[] entries carry only
+  // {code, controller, location, sequence} — no tribute count, for any level.
+  // release_param only appears in SELECT_TRIBUTE (type 20), which fires AFTER the
+  // player commits to a summon. ND-1 cannot be delivered from idle-time data.
+  // releaseCounts is left absent here. Do NOT fill it by computing from card level
+  // without a CEO ruling — that is a generated rules claim, and requirement H forbids it.
 
   // Only emit if there's something to say
-  const hasContent = ctx.caption || ctx.chain || ctx.activatingCard || ctx.releaseCounts;
+  const hasContent = ctx.caption || ctx.chain || ctx.activatingCard;
   return hasContent ? ctx : null;
 
   void seat; // seat parameter reserved for future per-seat redaction of context
 }
 
-/** Tribute count based on monster level (assumes normal summon rules). */
-function tributeCountForCode(_code: number): number {
-  // Without a DB lookup we cannot know the level here. Return 0 as default;
-  // callers that need accurate counts should query the card DB separately.
-  // In practice the DECISION_CONTEXT is supplementary — the UI falls back fine.
-  return 0;
-}
+// tributeCountForCode is intentionally NOT implemented here. See comment above.
+// The engine does not publish the release count at idle (SELECT_IDLECMD) time.
+// ND-1 is unresolved pending a CEO ruling. Do not compute from card level.
 
 // ── Relay loop: step → broadcast messages → update clock ────────────────────
 
