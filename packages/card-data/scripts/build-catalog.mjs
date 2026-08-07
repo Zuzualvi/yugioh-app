@@ -272,6 +272,7 @@ async function main() {
       banlist: resolveBanlist(allowlistPc),
       aliasOf: null,
       imageId,
+      ...(OVERRIDES[String(catalogPc)] !== undefined ? { preErrataText: true } : {}),
     };
     catalogCards.push(dto);
   }

@@ -20,6 +20,9 @@ export interface CardDTO {
   banlist: Banlist; // resolved from the Edison lflist
   aliasOf: number | null; // base passcode this counts as (alt-art/pre-errata), else null
   imageId: number; // passcode to use for the image file
+  /** True when packages/card-data substituted this card's text from
+   *  preErrataDescOverrides.json. Derived from the override set; never hand-maintained. */
+  preErrataText?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +56,9 @@ export const CardDTOSchema = z.object({
   banlist: BanlistSchema,
   aliasOf: z.number().int().nullable(),
   imageId: z.number().int().positive(),
+  /** True when packages/card-data substituted this card's text from
+   *  preErrataDescOverrides.json. The C13 provenance badge keys off this. */
+  preErrataText: z.boolean().optional(),
 });
 
 export const CardCatalogSchema = z.object({

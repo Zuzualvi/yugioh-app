@@ -69,25 +69,37 @@ export const ZoneCardSchema = z
   .object({
     code: z.number(),
     position: z.number(),
+    /** Zone index within its location. Equals the array index in mzone/szone. */
+    sequence: z.number().int().nonnegative().optional(),
+    attack: z.number().int().nullable().optional(),
+    defense: z.number().int().nullable().optional(),
+    level: z.number().int().nullable().optional(),
+    isPublic: z.boolean().optional(),
   })
   .passthrough();
 export type ZoneCard = z.infer<typeof ZoneCardSchema>;
 
 // ── DuelZones ─────────────────────────────────────────────────────────────────
 
+const ZoneSlotSchema = ZoneCardSchema.nullable();
+
 export const DuelZonesSchema = z.object({
-  p0_hand: z.array(ZoneCardSchema),
+  p0_hand: z.array(ZoneCardSchema), // unchanged: dense-by-nature, no holes
   p1_hand: z.array(ZoneCardSchema),
-  p0_mzone: z.array(ZoneCardSchema),
-  p1_mzone: z.array(ZoneCardSchema),
-  p0_szone: z.array(ZoneCardSchema),
-  p1_szone: z.array(ZoneCardSchema),
-  p0_grave: z.array(ZoneCardSchema),
+  p0_mzone: z.array(ZoneSlotSchema), // CHANGED: length 5, nulls preserved
+  p1_mzone: z.array(ZoneSlotSchema),
+  p0_szone: z.array(ZoneSlotSchema), // CHANGED: length 5, nulls preserved
+  p1_szone: z.array(ZoneSlotSchema),
+  p0_fzone: ZoneSlotSchema.optional(), // NEW: the single field zone (core szone[5])
+  p1_fzone: ZoneSlotSchema.optional(),
+  p0_grave: z.array(ZoneCardSchema), // unchanged: piles, order-only
   p1_grave: z.array(ZoneCardSchema),
   p0_removed: z.array(ZoneCardSchema),
   p1_removed: z.array(ZoneCardSchema),
   p0_extra: z.array(ZoneCardSchema),
   p1_extra: z.array(ZoneCardSchema),
+  p0_deckCount: z.number().int().nonnegative().optional(), // NEW: count only, never contents
+  p1_deckCount: z.number().int().nonnegative().optional(), // NEW
 });
 export type DuelZones = z.infer<typeof DuelZonesSchema>;
 
@@ -108,6 +120,7 @@ export const DuelStateSnapshotSchema = z.object({
       deadlines: z.tuple([z.number(), z.number()]).optional(),
     })
     .optional(),
+  turnNumber: z.number().int().positive().optional(), // NEW: top-bar "TURN 4 · THEIRS"
 });
 export type DuelStateSnapshot = z.infer<typeof DuelStateSnapshotSchema>;
 

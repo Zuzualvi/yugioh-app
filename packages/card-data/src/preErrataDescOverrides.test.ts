@@ -87,3 +87,35 @@ describe("Susa Soldier (40473581) — no-override card is present and unchanged"
     expect(card!.desc).toBe(susaEntry!.ourCurrentDesc);
   });
 });
+
+describe("C4 preErrataText — catalog flag derived from override set", () => {
+  it("Sangan (26202165) has preErrataText: true in catalog", () => {
+    const card = cardMap.get(26202165);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBe(true);
+  });
+
+  it("Caius the Shadow Monarch (9748752) does NOT have preErrataText set", () => {
+    const card = cardMap.get(9748752);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBeFalsy();
+  });
+
+  it("all 35 needsOverride:true cards have preErrataText: true in catalog", () => {
+    const needsOverrideEntries = Object.entries(overridesJson).filter(
+      ([, v]) => v.needsOverride === true,
+    );
+    for (const [passcodeStr] of needsOverrideEntries) {
+      const passcode = Number(passcodeStr);
+      const card = cardMap.get(passcode);
+      expect(card, `card ${passcode} missing from catalog`).toBeDefined();
+      expect(card!.preErrataText, `card ${passcode} missing preErrataText`).toBe(true);
+    }
+  });
+
+  it("Susa Soldier (40473581) does NOT have preErrataText set (needsOverride: false)", () => {
+    const card = cardMap.get(40473581);
+    expect(card).toBeDefined();
+    expect(card!.preErrataText).toBeFalsy();
+  });
+});

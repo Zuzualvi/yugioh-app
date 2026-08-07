@@ -318,8 +318,12 @@ export function DuelBoard({ state, mySeat }: Props) {
 
   const myZones = {
     hand: mySeat === 0 ? zones.p0_hand : zones.p1_hand,
-    mzone: mySeat === 0 ? zones.p0_mzone : zones.p1_mzone,
-    szone: mySeat === 0 ? zones.p0_szone : zones.p1_szone,
+    mzone: (mySeat === 0 ? zones.p0_mzone : zones.p1_mzone).filter(
+      (c): c is ZoneCard => c !== null,
+    ),
+    szone: (mySeat === 0 ? zones.p0_szone : zones.p1_szone).filter(
+      (c): c is ZoneCard => c !== null,
+    ),
     grave: mySeat === 0 ? zones.p0_grave : zones.p1_grave,
     removed: mySeat === 0 ? zones.p0_removed : zones.p1_removed,
     extra: mySeat === 0 ? zones.p0_extra : zones.p1_extra,
@@ -327,8 +331,12 @@ export function DuelBoard({ state, mySeat }: Props) {
 
   const oppZones = {
     hand: oppSeat === 0 ? zones.p0_hand : zones.p1_hand,
-    mzone: oppSeat === 0 ? zones.p0_mzone : zones.p1_mzone,
-    szone: oppSeat === 0 ? zones.p0_szone : zones.p1_szone,
+    mzone: (oppSeat === 0 ? zones.p0_mzone : zones.p1_mzone).filter(
+      (c): c is ZoneCard => c !== null,
+    ),
+    szone: (oppSeat === 0 ? zones.p0_szone : zones.p1_szone).filter(
+      (c): c is ZoneCard => c !== null,
+    ),
     grave: oppSeat === 0 ? zones.p0_grave : zones.p1_grave,
     removed: oppSeat === 0 ? zones.p0_removed : zones.p1_removed,
     extra: oppSeat === 0 ? zones.p0_extra : zones.p1_extra,
