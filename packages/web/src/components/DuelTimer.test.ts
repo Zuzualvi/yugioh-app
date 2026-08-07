@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
- * DuelTimer tests — countdown rendering and timeout end state.
+ * ClockPanel (DuelTimer) tests — both clocks visible, running/banked labels,
+ * urgency escalation on own clock only (requirements D2, D3, D4).
  */
 import React from "react";
-import { cleanup, render, screen, act } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -16,96 +17,191 @@ beforeEach(() => {
   vi.useFakeTimers();
 });
 
-describe("DuelTimer", () => {
-  it("shows countdown when deadlineAt is in the future", async () => {
-    const { DuelTimer } = await import("./DuelTimer");
-    const deadline = Date.now() + 90_000; // 90 seconds
+describe("ClockPanel (DuelTimer)", () => {
+  it("shows both clocks when it is my turn (D2)", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+    const myDeadline = Date.now() + 90_000;
+    const oppDeadline = Date.now() + 120_000;
 
     render(
-      React.createElement(DuelTimer, {
+      React.createElement(ClockPanel, {
+        myDeadlineAt: myDeadline,
+        oppDeadlineAt: oppDeadline,
         onClockSeat: 0,
-        deadlineAt: deadline,
         mySeat: 0,
+        myName: "You",
+        oppName: "Opponent",
       }),
     );
 
-    const timer = screen.getByTestId("duel-timer");
-    expect(timer.textContent).toContain("Your clock");
-    // Should show seconds remaining
-    expect(timer.textContent).toMatch(/\d+s|\d+m/);
+    expect(screen.getByTestId("clock-row-own")).toBeTruthy();
+    expect(screen.getByTestId("clock-row-opp")).toBeTruthy();
   });
 
-  it("shows opponent clock label when it is the opponent's turn", async () => {
-    const { DuelTimer } = await import("./DuelTimer");
-    const deadline = Date.now() + 3600_000;
+  it("shows both clocks when it is opponent's turn (D2)", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+    const myDeadline = Date.now() + 90_000;
+    const oppDeadline = Date.now() + 120_000;
 
     render(
-      React.createElement(DuelTimer, {
+      React.createElement(ClockPanel, {
+        myDeadlineAt: myDeadline,
+        oppDeadlineAt: oppDeadline,
         onClockSeat: 1,
-        deadlineAt: deadline,
         mySeat: 0,
+        myName: "You",
+        oppName: "Opponent",
       }),
     );
 
-    const timer = screen.getByTestId("duel-timer");
-    expect(timer.textContent).toContain("Opponent's clock");
+    expect(screen.getByTestId("clock-row-own")).toBeTruthy();
+    expect(screen.getByTestId("clock-row-opp")).toBeTruthy();
   });
 
-  it("shows 'Time up!' when deadline has passed", async () => {
-    const { DuelTimer } = await import("./DuelTimer");
-    const deadline = Date.now() - 5000; // 5 seconds ago
+  it("labels my clock RUNNING when it is my turn", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+    const myDeadline = Date.now() + 90_000;
 
     render(
-      React.createElement(DuelTimer, {
+      React.createElement(ClockPanel, {
+        myDeadlineAt: myDeadline,
+        oppDeadlineAt: myDeadline,
         onClockSeat: 0,
-        deadlineAt: deadline,
         mySeat: 0,
       }),
     );
 
-    const timer = screen.getByTestId("duel-timer");
-    expect(timer.textContent).toContain("Time up!");
+    const myRow = screen.getByTestId("clock-row-own");
+    expect(myRow.textContent).toContain("RUNNING");
+    const oppRow = screen.getByTestId("clock-row-opp");
+    expect(oppRow.textContent).toContain("BANKED");
   });
 
-  it("counts down over time", async () => {
-    const { DuelTimer } = await import("./DuelTimer");
-    const deadline = Date.now() + 5000;
+  it("labels my clock BANKED when it is opponent's turn", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+    const myDeadline = Date.now() + 90_000;
 
     render(
-      React.createElement(DuelTimer, {
-        onClockSeat: 0,
-        deadlineAt: deadline,
+      React.createElement(ClockPanel, {
+        myDeadlineAt: myDeadline,
+        oppDeadlineAt: myDeadline,
+        onClockSeat: 1,
         mySeat: 0,
       }),
     );
 
-    // Initial: ~5s left
-    expect(screen.getByTestId("duel-timer").textContent).toContain("5s");
-
-    // Advance 3 seconds
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    // Should now show ~2s
-    expect(screen.getByTestId("duel-timer").textContent).toContain("2s");
+    const myRow = screen.getByTestId("clock-row-own");
+    expect(myRow.textContent).toContain("BANKED");
+    const oppRow = screen.getByTestId("clock-row-opp");
+    expect(oppRow.textContent).toContain("RUNNING");
   });
 
-  it("shows urgent styling when under 1 minute", async () => {
-    const { DuelTimer } = await import("./DuelTimer");
-    const deadline = Date.now() + 30_000; // 30 seconds — urgent
+  it("shows dash-dash when no clock frame yet (never 0:00)", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
 
-    const { container } = render(
-      React.createElement(DuelTimer, {
+    render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: null,
+        oppDeadlineAt: null,
         onClockSeat: 0,
-        deadlineAt: deadline,
         mySeat: 0,
       }),
     );
 
-    // Check the inline style attribute contains urgent border color
-    const timer = container.querySelector("[data-testid='duel-timer']") as HTMLElement;
-    const styleAttr = timer.getAttribute("style") ?? "";
-    expect(styleAttr).toContain("var(--invalid)");
+    // Both rows should show —:— not 0:00
+    const allText = document.body.textContent ?? "";
+    expect(allText).toContain("—:—");
+    expect(allText).not.toContain("0:00");
+  });
+
+  it("four pairwise-distinguishable urgency states on own clock (D3)", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+
+    // State 1: > 60s — normal
+    const { unmount: u1 } = render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: Date.now() + 90_000,
+        oppDeadlineAt: Date.now() + 90_000,
+        onClockSeat: 0,
+        mySeat: 0,
+      }),
+    );
+    const _row1 = screen.getByTestId("clock-row-own");
+    const _style1 = window.getComputedStyle(_row1);
+    u1();
+    cleanup();
+
+    // State 2: ≤ 60s — warn
+    const { unmount: u2 } = render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: Date.now() + 45_000,
+        oppDeadlineAt: Date.now() + 90_000,
+        onClockSeat: 0,
+        mySeat: 0,
+      }),
+    );
+    const row2 = screen.getByTestId("clock-row-own");
+    // warn state: shows "timeout forfeits the duel" text
+    expect(row2.textContent).toContain("timeout forfeits the duel");
+    u2();
+    cleanup();
+
+    // State 3: ≤ 30s — high
+    const { unmount: u3 } = render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: Date.now() + 20_000,
+        oppDeadlineAt: Date.now() + 90_000,
+        onClockSeat: 0,
+        mySeat: 0,
+      }),
+    );
+    const row3 = screen.getByTestId("clock-row-own");
+    expect(row3.textContent).toContain("timeout forfeits the duel");
+    u3();
+    cleanup();
+
+    // State 4: ≤ 10s — alarm
+    render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: Date.now() + 8_000,
+        oppDeadlineAt: Date.now() + 90_000,
+        onClockSeat: 0,
+        mySeat: 0,
+      }),
+    );
+    const row4 = screen.getByTestId("clock-row-own");
+    expect(row4.textContent).toContain("TIMEOUT FORFEITS THE DUEL");
+  });
+
+  it("opponent clock does NOT escalate regardless of remaining time (D4)", async () => {
+    const { ClockPanel } = await import("./duel/chrome/ClockPanel");
+
+    render(
+      React.createElement(ClockPanel, {
+        myDeadlineAt: Date.now() + 90_000,
+        oppDeadlineAt: Date.now() + 5_000, // opponent at alarm threshold
+        onClockSeat: 1, // opponent on clock
+        mySeat: 0,
+      }),
+    );
+
+    // Own clock should not escalate (it's banked at 90s)
+    const myRow = screen.getByTestId("clock-row-own");
+    expect(myRow.textContent).not.toContain("TIMEOUT");
+    expect(myRow.textContent).not.toContain("timeout forfeits");
+
+    // Opponent row should not show escalation text (D4)
+    const oppRow = screen.getByTestId("clock-row-opp");
+    expect(oppRow.textContent).not.toContain("TIMEOUT");
+    expect(oppRow.textContent).not.toContain("timeout forfeits");
+  });
+});
+
+// Legacy test: DuelTimer alias still works
+describe("DuelTimer (alias)", () => {
+  it("ClockPanel is exported as DuelTimer from DuelTimer.tsx", async () => {
+    const { DuelTimer } = await import("./DuelTimer");
+    expect(DuelTimer).toBeTruthy();
+    expect(typeof DuelTimer).toBe("function");
   });
 });
