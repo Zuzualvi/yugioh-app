@@ -41,6 +41,7 @@ import { createApp } from "../app.js";
 import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../catalog/fixture.js";
 import type { LoadedCatalog } from "../catalog/loadCatalog.js";
 import type { RoomSnapshot } from "@yugioh-app/contracts";
+import { clearAllTimers } from "./roomBroadcast.js";
 import { insertRoom } from "./roomStore.js";
 import { ROOM_OPEN_TTL_MS } from "./roomState.js";
 
@@ -104,6 +105,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  clearAllTimers(); // drain away timers before DB closes (ZUH-98)
   await new Promise<void>((r) => httpServer.close(() => r()));
   db.close();
 });
