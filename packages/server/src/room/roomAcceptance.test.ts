@@ -41,6 +41,7 @@ import { createApp } from "../app.js";
 import { FIXTURE_CARDS, FIXTURE_CATALOG } from "../catalog/fixture.js";
 import type { LoadedCatalog } from "../catalog/loadCatalog.js";
 import type { RoomSnapshot } from "@yugioh-app/contracts";
+import { clearAllTimers } from "./roomBroadcast.js";
 import { insertRoom } from "./roomStore.js";
 import { ROOM_OPEN_TTL_MS } from "./roomState.js";
 
@@ -79,6 +80,7 @@ let db: Database.Database;
 let app: Application;
 let httpServer: HttpServer;
 let port: number;
+let roomWss: ReturnType<typeof createRoomWss>;
 
 function makeFakeManager() {
   return new DuelManager(
@@ -98,12 +100,18 @@ beforeEach(async () => {
   const manager = makeFakeManager();
   app = createApp(db, makeTestCatalog(), manager);
   httpServer = createServer(app);
-  attachUpgradeRouter(httpServer, db, attachDuelWsServer(httpServer, db, manager), createRoomWss());
+  roomWss = createRoomWss();
+  attachUpgradeRouter(httpServer, db, attachDuelWsServer(httpServer, db, manager), roomWss);
   await new Promise<void>((r) => httpServer.listen(0, "127.0.0.1", () => r()));
   port = (httpServer.address() as { port: number }).port;
 });
 
 afterEach(async () => {
+  // 1. Terminate all WS clients: fires ws.on('close') synchronously so timers are armed.
+  await new Promise<void>((r) => roomWss.close(() => r()));
+  // 2. Clear those timers before DB closes (ZUH-98).
+  clearAllTimers();
+  // 3. Close HTTP server and DB.
   await new Promise<void>((r) => httpServer.close(() => r()));
   db.close();
 });
