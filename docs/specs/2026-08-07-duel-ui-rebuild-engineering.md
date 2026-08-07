@@ -298,17 +298,47 @@ Owns: `CardInspector`, `PileInspector`, `CardArt`, `ProvenanceBadge`, `EventLogR
 `DuelEndOverlay`, and the duel-scoped card cache (NH-1).
 Delivers: C3, C4, C10–C13, D5, D6, F8.
 
-### The seam — frozen here so it cannot drift
+### The seam — `packages/web/src/duel/contracts.ts`, and it is FROZEN
 
-`DuelStage` is owned by **W1** and consumed by W2 and W3. Its props and the context it publishes are
-fixed by design spec §1 and **may not be changed by W2 or W3**. W1 must land `DuelStage` with that
-exact surface, stubbed where it depends on W2/W3 components, in its first push.
+Every type that crosses a slice boundary is declared once, in
+**`packages/web/src/duel/contracts.ts`**. That file is **owned by the CTO and may not be edited by
+any slice.** It is types only — no implementation, so it cannot be a source of merge conflicts. If a
+slice needs a change to it, that is a change to somebody else's slice: **stop and ask.**
 
-Composition root is `packages/web/src/screens/DuelScreen.tsx`, and it is owned by **W1**. W2 and W3
-mount through the slots `DuelStage` exposes. Neither may edit `DuelScreen.tsx`.
+This is the internal application of the same rule the backend slices got. Three engineers building
+one screen in parallel is exactly the situation where a shape drifts, and a shared file that nobody
+may edit is cheaper than a convention everybody is asked to remember.
 
-Shared CSS custom properties (`--own`, `--opp`, dim opacity, urgency ramp) are declared once by W1.
-W2 and W3 consume them and must not redefine them.
+What crosses the boundary, and who implements which side:
+
+| Type | Implemented by | Consumed by |
+|---|---|---|
+| `CardRef`, `sameCardRef` | — (shared value type) | all three |
+| `DuelStageProps`, `DuelMode` | **W1** | W2, W3 |
+| `DuelInteraction` — `mode`, `candidates`, `selection`, `intent`, `chain`, `receipts`, `status` | **W2** | W1 (dim law, mode switching), W3 (log, inspectors) |
+| `PendingIntent`, `IntentStep`, `ChainLink`, `AutoAnswerReceipt` | **W2** | W1, W3 |
+| `CardLookup`, `CardInfo` | **W3** | W1 (tiles, chip labels), W2 (confirm labels) |
+| `InspectorControl` | **W3** | W1, W2 |
+| `OWNERSHIP_CSS_VARS` | **W1** declares the properties | W2, W3 consume, never redefine |
+
+**Nobody blocks on anybody.** Each slice ships a stub satisfying the interfaces it consumes, in its
+first push, and deletes the stub when the real implementation lands. W1 in particular must not wait
+for W2's state machine — a stub `DuelInteraction` returning `mode: "act"` with empty arrays is enough
+to build the whole board against.
+
+**`DuelScreen.tsx` is the composition root and is owned by W1 alone.** W2 and W3 mount through the
+slots `DuelStage` exposes and may not edit it.
+
+**Where the state machine lives, and why it is W2's.** `mode`, `selection`, `intent` and `chain` are
+the answer side of the screen: `intent` exists to survive the `STATE`-then-`DECISION` gap across
+sub-decisions, `chain` feeds the chain strip, `selection` feeds the confirm control. Only `mode` and
+`candidates` serve the board, and both are consumed there rather than derived there. Putting the
+machine in W1 would mean W2 asking W1 for a change every time an answer behaviour changed — which is
+most of W2's work.
+
+⚠️ **`intent` must NOT be cleared by a `STATE` frame.** `DuelScreen.tsx:128-131` nulls the pending
+decision on `STATE` today; the intent object must not follow it. That is requirement B2 and it is the
+single most-repeated failure in this screen's history.
 
 ---
 
