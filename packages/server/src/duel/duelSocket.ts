@@ -544,14 +544,10 @@ function buildDecisionContext(
     }
   }
 
-  // releaseCounts (ND-1): the spec asserts that release_param is on the wire in
-  // SELECT_IDLECMD, but live investigation (nd1.investigation.test.ts, 2026-08-07)
-  // confirms this is WRONG. SELECT_IDLECMD summons[] entries carry only
-  // {code, controller, location, sequence} — no tribute count, for any level.
-  // release_param only appears in SELECT_TRIBUTE (type 20), which fires AFTER the
-  // player commits to a summon. ND-1 cannot be delivered from idle-time data.
-  // releaseCounts is left absent here. Do NOT fill it by computing from card level
-  // without a CEO ruling — that is a generated rules claim, and requirement H forbids it.
+  // releaseCounts (ND-1): absent. SELECT_IDLECMD summons[] does not carry tribute
+  // count under any conditions — verified live at both level-5 and level-7 cases.
+  // release_param only appears in SELECT_TRIBUTE (type 20), which arrives after the
+  // player commits. ND-1 is withdrawn; count is readable from SelectTribute.min/max.
 
   // Only emit if there's something to say
   const hasContent = ctx.caption || ctx.chain || ctx.activatingCard;
@@ -559,10 +555,6 @@ function buildDecisionContext(
 
   void seat; // seat parameter reserved for future per-seat redaction of context
 }
-
-// tributeCountForCode is intentionally NOT implemented here. See comment above.
-// The engine does not publish the release count at idle (SELECT_IDLECMD) time.
-// ND-1 is unresolved pending a CEO ruling. Do not compute from card level.
 
 // ── Relay loop: step → broadcast messages → update clock ────────────────────
 

@@ -323,17 +323,16 @@ describe("DecisionContextSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts releaseCounts for ND-1", () => {
+  it("rejects unknown fields beyond the schema (releaseCounts removed — ND-1 withdrawn)", () => {
+    // releaseCounts was removed from the schema when ND-1 was withdrawn.
+    // DecisionContext uses passthrough: false (zod default), so unknown keys are stripped.
     const result = DecisionContextSchema.safeParse({
-      releaseCounts: { "0": 2, "1": 1 },
+      releaseCounts: { "0": 2 },
     });
+    // Zod strips unknown keys by default — parse succeeds but field is absent.
     expect(result.success).toBe(true);
-  });
-
-  it("rejects releaseCounts with non-integer values", () => {
-    const result = DecisionContextSchema.safeParse({
-      releaseCounts: { "0": 1.5 },
-    });
-    expect(result.success).toBe(false);
+    if (result.success) {
+      expect((result.data as Record<string, unknown>)["releaseCounts"]).toBeUndefined();
+    }
   });
 });

@@ -177,10 +177,11 @@ export const DecisionContextSchema = z.object({
       }),
     )
     .optional(),
-  /**
-   * ND-1: tribute cost per summonable entry in IdleCommand.summons[], keyed by
-   * the summon's array index as a string. Lets the verb chip read "Tribute Summon (2)".
-   */
-  releaseCounts: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  // releaseCounts (ND-1) is intentionally absent.
+  // Live investigation (2026-08-07) confirmed that SELECT_IDLECMD summons[] carries
+  // only {code, controller, location, sequence} — no tribute count — under all conditions
+  // (tested at level 5 and level 7). release_param appears only in SELECT_TRIBUTE (type 20),
+  // which arrives after the player commits to a summon. ND-1 is withdrawn; the count is
+  // readable from SelectTribute.min/max at the tribute step, where the engine gives it.
 });
 export type DecisionContext = z.infer<typeof DecisionContextSchema>;

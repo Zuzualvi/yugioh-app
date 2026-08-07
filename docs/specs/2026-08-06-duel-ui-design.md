@@ -207,6 +207,15 @@ Chips absent from the legal set are **not rendered** (not greyed). Chips that co
 the cost inline — `Tribute Summon (2)` — because `release_param` is on the wire and the player
 must not learn the cost *after* committing.
 
+> **Correction — CTO 2026-08-07:** The claim that "`release_param` is on the wire" is wrong.
+> Live investigation against ocgcore confirms that `SELECT_IDLECMD summons[]` carries only
+> `{code, controller, location, sequence}` — no tribute count — under all conditions (tested
+> at both level-5 and level-7). `release_param` appears only in `SELECT_TRIBUTE` (type 20),
+> which arrives **after** the player commits to a summon. ND-1 is withdrawn (CEO ruling,
+> 2026-08-07). The verb chip reads `Normal Summon — tribute` **without a count**. The count
+> (`SelectTribute.min`/`max`) is stated at the tribute step in the Intent Ribbon normally, and
+> in the Auto-answer receipt for the `min === max === cards.length` auto-answer case.
+
 **Entry:** click / `Enter` on any card you control, in ACT mode, while an `IdleCommand` or
 `BattleCommand` is pending for you.
 **Exit:** pick a chip (→ intent begins) · `Esc` · click away · the engine emits a decision
@@ -958,7 +967,13 @@ CLICK 1  Caius in hand
                       is thrown away today (messageToDecision.ts:505-515), so the
                       player currently learns the cost AFTER committing.
 
+> **Correction — CTO 2026-08-07:** `release_param` is NOT on the wire at idle time.
+> `SELECT_IDLECMD summons[]` carries only `{code, controller, location, sequence}`.
+> The chip reads `Normal Summon — tribute` (no count). The count is shown at the
+> tribute step (SelectTribute.min/max), not at chip time. ND-1 withdrawn.
+
 CLICK 2  "Tribute Summon (2)"
+> **Correction — CTO 2026-08-07:** chip reads `Normal Summon — tribute` (no numeric count).
          → RIBBON:  ⚔ Tribute Summoning "Caius the Shadow Monarch"
                        ●━━━━━━━━━🔒━━━━━━━━━○
                        Tributes   Zone      Position
@@ -994,6 +1009,10 @@ player *meant*. The 3 protocol steps they never see (`SelectZone`, and any singl
 | At step | Condition | Path |
 |---|---|---|
 | 2 | `min === max === cards.length` (exactly 2 monsters, need 2) | **auto-answered.** No bar. The two monsters flash and fly to the GY, the ribbon shows them. The 🔒 moves to step 1, and the *verb chip itself* becomes the commit — it reads `Tribute Summon (2) 🔒` |
+
+> **Correction — CTO 2026-08-07:** The auto-answer receipt reads `Normal Summon — tribute 🔒`
+> (no numeric count on the chip). The count (`min`/`max` from `SelectTribute`) is shown in the
+> ribbon narration that precedes the commit. ND-1 withdrawn.
 | 2 | more than 2 candidates | as drawn above |
 | 3 | `Choose zones` ON | the board becomes the answer space: legal zones glow, click one. Still the commit |
 | 4 | `positions.length === 1` | auto; no click |
@@ -1733,6 +1752,14 @@ child button, so a real mouse click at that button's centre activated a *differe
 |---|---|---|
 | Normal Summon | `IdleCommand.summons[]`, card level ≤ 4 | `Normal Summon` [m17] |
 | Normal Summon (tribute) | `IdleCommand.summons[]`, card level ≥ 5 | `Normal Summon — n tribute(s)` — **n from `release_param`**. The number carries its unit; `(1)` read as an option index [m4][m17] |
+
+> **Correction — CTO 2026-08-07 (load-bearing):** `release_param` is **absent from
+> `SELECT_IDLECMD summons[]`** under all conditions — verified against a live core at both
+> one-tribute (level 5) and two-tribute (level 7) cases. `release_param` appears only in
+> `SELECT_TRIBUTE` (type 20), after the player commits. Do NOT derive a count from card level;
+> that is a rules claim we generate, and Requirement H forbids it. The correct label is
+> `Normal Summon — tribute` (no count). The count (`SelectTribute.min`/`max`) is stated at
+> the tribute step in the Intent Ribbon. ND-1 is withdrawn (CEO ruling, 2026-08-07).
 | Special Summon | `IdleCommand.specialSummons[]` | `Special Summon` |
 | Set | `IdleCommand.monsterSets[]` ∪ `spellSets[]` | `Set` |
 | Activate | `IdleCommand.activates[]` | one chip per entry; label from `ActiveCardEntry.description` when there is more than one |
@@ -1773,6 +1800,10 @@ rail**. Losing sight of the current phase while choosing an attack is not an acc
 ### Acceptance criteria
 - [ ] A monster with 3 legal verbs shows 3 chips, in the global order, with `Inspect` last.
 - [ ] The tribute cost is on the chip, with its unit, before the player commits. Backend **ND-1**.
+
+> **Correction — CTO 2026-08-07:** This criterion is withdrawn with ND-1. The chip reads
+> `Normal Summon — tribute` (no count). The count is stated at the tribute step (SelectTribute
+> ribbon), not at chip time. Implementers of W2/VerbChipCluster must not add a count here.
 - [ ] `Esc`, click-away, and a new `DECISION` frame all dismiss the cluster with no response sent.
 - [ ] The cluster renders a visible `Esc closes — costs nothing` hint. [B2]
 - [ ] The cluster never overlaps the phase rail. [m5]
@@ -2425,6 +2456,16 @@ to be honest.
 | # | Item | Why | Must / nice | Size |
 |---|---|---|---|---|
 | **ND-1** | **Surface the tribute cost on `CardEntry` in `IdleCommand.summons[]`.** The raw `SELECT_IDLECMD` message carries `release_param` (confirmed in `decision-capture-raw.json` → `SELECT_TRIBUTE`); `messageToDecision.ts:505-515` reads it as a type alias (`:228`) and discards it | Without it the verb chip cannot read `Tribute Summon (2)` and the player learns the cost **after** committing. Part 1 R1.5 identifies the need; Part 2 does not list it as a delta | **must** ✅ **APPROVED by the CEO** | S–M. Either an additive optional `releaseCount?: number` on `CardEntry` (**additive change to a locked variant → needs a CTO ruling against ADR-0001**) or a sidecar frame alongside the decision, consistent with MH-3's recommended shape. **Sidecar is my recommendation** — same outcome, ADR untouched |
+
+> **Correction — CTO 2026-08-07:** ND-1 is **WITHDRAWN** (CEO ruling). The citation
+> `decision-capture-raw.json → SELECT_TRIBUTE` pointed at a different message from the one the
+> claim was about — `SELECT_TRIBUTE` (type 20), not `SELECT_IDLECMD` (type 11). That is how the
+> error survived review. Live investigation against ocgcore confirms `SELECT_IDLECMD summons[]`
+> carries only `{code, controller, location, sequence}` — no `release_param`, no tribute count —
+> under all conditions (tested at level 5 and level 7). `release_param` is on `SELECT_TRIBUTE`
+> only, after the player commits. The correct resolution: the verb chip reads `Normal Summon —
+> tribute` (no count); the count from `SelectTribute.min`/`max` is stated in the Intent Ribbon
+> at the tribute step, where the engine actually gives it. No backend change required.
 | **ND-2** | **Intent recovery on reconnect.** The pending-intent object is client-only. On reconnect the server re-sends `SEAT_ASSIGNED`+`STATE`+`CLOCK`+`DECISION` (`duelSocket.ts:311-349`) and the client can name the card but cannot know *which step of which intent* it is on | The ribbon degrades to a single-step ribbon after a reconnect mid-summon. Tolerable, but it should be a known degradation and not a bug report | nice | S. Either the client persists the intent in `sessionStorage`, or MH-3's sidecar carries an intent correlation id |
 | **ND-3** | **`IdleCommand.shuffle` is answerable but unadvertised.** `responseToOcgResponse.ts:101` maps `"shuffle"`, the raw message has `shuffle: true`, and `messageToDecision.ts:275-352` never reads it | Not needed by this design — there is no shuffle verb. Listed so it is decided rather than left as dead surface: either advertise it or drop the response value | nice | S |
 | **ND-4** | **Damage/LP events must name the seat whose LP moved.** `MSG_DAMAGE`(91) carries `player`, but `MSG_PAY_LPCOST`(100) and the battle-damage path do not consistently identify the losing seat in a form the log can render | Without it a log row reads `Caius — Damage −1200`, which a player reads as damage *taken by Caius*. The row must read `Sakura −1200 LP` | **must** ✅ **APPROVED by the CEO** | S. Server-local, inside MH-2a's normalisation — no contracts change |
@@ -2461,6 +2502,12 @@ three below are on the wrong side **today** and cross over the moment their caus
 | Finding | What it asked for | Why deferred, not rejected | **Unblocks when…** |
 |---|---|---|---|
 | **M5** (part) | The confirm control should read `Activate Solemn Judgment — pay 4000 LP` | The cost is not on the wire. Producing "4000" means parsing *"Pay half your LP"* out of card text and doing the arithmetic — a cause we generate, and one that would be confidently wrong on any card whose cost we mis-parse | **an activation cost reaches the wire as data.** Concretely: an optional `cost` on `ActiveCardEntry` — `{kind:"lp"; amount}` / `{kind:"lpFraction"; denominator}` / `{kind:"discard"; count}` / `{kind:"tribute"; count}` — or the engine's own resolved cost string. Then the label states what the engine said, and it is the same class of change as ND-1 (which is approved and does exactly this for tribute cost) |
+
+> **Correction — CTO 2026-08-07:** The analogy "same class of change as ND-1" no longer holds.
+> ND-1 is withdrawn (see correction above): the tribute cost was not on the wire at idle time
+> either, so it did not actually set the precedent this entry cited. M5's unblocking condition
+> is unchanged — an activation cost must reach the wire as data — but the approved precedent it
+> argued from has evaporated. The finding remains deferred on its own merits.
 | **M7** (part) | Clicking a card that affords nothing should say **why** | ocgcore publishes the legal list, not the reasons for omissions. Any general reason would be inferred by us. The one case we kept — *"This monster has already attacked"* — is derived from state we hold (absence from `attacks[]` during BP), not inferred | **an omission reason reaches the wire.** Concretely: a per-card reason code alongside `IdleCommand`/`BattleCommand`, or a `MSG_HINT`-carried annotation, saying why a card was excluded. At that point the message quotes the engine and H is satisfied |
 | **c1** | Stack both LP plates in one corner instead of diagonally opposite | **This one is not waiting on a wire capability, and it would be dishonest to file it as though it were.** It is a layout judgement: diagonal placement is Master Duel's polarity and makes position carry ownership without a label, which the pass's own "what passed" section credits. The cost — a long saccade to compare totals — is real but small, and the log's per-turn LP snapshot already removes the arithmetic | **evidence, not a delta.** It reopens if a usability pass shows players actually failing the LP comparison, or if the ownership colour law is ever weakened so position stops carrying the meaning on its own |
 

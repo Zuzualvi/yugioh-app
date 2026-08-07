@@ -205,7 +205,7 @@ New server→client frame:
 
 The existing `MSG` frame **stays** for now — deleting it is a separate decision and not this project's.
 
-### C7 · Decision sidecar — `packages/contracts/src/duelEvent.ts` (MH-3, ND-1)
+### C7 · Decision sidecar — `packages/contracts/src/duelEvent.ts` (MH-3)
 
 A **sidecar frame**, not fields on the locked union. This shape was ratified by the CEO precisely so
 ADR-0001 stays shut.
@@ -222,13 +222,16 @@ export const DecisionContextSchema = z.object({
     card: EventCardRefSchema,
     owner: SeatSchema,
   })).optional(),
-  /** ND-1: tribute cost per summonable entry, keyed by that entry's index in
-   *  IdleCommand.summons[]. Lets the verb chip read "Tribute Summon (2)". */
-  releaseCounts: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  // releaseCounts (ND-1) removed — CTO 2026-08-07:
+  // Live investigation confirmed SELECT_IDLECMD summons[] carries only
+  // {code, controller, location, sequence} — no tribute count — under all conditions.
+  // release_param appears only in SELECT_TRIBUTE (type 20), after the player commits.
+  // ND-1 is withdrawn (CEO ruling, 2026-08-07). The tribute count is readable from
+  // SelectTribute.min/max at the tribute step; no backend change required.
 });
+```
 
   z.object({ type: z.literal("DECISION_CONTEXT"), context: DecisionContextSchema }),
-```
 
 Send `DECISION_CONTEXT` **immediately before** the `DECISION` frame it describes, to the same seat
 only. A `DECISION` with no preceding context is legal and must render — every caption is optional.
