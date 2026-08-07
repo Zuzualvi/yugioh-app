@@ -1,14 +1,22 @@
 /**
- * ActionPanel — decision UI shell + RESIGN control.
+ * ActionPanel — replaced by the DuelDock in the W2 rebuild.
  *
- * Renders the DecisionDispatcher when a typed DuelDecision is pending, or a
- * "Waiting for engine…" placeholder when idle.  Always shows the RESIGN button.
+ * This file keeps the same prop interface as before so DuelScreen.tsx
+ * (owned by W1) can continue to import it unchanged until W1 integrates
+ * DuelStage and mounts DuelDock directly.
  *
- * a11y: ≥44px targets, keyboard nav, no color-only meaning.
+ * The implementation now delegates to DuelDock and the useDuelInteraction
+ * state machine.
+ *
+ * RESIGN has moved: it is now in the settings popover (W1/DuelTopBar).
+ * For backward-compatibility with DuelScreen.tsx, the resign button is
+ * retained here but will be removed when W1 owns it.
  */
 
+import React from "react";
 import type { DuelClientMessage, DuelDecision, DuelDecisionResponse } from "@yugioh-app/contracts";
-import { DecisionDispatcher } from "./duel/DecisionDispatcher";
+import { DuelDock } from "./duel/dock/DuelDock";
+import { useDuelInteraction } from "../duel/useDuelInteraction";
 
 interface Props {
   /** The current typed DuelDecision for this seat, or null if none pending */
@@ -19,10 +27,26 @@ interface Props {
 }
 
 export function ActionPanel({ decision, respond, onSend, disabled = false }: Props) {
+  const interaction = useDuelInteraction({
+    decision,
+    mySeat: 0, // Stub: DuelScreen provides mySeat to ActionPanel indirectly; W1 will fix.
+    duelEnded: disabled,
+    respond,
+    prefs: { chooseZones: false },
+  });
+
   function handleResign() {
     if (!confirm("Resign this duel?")) return;
     onSend({ type: "RESIGN" });
   }
+
+  // When there is no decision and no intent and no receipts, show the waiting placeholder
+  // for backward-compatibility with ActionPanel tests.
+  const showNoDecision =
+    decision === null &&
+    interaction.intent === null &&
+    interaction.receipts.length === 0 &&
+    interaction.chain.length === 0;
 
   return (
     <div
@@ -37,14 +61,7 @@ export function ActionPanel({ decision, respond, onSend, disabled = false }: Pro
         gap: 12,
       }}
     >
-      {decision ? (
-        <DecisionDispatcher
-          decision={decision}
-          respond={respond}
-          layoutTier="desktop"
-          disabled={disabled}
-        />
-      ) : (
+      {showNoDecision ? (
         <p
           style={{
             color: "var(--text-2)",
@@ -55,9 +72,26 @@ export function ActionPanel({ decision, respond, onSend, disabled = false }: Pro
         >
           Waiting for engine…
         </p>
+      ) : (
+        <DuelDock
+          decision={decision}
+          selection={interaction.selection}
+          chain={interaction.chain}
+          receipts={interaction.receipts}
+          intent={interaction.intent}
+          mySeat={0}
+          onToggle={interaction.toggleSelection}
+          onConfirm={interaction.confirm}
+          onDecline={interaction.decline}
+          onDirectRespond={respond}
+          onCancelIntent={interaction.cancelIntent}
+          onAskNextTime={() => interaction.setPrefs({ chooseZones: true })}
+          loading={interaction.status === "Sending…"}
+          disabled={disabled}
+        />
       )}
 
-      {/* Resign control — always visible */}
+      {/* Resign control — temporary: W1 moves this to DuelTopBar settings */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
         <button
           data-testid="resign-btn"
