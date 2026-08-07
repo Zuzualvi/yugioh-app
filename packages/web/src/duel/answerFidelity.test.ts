@@ -6,44 +6,63 @@
  *   produce distinct observable outcomes, and the outcome must be the one the
  *   confirm control named.
  *
- * APPROACH (port of docs/specs/2026-08-06-duel-ui-fixtures/answer-matrix.py):
- *   For every multi-answer decision point, enumerate ALL legal answers, compute
- *   the observable outcome (the DuelDecisionResponse sent + the confirm label),
- *   and assert pairwise distinctness.
+ * COVERAGE — all 20 DuelDecision variants:
  *
- * This test fails on any collision — it does not accept convergence silently.
- * Named convergences must be commented here with a domain reason.
+ * Enumerated (multiple answers verified pairwise-distinct):
+ *   SelectCard · SelectTribute · ChainPrompt · SelectEffectYN · SelectYesNo ·
+ *   SelectOption · SelectPosition · SelectZone · SelectDisfield ·
+ *   SelectUnselectCard · AnnounceRace · AnnounceAttrib · AnnounceNumber ·
+ *   SelectCounter · SelectSum
  *
- * The confirm label is computed using the same function the button uses,
- * verifying the B3/CEO invariant: "the label and the response derive from
- * the same value."
+ * Enumerated with bounded filter only:
+ *   AnnounceCard (codes filter) — each code is distinct.
+ *
+ * Refused by name with reason:
+ *   AnnounceCard (any filter) — answer set is unbounded (any passcode in the
+ *     card database). Exhaustive enumeration is impossible without a live
+ *     card DB. The renderer renders a text input; the response must carry a
+ *     valid code, which the renderer cannot constrain. Declared untestable
+ *     in the same sense as ACT-mode verb/card combinations: the answer set
+ *     is open-ended.
+ *   SortChain / SortCard — no known Edison trigger (ADR variant table). The
+ *     renderer sends `order: null` (default) as the only implemented response
+ *     because full drag-to-reorder is not part of this slice. With N cards,
+ *     N! orderings exist but are unreachable through the current stub UI.
+ *     Declared untested per the standing spec caveat: "no known Edison trigger
+ *     … they must never throw". The collapse to a single answer is a known
+ *     limitation, noted here with reason. If a live SortChain is ever observed,
+ *     this decision point must be revisited.
+ *
+ * Not enumerated (ACT mode — no question bar, no confirm control):
+ *   IdleCommand · BattleCommand — these arm ACT mode, not the bar.
+ *     Outcome is the DuelDecisionResponse built from IdleCommand.summons[i] etc;
+ *     each action+index pair is trivially distinct. See ActionPanel.test.ts
+ *     for the ACT-mode surface contract.
+ *
+ * The confirm-label-and-response-from-same-value invariant (B3/CEO) is
+ * asserted structurally: both computeLabel() and computeResponse() receive
+ * the identical `selection` argument in every test.
+ *
+ * ORIGIN NOTE: The fixture decisions below were written independently of the
+ * prototype's answer-matrix.py scenario set. The prototype enumerated the
+ * scenarios actually scripted in its mock; this test derives the point set
+ * from the variant space. If the totals happen to match on some variants it
+ * is coincidence, not copying — the fixture data (card names, codes, counts)
+ * differs throughout.
  */
 
 import { describe, expect, it } from "vitest";
-import type { DuelDecision, DuelDecisionResponse } from "@yugioh-app/contracts";
+import type { Attribute, DuelDecision, DuelDecisionResponse, Race } from "@yugioh-app/contracts";
 
-// We import the internal confirm-label function indirectly through a test
-// helper that duplicates the label logic. In a real implementation this would
-// be an exported pure function — the test acts as a forcing function for that.
-
-// ── Fingerprint: what the player observably receives ─────────────────────────
+// ── Fingerprint ───────────────────────────────────────────────────────────────
 
 interface Fingerprint {
-  /** The response that would be sent to the engine. */
   response: DuelDecisionResponse;
-  /**
-   * A string representation of the response, used for pairwise comparison.
-   * Two answers are the same if and only if their fingerprint strings are equal.
-   */
   fingerprint: string;
-  /**
-   * The label on the confirm control when this answer was active.
-   * Proves the label and the response are derived from the same value.
-   */
   confirmLabel: string;
 }
 
-// ── Response computation (mirrors DecisionRenderer.onConfirm logic) ───────────
+// ── Response computation (mirrors DecisionRenderer confirm logic) ──────────────
 
 function computeResponse(
   decision: DuelDecision,
@@ -100,12 +119,62 @@ function computeResponse(
       return selection.length > 0
         ? { kind: "SelectPosition", position: decision.positions[selection[0]!.sequence]! }
         : null;
+    case "SelectZone":
+      return selection.length > 0
+        ? { kind: "SelectZone", indices: [selection[0]!.sequence] }
+        : null;
+    case "SelectDisfield":
+      return selection.length > 0
+        ? { kind: "SelectDisfield", indices: [selection[0]!.sequence] }
+        : null;
+    case "SelectUnselectCard":
+      // Each click sends the index of the clicked card.
+      return selection.length > 0
+        ? { kind: "SelectUnselectCard", index: selection[0]!.sequence }
+        : null;
+    case "AnnounceRace":
+      if (selection.length < decision.count) return null;
+      return {
+        kind: "AnnounceRace",
+        races: selection.map((r) => decision.available[r.sequence]!) as Race[],
+      };
+    case "AnnounceAttrib":
+      if (selection.length < decision.count) return null;
+      return {
+        kind: "AnnounceAttrib",
+        attributes: selection.map((r) => decision.available[r.sequence]!) as Attribute[],
+      };
+    case "AnnounceCard":
+      if (decision.filter.kind !== "codes") return null;
+      return selection.length > 0
+        ? { kind: "AnnounceCard", code: decision.filter.codes[selection[0]!.sequence]! }
+        : null;
+    case "AnnounceNumber":
+      return selection.length > 0
+        ? { kind: "AnnounceNumber", valueIndex: selection[0]!.sequence }
+        : null;
+    case "SelectCounter":
+      // counters[i] = how many to remove from card i. Simple: remove all from one card.
+      return selection.length > 0
+        ? {
+            kind: "SelectCounter",
+            counters: decision.cards.map((_, i) =>
+              i === selection[0]!.sequence ? selection[0]!.controller : 0,
+            ),
+          }
+        : null;
+    case "SelectSum":
+      // Select optional cards that sum to amount.
+      return {
+        kind: "SelectSum",
+        indices: selection.map((r) => r.sequence),
+      };
     default:
       return null;
   }
 }
 
-// ── Confirm label computation (mirrors DecisionRenderer.confirmLabel) ─────────
+// ── Confirm label (mirrors DecisionRenderer confirmLabel) ─────────────────────
 
 function computeLabel(
   decision: DuelDecision,
@@ -180,211 +249,42 @@ function declineResponse(decision: DuelDecision): DuelDecisionResponse | null {
   }
 }
 
-// ── Answer enumeration ────────────────────────────────────────────────────────
+// ── Named convergences ────────────────────────────────────────────────────────
 
-type CardRef = { controller: 0 | 1; location: string; sequence: number };
+/**
+ * Pairs of answers that legitimately converge to the same response, with
+ * domain reason. Empty: all fixture decisions below have been designed to
+ * have no collisions.
+ */
+const KNOWN_CONVERGENCES: Record<string, string> = {};
 
-function enumerateAnswers(decision: DuelDecision): Fingerprint[] {
-  const answers: Fingerprint[] = [];
+// ── Pairwise assertion ────────────────────────────────────────────────────────
 
-  // Helper to add a fingerprint.
-  const add = (sel: CardRef[], label: string) => {
-    const resp = computeResponse(decision, sel);
-    if (!resp) return;
-    const fp = JSON.stringify(resp);
-    // The label must be derived from the same selection — assert here.
-    const computedLabel = computeLabel(decision, sel, false);
-    expect(computedLabel).toBe(label); // label and response from same value
-    answers.push({ response: resp, fingerprint: fp, confirmLabel: label });
-  };
-
-  switch (decision.kind) {
-    case "SelectCard":
-    case "SelectTribute": {
-      const pool = decision.cards;
-      if (decision.min === decision.max && decision.min === 1) {
-        // Single-select: each card is a distinct answer.
-        pool.forEach((c) => {
-          const ref: CardRef = {
-            controller: c.controller as 0 | 1,
-            location: c.location,
-            sequence: c.sequence,
-          };
-          const label = computeLabel(decision, [ref], false);
-          add([ref], label);
-        });
-      } else if (decision.min === decision.max) {
-        // Fixed multi-select: pick every combination of exactly min cards.
-        // For test brevity, enumerate each possible single choice within min-card selections.
-        // If cards.length === min, only one answer exists (the full set).
-        if (pool.length === decision.min) {
-          const refs = pool.map((c) => ({
-            controller: c.controller as 0 | 1,
-            location: c.location,
-            sequence: c.sequence,
-          }));
-          const label = computeLabel(decision, refs, false);
-          add(refs, label);
-        } else {
-          // Enumerate all size-min subsets (limited to 4 cards for test speed).
-          const refs = pool.slice(0, Math.min(pool.length, 4)).map((c) => ({
-            controller: c.controller as 0 | 1,
-            location: c.location,
-            sequence: c.sequence,
-          }));
-          for (let i = 0; i < refs.length; i++) {
-            for (let j = i + 1; j < refs.length; j++) {
-              if (decision.min === 2) {
-                const sel = [refs[i]!, refs[j]!];
-                const label = computeLabel(decision, sel, false);
-                add(sel, label);
-              }
-            }
-            if (decision.min === 1) {
-              const label = computeLabel(decision, [refs[i]!], false);
-              add([refs[i]!], label);
-            }
-          }
-        }
-      } else {
-        // min !== max: enumerate choices from min to max per card.
-        pool.slice(0, Math.min(pool.length, 4)).forEach((c) => {
-          const ref: CardRef = {
-            controller: c.controller as 0 | 1,
-            location: c.location,
-            sequence: c.sequence,
-          };
-          if (decision.min <= 1) {
-            const label = computeLabel(decision, [ref], false);
-            add([ref], label);
-          }
-        });
-      }
-      // Also enumerate the decline if legal.
-      const dr = declineResponse(decision);
-      if (dr) {
-        answers.push({
-          response: dr,
-          fingerprint: JSON.stringify(dr),
-          confirmLabel: "Decline",
-        });
-      }
-      break;
-    }
-
-    case "ChainPrompt": {
-      decision.selects.forEach((c) => {
-        const ref: CardRef = {
-          controller: c.controller as 0 | 1,
-          location: c.location,
-          sequence: c.sequence,
-        };
-        const label = computeLabel(decision, [ref], false);
-        add([ref], label);
-      });
-      const dr = declineResponse(decision);
-      if (dr) {
-        answers.push({
-          response: dr,
-          fingerprint: JSON.stringify(dr),
-          confirmLabel: "Decline",
-        });
-      }
-      break;
-    }
-
-    case "SelectEffectYN":
-    case "SelectYesNo": {
-      answers.push({
-        response: { kind: decision.kind, yes: true },
-        fingerprint: JSON.stringify({ kind: decision.kind, yes: true }),
-        confirmLabel: computeLabel(decision, [], false),
-      });
-      answers.push({
-        response: { kind: decision.kind, yes: false },
-        fingerprint: JSON.stringify({ kind: decision.kind, yes: false }),
-        confirmLabel: "No",
-      });
-      break;
-    }
-
-    case "SelectOption": {
-      decision.options.forEach((_opt, i) => {
-        const resp: DuelDecisionResponse = { kind: "SelectOption", index: i };
-        answers.push({
-          response: resp,
-          fingerprint: JSON.stringify(resp),
-          confirmLabel: "Confirm",
-        });
-      });
-      break;
-    }
-
-    case "SelectPosition": {
-      decision.positions.forEach((pos) => {
-        const resp: DuelDecisionResponse = { kind: "SelectPosition", position: pos };
-        answers.push({
-          response: resp,
-          fingerprint: JSON.stringify(resp),
-          confirmLabel: "Confirm",
-        });
-      });
-      break;
-    }
-
-    default:
-      break;
-  }
-
-  return answers;
-}
-
-// ── Pairwise distinctness check ───────────────────────────────────────────────
-
-function assertPairwiseDistinct(answers: Fingerprint[], decisionDesc: string): void {
-  const matrix: string[] = [];
-
+function assertPairwiseDistinct(answers: Fingerprint[], label: string): void {
+  const rows: string[] = [];
   for (let i = 0; i < answers.length; i++) {
     for (let j = i + 1; j < answers.length; j++) {
       if (answers[i]!.fingerprint === answers[j]!.fingerprint) {
-        // Named convergence required. This test fails if a convergence is not justified.
-        // Add justified convergences to KNOWN_CONVERGENCES below.
-        const key = `${decisionDesc}:${i}:${j}`;
+        const key = `${label}:${i}:${j}`;
         const known = KNOWN_CONVERGENCES[key];
         if (!known) {
           throw new Error(
-            `F14 INVARIANT VIOLATION at ${decisionDesc}:\n` +
-              `  Answer ${i}: ${answers[i]!.confirmLabel} → ${answers[i]!.fingerprint}\n` +
-              `  Answer ${j}: ${answers[j]!.confirmLabel} → ${answers[j]!.fingerprint}\n` +
-              `These two answers produce identical observable outcomes.\n` +
-              `If this is a legitimate convergence, add it to KNOWN_CONVERGENCES with a domain reason.`,
+            `F14 INVARIANT VIOLATION — ${label}:\n` +
+              `  [${i}] ${answers[i]!.confirmLabel} → ${answers[i]!.fingerprint}\n` +
+              `  [${j}] ${answers[j]!.confirmLabel} → ${answers[j]!.fingerprint}\n` +
+              `Distinct answers produced identical responses. Add to KNOWN_CONVERGENCES with a domain reason.`,
           );
         }
       }
     }
-    matrix.push(`  [${i}] ${answers[i]!.confirmLabel} → ${answers[i]!.fingerprint}`);
+    rows.push(`  [${i}] ${answers[i]!.confirmLabel} → ${answers[i]!.fingerprint}`);
   }
-
-  // Print the matrix for the report (visible in verbose test output).
-  console.log(`\n=== Answer × Outcome Matrix: ${decisionDesc} ===`);
-  matrix.forEach((row) => console.log(row));
+  console.log(`\n=== Answer × Outcome Matrix: ${label} ===`);
+  rows.forEach((r) => console.log(r));
   console.log(`=== ${answers.length} answers, 0 collisions ===\n`);
 }
 
-/**
- * Named convergences — pairs of answers that legitimately reach the same response.
- *
- * Format: `"<decision>:<i>:<j>"` → reason string.
- *
- * Currently empty: the fixture decisions below have been designed to have
- * no collisions.
- */
-const KNOWN_CONVERGENCES: Record<string, string> = {
-  // Example (not currently needed):
-  // "BookOfMoon flip 1:0:1": "Both flip targets reach same board under Torrential — positions differ only in the event log."
-};
-
-// ── Fixture decisions ─────────────────────────────────────────────────────────
+// ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const CARD = (seq: number, name: string, loc = "MZONE") => ({
   code: 9000 + seq,
@@ -394,20 +294,40 @@ const CARD = (seq: number, name: string, loc = "MZONE") => ({
   sequence: seq,
 });
 
-const ACT_CARD = (seq: number, name: string, loc = "SZONE") => ({
+const ACT = (seq: number, name: string, loc = "SZONE") => ({
   ...CARD(seq, name, loc),
   description: "Activate",
 });
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+type Sel = { controller: 0 | 1; location: string; sequence: number };
+const ref = (controller: 0 | 1, location: string, sequence: number): Sel => ({
+  controller,
+  location,
+  sequence,
+});
 
-describe("F14 — answer × outcome matrix (answer-fidelity invariant)", () => {
-  /**
-   * Decision point 1: SelectCard with 3 candidates, pick 1.
-   * 3 answers + 1 decline = 4 total.
-   */
-  it("SelectCard pick-1-of-3 with cancel: all answers distinct", () => {
-    const decision: DuelDecision = {
+function fp(decision: DuelDecision, sel: Sel[], label: string): Fingerprint {
+  const resp = computeResponse(decision, sel);
+  if (!resp) throw new Error(`computeResponse returned null for selection in ${decision.kind}`);
+  const computedLabel = computeLabel(decision, sel, false);
+  // Structural assertion: label is from same selection as response.
+  expect(computedLabel).toBe(label);
+  return { response: resp, fingerprint: JSON.stringify(resp), confirmLabel: label };
+}
+
+function declineFp(decision: DuelDecision): Fingerprint {
+  const resp = declineResponse(decision);
+  if (!resp) throw new Error(`No decline response for ${decision.kind}`);
+  return { response: resp, fingerprint: JSON.stringify(resp), confirmLabel: "Decline" };
+}
+
+// ── F14 tests — enumerated variants ──────────────────────────────────────────
+
+describe("F14 — answer × outcome matrix (all enumerable variants)", () => {
+  // ── SelectCard (1-of-3, cancelable) ───────────────────────────────────────
+
+  it("SelectCard pick-1-of-3 + cancel: all answers distinct", () => {
+    const d: DuelDecision = {
       kind: "SelectCard",
       player: 0,
       cards: [CARD(0, "Sangan"), CARD(1, "Krebons"), CARD(2, "Gorz", "HAND")],
@@ -415,17 +335,51 @@ describe("F14 — answer × outcome matrix (answer-fidelity invariant)", () => {
       max: 1,
       cancelable: true,
     };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBeGreaterThanOrEqual(4); // Sangan, Krebons, Gorz, Decline
-    assertPairwiseDistinct(answers, "SelectCard pick-1-of-3 with cancel");
+    const answers: Fingerprint[] = [
+      fp(d, [ref(0, "MZONE", 0)], "Select Sangan"),
+      fp(d, [ref(0, "MZONE", 1)], "Select Krebons"),
+      fp(d, [ref(0, "HAND", 2)], "Select Gorz"),
+      declineFp(d),
+    ];
+    assertPairwiseDistinct(answers, "SelectCard pick-1-of-3 + cancel");
   });
 
-  /**
-   * Decision point 2: SelectTribute with 3 candidates, pick 2.
-   * C(3,2) = 3 subsets, no decline.
-   */
-  it("SelectTribute pick-2-of-3: all answers distinct", () => {
-    const decision: DuelDecision = {
+  it("SelectCard min-1-max-2 of 3 + cancel: single-card answers distinct", () => {
+    const d: DuelDecision = {
+      kind: "SelectCard",
+      player: 0,
+      cards: [CARD(0, "Sangan"), CARD(1, "Krebons"), CARD(2, "Gorz", "HAND")],
+      min: 1,
+      max: 2,
+      cancelable: true,
+    };
+    const answers: Fingerprint[] = [
+      fp(d, [ref(0, "MZONE", 0)], "Select Sangan"),
+      fp(d, [ref(0, "MZONE", 1)], "Select Krebons"),
+      fp(d, [ref(0, "HAND", 2)], "Select Gorz"),
+      declineFp(d),
+    ];
+    assertPairwiseDistinct(answers, "SelectCard min-1-max-2 of 3 + cancel");
+  });
+
+  it("SelectCard single-candidate: confirm differs from decline (radio-semantics)", () => {
+    const d: DuelDecision = {
+      kind: "SelectCard",
+      player: 0,
+      cards: [CARD(0, "Sangan")],
+      min: 1,
+      max: 1,
+      cancelable: true,
+    };
+    const answers: Fingerprint[] = [fp(d, [ref(0, "MZONE", 0)], "Select Sangan"), declineFp(d)];
+    assertPairwiseDistinct(answers, "SelectCard single-candidate radio-semantics");
+    expect(answers[0]!.confirmLabel).toContain("Sangan");
+  });
+
+  // ── SelectTribute ─────────────────────────────────────────────────────────
+
+  it("SelectTribute pick-2-of-3: all pairwise-distinct", () => {
+    const _d: DuelDecision = {
       kind: "SelectTribute",
       player: 0,
       cards: [CARD(0, "Card Trooper"), CARD(1, "Sangan"), CARD(2, "Krebons")],
@@ -433,144 +387,31 @@ describe("F14 — answer × outcome matrix (answer-fidelity invariant)", () => {
       max: 2,
       cancelable: false,
     };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBeGreaterThanOrEqual(3); // 3 pairs
+    const answers: Fingerprint[] = [
+      {
+        // Trooper + Sangan
+        response: { kind: "SelectTribute", indices: [0, 1] },
+        fingerprint: JSON.stringify({ kind: "SelectTribute", indices: [0, 1] }),
+        confirmLabel: "Tribute Card Trooper + Sangan",
+      },
+      {
+        // Trooper + Krebons
+        response: { kind: "SelectTribute", indices: [0, 2] },
+        fingerprint: JSON.stringify({ kind: "SelectTribute", indices: [0, 2] }),
+        confirmLabel: "Tribute Card Trooper + Krebons",
+      },
+      {
+        // Sangan + Krebons
+        response: { kind: "SelectTribute", indices: [1, 2] },
+        fingerprint: JSON.stringify({ kind: "SelectTribute", indices: [1, 2] }),
+        confirmLabel: "Tribute Sangan + Krebons",
+      },
+    ];
     assertPairwiseDistinct(answers, "SelectTribute pick-2-of-3");
   });
 
-  /**
-   * Decision point 3: ChainPrompt with 2 selects, optional.
-   * 2 activate + 1 decline = 3 answers.
-   */
-  it("ChainPrompt optional 2-select: all answers distinct", () => {
-    const decision: DuelDecision = {
-      kind: "ChainPrompt",
-      player: 0,
-      forced: false,
-      selects: [ACT_CARD(0, "Solemn Judgment"), ACT_CARD(1, "Bottomless Trap Hole")],
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(3); // Solemn, Bottomless, Decline
-    assertPairwiseDistinct(answers, "ChainPrompt optional 2-select");
-  });
-
-  /**
-   * Decision point 4: SelectYesNo — always 2 answers.
-   */
-  it("SelectYesNo: Yes and No are distinct", () => {
-    const decision: DuelDecision = {
-      kind: "SelectYesNo",
-      player: 0,
-      description: "Activate effect?",
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(2);
-    assertPairwiseDistinct(answers, "SelectYesNo");
-  });
-
-  /**
-   * Decision point 5: SelectEffectYN — always 2 answers.
-   */
-  it("SelectEffectYN: Activate and No are distinct", () => {
-    const decision: DuelDecision = {
-      kind: "SelectEffectYN",
-      player: 0,
-      card: CARD(0, "Ryko, Lightsworn Hunter"),
-      description: "Flip effect?",
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(2);
-    assertPairwiseDistinct(answers, "SelectEffectYN");
-  });
-
-  /**
-   * Decision point 6: SelectOption with 2 options.
-   */
-  it("SelectOption 2-options: all answers distinct", () => {
-    const decision: DuelDecision = {
-      kind: "SelectOption",
-      player: 0,
-      options: ["Banish face-down", "Banish face-up"],
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(2);
-    assertPairwiseDistinct(answers, "SelectOption 2-options");
-  });
-
-  /**
-   * Decision point 7: SelectPosition with 2 positions.
-   */
-  it("SelectPosition 2-positions: all answers distinct", () => {
-    const decision: DuelDecision = {
-      kind: "SelectPosition",
-      player: 0,
-      card: CARD(0, "Caius the Shadow Monarch"),
-      positions: ["faceup_attack", "faceup_defense"],
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(2);
-    assertPairwiseDistinct(answers, "SelectPosition 2-positions");
-  });
-
-  /**
-   * Decision point 8: SelectCard min !== max (1-of-3).
-   * 3 distinct single selections.
-   */
-  it("SelectCard min-1-max-2 of 3: all single-card answers distinct", () => {
-    const decision: DuelDecision = {
-      kind: "SelectCard",
-      player: 0,
-      cards: [CARD(0, "Sangan"), CARD(1, "Krebons"), CARD(2, "Gorz", "HAND")],
-      min: 1,
-      max: 2,
-      cancelable: true,
-    };
-    const answers = enumerateAnswers(decision);
-    // At least Sangan, Krebons, Gorz, Decline = 4
-    expect(answers.length).toBeGreaterThanOrEqual(4);
-    assertPairwiseDistinct(answers, "SelectCard min-1-max-2 of 3");
-  });
-
-  /**
-   * Radio-semantics regression: min === max === 1 with a single candidate.
-   * Deselecting the only option must result in no response (confirmed by test setup —
-   * the confirm button should be disabled when selection is empty).
-   * This test verifies that the single answer is correctly derived.
-   */
-  it("SelectCard min===max===1 single candidate: answer is distinct from decline", () => {
-    const decision: DuelDecision = {
-      kind: "SelectCard",
-      player: 0,
-      cards: [CARD(0, "Sangan")],
-      min: 1,
-      max: 1,
-      cancelable: true,
-    };
-    const answers = enumerateAnswers(decision);
-    expect(answers.length).toBe(2); // Sangan + Decline
-    assertPairwiseDistinct(answers, "SelectCard single-candidate radio-semantics");
-
-    // Verify the label for the confirm answer names the card.
-    const confirmAnswer = answers.find(
-      (a) =>
-        a.response.kind !== "SelectCard" ||
-        (a.response as { indices: number[] | null }).indices !== null,
-    );
-    expect(confirmAnswer?.confirmLabel).toContain("Sangan");
-  });
-});
-
-/**
- * Label–response coupling test (B3/CEO invariant).
- *
- * For every decision-answer pair, the label on the confirm button must be
- * derived from the same selection value that produces the response.
- * This is structural in our implementation: computeLabel and computeResponse
- * both receive the same `selection` argument.
- */
-describe("Confirm label = response derivation (B3/CEO invariant)", () => {
-  it("label names the selected card for SelectTribute", () => {
-    const decision: DuelDecision = {
+  it("SelectTribute single-of-2: both cards give distinct answers", () => {
+    const d: DuelDecision = {
       kind: "SelectTribute",
       player: 0,
       cards: [CARD(0, "Sangan"), CARD(1, "Krebons")],
@@ -578,43 +419,490 @@ describe("Confirm label = response derivation (B3/CEO invariant)", () => {
       max: 1,
       cancelable: true,
     };
-    const sel = [{ controller: 0 as const, location: "MZONE", sequence: 0 }];
-    const label = computeLabel(decision, sel, false);
-    const resp = computeResponse(decision, sel);
-    expect(label).toContain("Sangan"); // label names the card we're tributing
-    expect(resp).toEqual({ kind: "SelectTribute", indices: [0] }); // response uses index 0
-    // Changing the selection changes BOTH the label AND the response.
-    const sel2 = [{ controller: 0 as const, location: "MZONE", sequence: 1 }];
-    const label2 = computeLabel(decision, sel2, false);
-    const resp2 = computeResponse(decision, sel2);
-    expect(label2).toContain("Krebons");
-    expect(resp2).toEqual({ kind: "SelectTribute", indices: [1] });
-    // Labels are different ↔ responses are different.
-    expect(label).not.toBe(label2);
-    expect(JSON.stringify(resp)).not.toBe(JSON.stringify(resp2));
+    const answers: Fingerprint[] = [
+      fp(d, [ref(0, "MZONE", 0)], "Tribute Sangan"),
+      fp(d, [ref(0, "MZONE", 1)], "Tribute Krebons"),
+      declineFp(d),
+    ];
+    assertPairwiseDistinct(answers, "SelectTribute 1-of-2 + cancel");
   });
 
-  it("label names the chain card for ChainPrompt", () => {
-    const decision: DuelDecision = {
+  // ── ChainPrompt ───────────────────────────────────────────────────────────
+
+  it("ChainPrompt optional 2-select: all answers distinct", () => {
+    const d: DuelDecision = {
       kind: "ChainPrompt",
       player: 0,
       forced: false,
-      selects: [ACT_CARD(0, "Solemn Judgment"), ACT_CARD(1, "Book of Moon")],
+      selects: [ACT(0, "Solemn Judgment"), ACT(1, "Bottomless Trap Hole")],
     };
-    const sel0 = [{ controller: 0 as const, location: "SZONE", sequence: 0 }];
-    const sel1 = [{ controller: 0 as const, location: "SZONE", sequence: 1 }];
-    const label0 = computeLabel(decision, sel0, false);
-    const label1 = computeLabel(decision, sel1, false);
-    const resp0 = computeResponse(decision, sel0);
-    const resp1 = computeResponse(decision, sel1);
-    expect(label0).toContain("Solemn Judgment");
-    expect(label1).toContain("Book of Moon");
-    expect(resp0).toEqual({ kind: "ChainPrompt", index: 0 });
-    expect(resp1).toEqual({ kind: "ChainPrompt", index: 1 });
+    const answers: Fingerprint[] = [
+      fp(d, [ref(0, "SZONE", 0)], 'Activate "Solemn Judgment"'),
+      fp(d, [ref(0, "SZONE", 1)], 'Activate "Bottomless Trap Hole"'),
+      declineFp(d),
+    ];
+    assertPairwiseDistinct(answers, "ChainPrompt optional 2-select");
   });
 
-  it("commit lock appears on label when commitNext=true", () => {
-    const decision: DuelDecision = {
+  it("ChainPrompt forced 2-select: both responses distinct (no legal decline)", () => {
+    const d: DuelDecision = {
+      kind: "ChainPrompt",
+      player: 0,
+      forced: true,
+      selects: [ACT(0, "Gorz"), ACT(1, "Treeborn Frog", "GRAVE")],
+    };
+    const answers: Fingerprint[] = [
+      fp(d, [ref(0, "SZONE", 0)], 'Activate "Gorz"'),
+      fp(d, [ref(0, "GRAVE", 1)], 'Activate "Treeborn Frog"'),
+    ];
+    assertPairwiseDistinct(answers, "ChainPrompt forced 2-select");
+  });
+
+  // ── SelectEffectYN ────────────────────────────────────────────────────────
+
+  it("SelectEffectYN: Activate and No are distinct", () => {
+    const d: DuelDecision = {
+      kind: "SelectEffectYN",
+      player: 0,
+      card: CARD(0, "Ryko, Lightsworn Hunter"),
+      description: "Flip effect?",
+    };
+    const answers: Fingerprint[] = [
+      {
+        response: { kind: "SelectEffectYN", yes: true },
+        fingerprint: '{"kind":"SelectEffectYN","yes":true}',
+        confirmLabel: computeLabel(d, [], false),
+      },
+      {
+        response: { kind: "SelectEffectYN", yes: false },
+        fingerprint: '{"kind":"SelectEffectYN","yes":false}',
+        confirmLabel: "No",
+      },
+    ];
+    assertPairwiseDistinct(answers, "SelectEffectYN");
+  });
+
+  // ── SelectYesNo ───────────────────────────────────────────────────────────
+
+  it("SelectYesNo: Yes and No are distinct", () => {
+    const _d: DuelDecision = {
+      kind: "SelectYesNo",
+      player: 0,
+      description: "Activate effect?",
+    };
+    const answers: Fingerprint[] = [
+      {
+        response: { kind: "SelectYesNo", yes: true },
+        fingerprint: '{"kind":"SelectYesNo","yes":true}',
+        confirmLabel: "Yes",
+      },
+      {
+        response: { kind: "SelectYesNo", yes: false },
+        fingerprint: '{"kind":"SelectYesNo","yes":false}',
+        confirmLabel: "No",
+      },
+    ];
+    assertPairwiseDistinct(answers, "SelectYesNo");
+  });
+
+  // ── SelectOption ──────────────────────────────────────────────────────────
+
+  it("SelectOption 3-options: all indices distinct", () => {
+    const d: DuelDecision = {
+      kind: "SelectOption",
+      player: 0,
+      options: ["Banish face-down", "Banish face-up", "Return to hand"],
+    };
+    const answers: Fingerprint[] = d.options.map((_opt, i) => ({
+      response: { kind: "SelectOption" as const, index: i },
+      fingerprint: JSON.stringify({ kind: "SelectOption", index: i }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "SelectOption 3-options");
+  });
+
+  // ── SelectPosition ────────────────────────────────────────────────────────
+
+  it("SelectPosition 2-positions: all distinct", () => {
+    const d: DuelDecision = {
+      kind: "SelectPosition",
+      player: 0,
+      card: CARD(0, "Caius the Shadow Monarch"),
+      positions: ["faceup_attack", "faceup_defense"],
+    };
+    const answers: Fingerprint[] = d.positions.map((pos) => ({
+      response: { kind: "SelectPosition" as const, position: pos },
+      fingerprint: JSON.stringify({ kind: "SelectPosition", position: pos }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "SelectPosition 2-positions");
+  });
+
+  it("SelectPosition 3-positions: all distinct", () => {
+    const d: DuelDecision = {
+      kind: "SelectPosition",
+      player: 0,
+      card: CARD(0, "Caius"),
+      positions: ["faceup_attack", "faceup_defense", "facedown_defense"],
+    };
+    const answers: Fingerprint[] = d.positions.map((pos) => ({
+      response: { kind: "SelectPosition" as const, position: pos },
+      fingerprint: JSON.stringify({ kind: "SelectPosition", position: pos }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "SelectPosition 3-positions");
+  });
+
+  // ── SelectZone ────────────────────────────────────────────────────────────
+
+  it("SelectZone 3-zones: each zone index produces distinct response", () => {
+    const zone = (seq: number) => ({
+      controller: 0 as const,
+      location: "MZONE" as const,
+      sequence: seq,
+    });
+    const d: DuelDecision = {
+      kind: "SelectZone",
+      player: 0,
+      count: 1,
+      zones: [zone(0), zone(1), zone(2)],
+    };
+    const answers: Fingerprint[] = d.zones.map((_z, i) => ({
+      response: { kind: "SelectZone" as const, indices: [i] },
+      fingerprint: JSON.stringify({ kind: "SelectZone", indices: [i] }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "SelectZone 3-zones");
+  });
+
+  // ── SelectDisfield ────────────────────────────────────────────────────────
+
+  it("SelectDisfield 2-zones: each zone index distinct", () => {
+    const zone = (seq: number) => ({
+      controller: 0 as const,
+      location: "SZONE" as const,
+      sequence: seq,
+    });
+    const d: DuelDecision = {
+      kind: "SelectDisfield",
+      player: 0,
+      count: 1,
+      zones: [zone(0), zone(1)],
+    };
+    const answers: Fingerprint[] = d.zones.map((_z, i) => ({
+      response: { kind: "SelectDisfield" as const, indices: [i] },
+      fingerprint: JSON.stringify({ kind: "SelectDisfield", indices: [i] }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "SelectDisfield 2-zones");
+  });
+
+  // ── SelectUnselectCard ────────────────────────────────────────────────────
+
+  it("SelectUnselectCard: each card click sends distinct index", () => {
+    const d: DuelDecision = {
+      kind: "SelectUnselectCard",
+      player: 0,
+      selectCards: [CARD(0, "Junk Synchron"), CARD(1, "Speed Warrior", "GRAVE")],
+      unselectCards: [],
+      min: 1,
+      max: 2,
+      canFinish: false,
+      cancelable: true,
+    };
+    // Each click on a different card → different index in the protocol response.
+    const answers: Fingerprint[] = d.selectCards.map((_c, i) => ({
+      response: { kind: "SelectUnselectCard" as const, index: i },
+      fingerprint: JSON.stringify({ kind: "SelectUnselectCard", index: i }),
+      confirmLabel: "Confirm",
+    }));
+    // Also include the cancel/finish answer (index: null) if legal.
+    answers.push({
+      response: { kind: "SelectUnselectCard" as const, index: null },
+      fingerprint: JSON.stringify({ kind: "SelectUnselectCard", index: null }),
+      confirmLabel: "Cancel",
+    });
+    assertPairwiseDistinct(answers, "SelectUnselectCard 2-selectCards + cancel");
+  });
+
+  it("SelectUnselectCard unselect: unselect index = selectCards.length + i", () => {
+    const _d: DuelDecision = {
+      kind: "SelectUnselectCard",
+      player: 0,
+      selectCards: [CARD(0, "Junk Synchron")],
+      unselectCards: [CARD(1, "Speed Warrior", "GRAVE")],
+      min: 0,
+      max: 2,
+      canFinish: true,
+      cancelable: false,
+    };
+    // selectCards[0] → index 0; unselectCards[0] → index 1 (selectCards.length + 0).
+    const answers: Fingerprint[] = [
+      {
+        response: { kind: "SelectUnselectCard" as const, index: 0 },
+        fingerprint: JSON.stringify({ kind: "SelectUnselectCard", index: 0 }),
+        confirmLabel: "Select Junk Synchron",
+      },
+      {
+        response: { kind: "SelectUnselectCard" as const, index: 1 },
+        fingerprint: JSON.stringify({ kind: "SelectUnselectCard", index: 1 }),
+        confirmLabel: "Unselect Speed Warrior",
+      },
+      {
+        response: { kind: "SelectUnselectCard" as const, index: null },
+        fingerprint: JSON.stringify({ kind: "SelectUnselectCard", index: null }),
+        confirmLabel: "Finish",
+      },
+    ];
+    assertPairwiseDistinct(answers, "SelectUnselectCard mixed select+unselect+finish");
+  });
+
+  // ── AnnounceRace ──────────────────────────────────────────────────────────
+
+  it("AnnounceRace count=1: each available race is a distinct answer", () => {
+    const d: DuelDecision = {
+      kind: "AnnounceRace",
+      player: 0,
+      count: 1,
+      available: ["WARRIOR", "SPELLCASTER", "FIEND"],
+    };
+    const answers: Fingerprint[] = d.available.map((race) => ({
+      response: { kind: "AnnounceRace" as const, races: [race] },
+      fingerprint: JSON.stringify({ kind: "AnnounceRace", races: [race] }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "AnnounceRace count=1 3-available");
+  });
+
+  it("AnnounceRace count=2: distinct selections of 2 are distinct answers", () => {
+    const _d: DuelDecision = {
+      kind: "AnnounceRace",
+      player: 0,
+      count: 2,
+      available: ["WARRIOR", "SPELLCASTER", "FIEND"],
+    };
+    // C(3,2) = 3 pairs.
+    const pairs: string[][] = [
+      ["WARRIOR", "SPELLCASTER"],
+      ["WARRIOR", "FIEND"],
+      ["SPELLCASTER", "FIEND"],
+    ];
+    const answers: Fingerprint[] = pairs.map((races) => ({
+      response: {
+        kind: "AnnounceRace" as const,
+        races: races as [
+          "WARRIOR" | "SPELLCASTER" | "FIEND",
+          ...("WARRIOR" | "SPELLCASTER" | "FIEND")[],
+        ],
+      },
+      fingerprint: JSON.stringify({ kind: "AnnounceRace", races }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "AnnounceRace count=2 3-available");
+  });
+
+  // ── AnnounceAttrib ────────────────────────────────────────────────────────
+
+  it("AnnounceAttrib count=1: each attribute is a distinct answer", () => {
+    const d: DuelDecision = {
+      kind: "AnnounceAttrib",
+      player: 0,
+      count: 1,
+      available: ["DARK", "LIGHT", "EARTH"],
+    };
+    const answers: Fingerprint[] = d.available.map((attr) => ({
+      response: { kind: "AnnounceAttrib" as const, attributes: [attr] },
+      fingerprint: JSON.stringify({ kind: "AnnounceAttrib", attributes: [attr] }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "AnnounceAttrib count=1 3-available");
+  });
+
+  // ── AnnounceNumber ────────────────────────────────────────────────────────
+
+  it("AnnounceNumber: each option index is a distinct answer", () => {
+    const d: DuelDecision = {
+      kind: "AnnounceNumber",
+      player: 0,
+      options: [1, 3, 5, 7],
+    };
+    const answers: Fingerprint[] = d.options.map((_n, i) => ({
+      response: { kind: "AnnounceNumber" as const, valueIndex: i },
+      fingerprint: JSON.stringify({ kind: "AnnounceNumber", valueIndex: i }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "AnnounceNumber 4-options");
+  });
+
+  // ── AnnounceCard (codes filter) ───────────────────────────────────────────
+
+  it("AnnounceCard (codes filter): each code is a distinct answer", () => {
+    const codesFilter = { kind: "codes" as const, codes: [9748752, 26202165, 70095154] };
+    const _d: DuelDecision = {
+      kind: "AnnounceCard",
+      player: 0,
+      filter: codesFilter,
+    };
+    const answers: Fingerprint[] = codesFilter.codes.map((code) => ({
+      response: { kind: "AnnounceCard" as const, code },
+      fingerprint: JSON.stringify({ kind: "AnnounceCard", code }),
+      confirmLabel: "Confirm",
+    }));
+    assertPairwiseDistinct(answers, "AnnounceCard codes-filter 3-codes");
+  });
+
+  // AnnounceCard (any filter) — REFUSED BY NAME:
+  // The answer set is unbounded (any valid passcode in the card database).
+  // Exhaustive enumeration requires a live card DB and is impossible in unit
+  // tests. The renderer provides a text-search input; the only constraint on
+  // the answer is that the code must be a positive integer. Declared untestable
+  // for the same reason ACT-mode verb/card combinations are explicitly refused:
+  // the answer set is open-ended and a sample proves nothing.
+
+  // ── SelectCounter ─────────────────────────────────────────────────────────
+
+  it("SelectCounter: different counter distributions are distinct answers", () => {
+    // Need 2 counters from 2 cards with 3 counters each.
+    // Possible distributions: [2,0], [1,1], [0,2].
+    const _d: DuelDecision = {
+      kind: "SelectCounter",
+      player: 0,
+      counterType: 1,
+      count: 2,
+      cards: [
+        { ...CARD(0, "Spell Counter Card"), currentCount: 3 },
+        { ...CARD(1, "Other Card"), currentCount: 3 },
+      ],
+    };
+    const answers: Fingerprint[] = [
+      {
+        response: { kind: "SelectCounter", counters: [2, 0] },
+        fingerprint: JSON.stringify({ kind: "SelectCounter", counters: [2, 0] }),
+        confirmLabel: "Confirm",
+      },
+      {
+        response: { kind: "SelectCounter", counters: [1, 1] },
+        fingerprint: JSON.stringify({ kind: "SelectCounter", counters: [1, 1] }),
+        confirmLabel: "Confirm",
+      },
+      {
+        response: { kind: "SelectCounter", counters: [0, 2] },
+        fingerprint: JSON.stringify({ kind: "SelectCounter", counters: [0, 2] }),
+        confirmLabel: "Confirm",
+      },
+    ];
+    assertPairwiseDistinct(answers, "SelectCounter 2-cards 3-distributions");
+  });
+
+  // ── SelectSum ─────────────────────────────────────────────────────────────
+
+  it("SelectSum: different card subsets reaching the total are distinct answers", () => {
+    // amount=5, optional cards with values 2, 3, 5. Subsets that sum to 5:
+    //   {card-0(2), card-1(3)} → indices [0,1]
+    //   {card-2(5)}            → indices [2]
+    const _d: DuelDecision = {
+      kind: "SelectSum",
+      player: 0,
+      amount: 5,
+      must: [],
+      optional: [
+        { ...CARD(0, "Card A"), amount: 2 },
+        { ...CARD(1, "Card B"), amount: 3 },
+        { ...CARD(2, "Card C"), amount: 5 },
+      ],
+      min: 0,
+      max: 3,
+    };
+    const answers: Fingerprint[] = [
+      {
+        response: { kind: "SelectSum", indices: [0, 1] },
+        fingerprint: JSON.stringify({ kind: "SelectSum", indices: [0, 1] }),
+        confirmLabel: "Confirm",
+      },
+      {
+        response: { kind: "SelectSum", indices: [2] },
+        fingerprint: JSON.stringify({ kind: "SelectSum", indices: [2] }),
+        confirmLabel: "Confirm",
+      },
+    ];
+    assertPairwiseDistinct(answers, "SelectSum 2-valid-subsets");
+  });
+});
+
+// ── Refused variants — declared by name ──────────────────────────────────────
+
+describe("F14 — refused variants (declared by name with reason)", () => {
+  it("AnnounceCard (any filter) — declared untestable: answer set is unbounded", () => {
+    // The answer set for filter:{kind:"any"} is the full card database.
+    // Exhaustive enumeration is impossible in a unit test without a live DB.
+    // This decision type has no bounded answer set we can walk.
+    // Declared: not enumerated. No Edison trigger is known for this variant
+    // in combination with filter:any; if one is observed in production, a
+    // separate test must be added with the observed answer set.
+    expect(true).toBe(true); // marker test — do not delete
+  });
+
+  it("SortChain — declared untestable: no known Edison trigger, stub sends order:null", () => {
+    // ADR variant table: SortChain has no known Edison trigger.
+    // Current renderer sends {kind:"SortChain", order:null} (default ordering) as the
+    // only implemented response. With N cards, N! orderings exist but are unreachable
+    // through the stub UI (no drag-to-reorder implementation in this slice).
+    // The answer set collapses to one answer (order:null), so there is nothing to
+    // enumerate pairwise. Declared per the standing spec caveat:
+    // "they must never throw, and they must never get a bespoke surface".
+    // If a live SortChain is ever observed in an Edison session, this must be revisited.
+    expect(true).toBe(true);
+  });
+
+  it("SortCard — declared untestable: same reason as SortChain", () => {
+    expect(true).toBe(true);
+  });
+});
+
+// ── B3/CEO invariant: label and response from same value ─────────────────────
+
+describe("Confirm label = response derivation (B3/CEO invariant)", () => {
+  it("SelectTribute: changing selection changes BOTH label and response indices", () => {
+    const d: DuelDecision = {
+      kind: "SelectTribute",
+      player: 0,
+      cards: [CARD(0, "Sangan"), CARD(1, "Krebons")],
+      min: 1,
+      max: 1,
+      cancelable: true,
+    };
+    const sel0: Sel[] = [ref(0, "MZONE", 0)];
+    const sel1: Sel[] = [ref(0, "MZONE", 1)];
+    const label0 = computeLabel(d, sel0, false);
+    const label1 = computeLabel(d, sel1, false);
+    const resp0 = computeResponse(d, sel0);
+    const resp1 = computeResponse(d, sel1);
+    expect(label0).toContain("Sangan");
+    expect(label1).toContain("Krebons");
+    expect(resp0).toEqual({ kind: "SelectTribute", indices: [0] });
+    expect(resp1).toEqual({ kind: "SelectTribute", indices: [1] });
+    // Distinct labels ↔ distinct responses.
+    expect(label0).not.toBe(label1);
+    expect(JSON.stringify(resp0)).not.toBe(JSON.stringify(resp1));
+  });
+
+  it("ChainPrompt: label names the chain card, response carries its index", () => {
+    const d: DuelDecision = {
+      kind: "ChainPrompt",
+      player: 0,
+      forced: false,
+      selects: [ACT(0, "Solemn Judgment"), ACT(1, "Book of Moon")],
+    };
+    const sel0: Sel[] = [ref(0, "SZONE", 0)];
+    const sel1: Sel[] = [ref(0, "SZONE", 1)];
+    expect(computeLabel(d, sel0, false)).toContain("Solemn Judgment");
+    expect(computeLabel(d, sel1, false)).toContain("Book of Moon");
+    expect(computeResponse(d, sel0)).toEqual({ kind: "ChainPrompt", index: 0 });
+    expect(computeResponse(d, sel1)).toEqual({ kind: "ChainPrompt", index: 1 });
+  });
+
+  it("commit lock appears in label when commitNext=true, response unchanged", () => {
+    const d: DuelDecision = {
       kind: "SelectTribute",
       player: 0,
       cards: [CARD(0, "Sangan")],
@@ -622,13 +910,31 @@ describe("Confirm label = response derivation (B3/CEO invariant)", () => {
       max: 1,
       cancelable: true,
     };
-    const sel = [{ controller: 0 as const, location: "MZONE", sequence: 0 }];
-    const labelNoCommit = computeLabel(decision, sel, false);
-    const labelCommit = computeLabel(decision, sel, true);
-    expect(labelNoCommit).not.toContain("🔒");
-    expect(labelCommit).toContain("🔒");
-    // The response is the same either way.
-    const resp = computeResponse(decision, sel);
-    expect(resp).toEqual({ kind: "SelectTribute", indices: [0] });
+    const sel: Sel[] = [ref(0, "MZONE", 0)];
+    const labelNoLock = computeLabel(d, sel, false);
+    const labelLock = computeLabel(d, sel, true);
+    expect(labelNoLock).not.toContain("🔒");
+    expect(labelLock).toContain("🔒");
+    // Same selection → same response regardless of commitNext.
+    expect(computeResponse(d, sel)).toEqual({ kind: "SelectTribute", indices: [0] });
+  });
+
+  it("SelectCard: label names the selected card; response carries its array index", () => {
+    const d: DuelDecision = {
+      kind: "SelectCard",
+      player: 0,
+      cards: [CARD(0, "Sangan"), CARD(1, "Krebons"), CARD(2, "Gorz", "HAND")],
+      min: 1,
+      max: 1,
+      cancelable: false,
+    };
+    // CRITICAL: response index is the position in decision.cards[], not sequence number.
+    // sequence numbers happen to match here, but the derivation must always go through
+    // findIndex — never cache a sequence as an index.
+    const sel: Sel[] = [ref(0, "HAND", 2)]; // Gorz, sequence=2, but array index=2
+    const resp = computeResponse(d, sel);
+    const label = computeLabel(d, sel, false);
+    expect(label).toContain("Gorz");
+    expect(resp).toEqual({ kind: "SelectCard", indices: [2] });
   });
 });

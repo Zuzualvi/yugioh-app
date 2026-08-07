@@ -26,7 +26,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..", "..", "..");
+const repoRoot = join(here, "..", "..", "..", "..");
 const e2eSpec = join(repoRoot, "e2e", "playwright", "duel.spec.ts");
 const webSrc = join(here, "..");
 

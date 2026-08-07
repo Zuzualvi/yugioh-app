@@ -216,9 +216,9 @@ describe("ActionPanel — responding", () => {
         onSend: vi.fn(),
       }),
     );
-    // Should show a candidate and a decline button (pass).
+    // Should show a candidate and the pass button (pass-option testid for ChainPrompt).
     expect(screen.getByTestId("decision-candidate")).toBeTruthy();
-    expect(screen.getByTestId("decision-decline")).toBeTruthy();
+    expect(screen.getByTestId("pass-option")).toBeTruthy();
   });
 
   it("does NOT show a decline button for forced ChainPrompt", async () => {

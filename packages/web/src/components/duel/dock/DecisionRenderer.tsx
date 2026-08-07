@@ -588,7 +588,7 @@ export function DecisionRenderer({
           {decision.zones.map((z, i) => (
             <button
               key={i}
-              data-testid="decision-candidate"
+              data-testid="zone-option"
               onClick={() => onDirectRespond({ kind: "SelectZone", indices: [i] })}
               disabled={disabled}
               style={s.candidateBtn(false)}
@@ -812,7 +812,7 @@ export function DecisionRenderer({
         {/* Left slot: decline button or commit statement */}
         {legalDecline ? (
           <button
-            data-testid="decision-decline"
+            data-testid={decision.kind === "ChainPrompt" ? "pass-option" : "decision-decline"}
             onClick={onDecline}
             disabled={disabled}
             style={s.declineBtn}
