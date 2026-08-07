@@ -98,7 +98,15 @@ badges, chain-link ordinals, LP plates. Confirm/decline are expressed by **empha
 
 ## 1 · Layout — what is always on screen
 
-Reference viewport **1440 × 900**. Minimum supported **1280 × 800**.
+Reference viewport **1440 × 900**. ~~Minimum supported **1280 × 800**.~~
+
+> **Correction, CTO 2026-08-07.** The `1280 × 800` minimum contradicted PRD requirement **G1**
+> ("Designed for desktop at 1440×900 and above. Below that is out of scope and untested"), and the
+> two are different promises: one makes 1280 a supported claim QA must sign off, the other puts it
+> out of scope. **G1 governs. 1440 × 900 is both the reference viewport and the floor**; below it is
+> out of scope and explicitly untested. *CEO, 2026-08-07: "1440. Strike the spec's 1280 line… I'd
+> rather QA sign off against the narrower one — sub-1440 is already on my untested list and I don't
+> want it quietly becoming a supported claim."* Sub-1440 behaviour must never be recorded as passing.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┬─────────┐
