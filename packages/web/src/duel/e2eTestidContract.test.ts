@@ -50,9 +50,17 @@ const NOT_RENDERED_BY_WEB = new Set<string>();
 
 describe("E2E data-testid contract", () => {
   const spec = readFileSync(e2eSpec, "utf8");
-  const required = [...spec.matchAll(/getByTestId\(\s*["'`]([^"'`]+)["'`]/g)]
-    .map((m) => m[1]!)
-    .filter((id) => !NOT_RENDERED_BY_WEB.has(id));
+
+  // Playwright reaches test ids two ways and BOTH must be scanned. The first
+  // version of this guard matched only getByTestId(), and so missed
+  //   locator('[data-testid="my-mzone"]')
+  // at duel.spec.ts:344 — the very next slice dropped `my-mzone` and this guard
+  // stayed green while E2E went red. If a third way of selecting a test id
+  // appears in the spec, add it here too.
+  const required = [
+    ...[...spec.matchAll(/getByTestId\(\s*["'`]([^"'`]+)["'`]/g)].map((m) => m[1]!),
+    ...[...spec.matchAll(/data-testid\s*=\s*["'`]([^"'`\]]+)["'`]/g)].map((m) => m[1]!),
+  ].filter((id) => !NOT_RENDERED_BY_WEB.has(id));
 
   const sources = walk(webSrc).map((f) => readFileSync(f, "utf8"));
   const haystack = sources.join("\n");
