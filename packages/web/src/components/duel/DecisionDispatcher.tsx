@@ -1,50 +1,18 @@
 /**
- * DecisionDispatcher — switches on DuelDecision.kind and renders the correct panel.
+ * DecisionDispatcher — rewritten as a thin wrapper over DecisionRenderer.
  *
- * ## Kind → file naming convention
+ * The W2 rebuild replaces the per-variant panel architecture with one
+ * DecisionRenderer that handles all 20 variants via a variant switch.
+ * This file is kept for any legacy import paths that may reference it;
+ * new code should import DecisionRenderer directly from dock/DecisionRenderer.
  *
- *   packages/web/src/components/duel/decisions/<Kind>Panel.tsx
- *
- * Where <Kind> is the exact DuelDecision.kind literal, PascalCase, e.g.:
- *   IdleCommand       → decisions/IdleCommandPanel.tsx       (Slice 2B)
- *   BattleCommand     → decisions/BattleCommandPanel.tsx     (Slice 2B)
- *   ChainPrompt       → decisions/ChainPromptPanel.tsx       (Slice 2B)
- *   SelectCard        → decisions/SelectCardPanel.tsx        (Slice 2C)
- *   SelectUnselectCard → decisions/SelectUnselectCardPanel.tsx (Slice 2C)
- *   SelectTribute     → decisions/SelectTributePanel.tsx     (Slice 2C)
- *   SelectZone        → decisions/SelectZonePanel.tsx        (Slice 2C)
- *   SelectPosition    → decisions/SelectPositionPanel.tsx    (Slice 2C)
- *   SelectEffectYN    → decisions/SelectEffectYNPanel.tsx    (Slice 2D)
- *   SelectYesNo       → decisions/SelectYesNoPanel.tsx       (Slice 2D)
- *   SelectOption      → decisions/SelectOptionPanel.tsx      (Slice 2D)
- *   AnnounceRace      → decisions/AnnounceRacePanel.tsx      (Slice 2D)
- *   AnnounceAttrib    → decisions/AnnounceAttribPanel.tsx    (Slice 2D)
- *   AnnounceCard      → decisions/AnnounceCardPanel.tsx      (Slice 2D)
- *   AnnounceNumber    → decisions/AnnounceNumberPanel.tsx    (Slice 2D)
- *
- * ## Rare kinds (permanent home — GenericDecisionPanel, no bespoke panel needed)
- *   SelectSum / SelectCounter / SelectDisfield / SortCard / SortChain
- *
- * ## Adding a per-kind panel (2B/2C/2D pattern)
- *   1. Create `decisions/<Kind>Panel.tsx` — default-exports component typed as
- *      `DecisionPanelProps<"Kind">` (import from `./DecisionPanelProps`).
- *   2. Import it here and add a `case "<Kind>":` route below.
- *   3. Remove the `<Kind>` case from the GenericDecisionPanel fallback section only
- *      when the new panel has matching test coverage.
- *
- * ## Layout containers
- *   - Phone/tablet (≤ 1023 px): panel content is rendered inside DecisionBottomSheet.
- *   - Desktop (≥ 1024 px): panel content is rendered inside ActionContextMenu or inline.
- *   The dispatcher renders ONLY the inner panel content; the shell (sheet/menu) is owned
- *   by the parent (ActionPanel / DuelBoard).
+ * NOTE: This component does NOT manage selection state. Selection state is
+ * owned by useDuelInteraction and lives in ActionPanel / DuelDock.
  */
 
 import React from "react";
 import type { DuelDecision, DuelDecisionResponse } from "@yugioh-app/contracts";
-import { CommandDecisionPanels } from "./decisions/CommandDecisionPanels";
-import { SelectionDecisionPanels } from "./decisions/SelectionDecisionPanels";
-import { PromptDecisionPanels } from "./decisions/PromptDecisionPanels";
-import { GenericDecisionPanel } from "./decisions/GenericDecisionPanel";
+import { DecisionRenderer } from "./dock/DecisionRenderer";
 
 interface Props {
   decision: DuelDecision;
@@ -53,79 +21,109 @@ interface Props {
   disabled?: boolean;
 }
 
-export function DecisionDispatcher({ decision, respond, layoutTier, disabled }: Props) {
-  switch (decision.kind) {
-    // Command group — three separate cases so TypeScript narrows decision to
-    // exactly one kind per branch, matching CommandDecisionPanelsProps union.
-    // respond is passed directly: (r: DuelDecisionResponse)=>void is contravariantly
-    // assignable to (r: IdleCommandResponse|BattleCommandResponse|ChainPromptResponse)=>void.
-    case "IdleCommand":
-      return (
-        <CommandDecisionPanels
-          decision={decision}
-          respond={respond}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
-      );
-    case "BattleCommand":
-      return (
-        <CommandDecisionPanels
-          decision={decision}
-          respond={respond}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
-      );
-    case "ChainPrompt":
-      return (
-        <CommandDecisionPanels
-          decision={decision}
-          respond={respond}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
-      );
+/**
+ * @deprecated Use DuelDock (via ActionPanel) which owns the full state machine.
+ *             DecisionDispatcher is kept only for backward-compatible imports.
+ */
+export function DecisionDispatcher({ decision, respond, disabled }: Props) {
+  // selection is stateless here — the full state lives in useDuelInteraction.
+  // This wrapper provides a minimal working surface for legacy call sites.
+  const [selection, setSelection] = React.useState<
+    Array<{ controller: 0 | 1; location: string; sequence: number }>
+  >([]);
 
-    case "SelectCard":
-    case "SelectUnselectCard":
-    case "SelectTribute":
-    case "SelectZone":
-    case "SelectPosition":
-      return (
-        <SelectionDecisionPanels
-          decision={decision}
-          respond={(r) => respond(r)}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
+  const onToggle = (ref: { controller: 0 | 1; location: string; sequence: number }) => {
+    setSelection((prev) => {
+      const exists = prev.findIndex(
+        (r) =>
+          r.controller === ref.controller &&
+          r.location === ref.location &&
+          r.sequence === ref.sequence,
       );
+      if (exists >= 0) return prev.filter((_, i) => i !== exists);
+      return [...prev, ref];
+    });
+  };
 
-    case "SelectEffectYN":
-    case "SelectYesNo":
-    case "SelectOption":
-    case "AnnounceRace":
-    case "AnnounceAttrib":
-    case "AnnounceCard":
-    case "AnnounceNumber":
-      return (
-        <PromptDecisionPanels
-          decision={decision}
-          respond={(r) => respond(r)}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
-      );
+  const onConfirm = () => {
+    // Compute response from current selection.
+    if (decision.kind === "SelectCard") {
+      const indices = selection
+        .map((ref) =>
+          decision.cards.findIndex(
+            (c) =>
+              c.controller === ref.controller &&
+              c.location === ref.location &&
+              c.sequence === ref.sequence,
+          ),
+        )
+        .filter((i) => i >= 0);
+      if (indices.length >= decision.min) {
+        respond({ kind: "SelectCard", indices });
+      }
+    } else if (decision.kind === "SelectTribute") {
+      const indices = selection
+        .map((ref) =>
+          decision.cards.findIndex(
+            (c) =>
+              c.controller === ref.controller &&
+              c.location === ref.location &&
+              c.sequence === ref.sequence,
+          ),
+        )
+        .filter((i) => i >= 0);
+      if (indices.length >= decision.min) {
+        respond({ kind: "SelectTribute", indices });
+      }
+    } else if (decision.kind === "ChainPrompt") {
+      if (selection.length > 0) {
+        const ref = selection[0]!;
+        const index = decision.selects.findIndex(
+          (c) =>
+            c.controller === ref.controller &&
+            c.location === ref.location &&
+            c.sequence === ref.sequence,
+        );
+        if (index >= 0) respond({ kind: "ChainPrompt", index });
+      }
+    } else if (decision.kind === "SelectEffectYN") {
+      respond({ kind: "SelectEffectYN", yes: true });
+    } else if (decision.kind === "SelectYesNo") {
+      respond({ kind: "SelectYesNo", yes: true });
+    }
+  };
 
-    default:
-      // SelectSum, SelectCounter, SelectDisfield, SortCard, SortChain
-      return (
-        <GenericDecisionPanel
-          decision={decision}
-          respond={respond}
-          layoutTier={layoutTier}
-          disabled={disabled}
-        />
-      );
-  }
+  const onDecline = () => {
+    if (decision.kind === "SelectCard" && decision.cancelable) {
+      respond({ kind: "SelectCard", indices: null });
+    } else if (decision.kind === "SelectTribute" && decision.cancelable) {
+      respond({ kind: "SelectTribute", indices: null });
+    } else if (decision.kind === "ChainPrompt" && !decision.forced) {
+      respond({ kind: "ChainPrompt", index: null });
+    } else if (decision.kind === "SelectEffectYN") {
+      respond({ kind: "SelectEffectYN", yes: false });
+    } else if (decision.kind === "SelectYesNo") {
+      respond({ kind: "SelectYesNo", yes: false });
+    }
+  };
+
+  return (
+    <DecisionRenderer
+      decision={decision}
+      selection={
+        selection as Array<{
+          controller: 0 | 1;
+          location: "HAND" | "MZONE" | "SZONE" | "FZONE" | "GRAVE" | "REMOVED" | "EXTRA" | "DECK";
+          sequence: number;
+        }>
+      }
+      onToggle={onToggle as Parameters<typeof DecisionRenderer>[0]["onToggle"]}
+      onConfirm={onConfirm}
+      onDecline={onDecline}
+      onDirectRespond={respond}
+      commitNext={false}
+      loading={false}
+      disabled={disabled}
+    />
+  );
 }
