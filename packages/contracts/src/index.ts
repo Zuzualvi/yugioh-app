@@ -123,6 +123,10 @@ export {
   BattleCommandAction,
 } from "./duelDecision.js";
 
+// Duel event feed and decision sidecar — ZUH-94 / S2
+export type { EventCardRef, DuelEvent, DecisionContext } from "./duelEvent.js";
+export { EventCardRefSchema, DuelEventSchema, DecisionContextSchema } from "./duelEvent.js";
+
 // Ops API types — ZUH-62 / Slice B
 export type {
   OpsMigrationRow,

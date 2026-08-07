@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DuelDecisionSchema, DuelDecisionResponseSchema } from "./duelDecision.js";
+import { DuelEventSchema, DecisionContextSchema } from "./duelEvent.js";
 
 // ---------------------------------------------------------------------------
 // Duel wire contracts — Stream 2 / Slice 00
@@ -103,6 +104,8 @@ export const DuelStateSnapshotSchema = z.object({
     .object({
       onClockSeat: SeatSchema,
       deadlineAt: z.number(),
+      /** NEW (C5): absolute deadlines for both seats. [seat0, seat1]. Off-clock entry is banked time. */
+      deadlines: z.tuple([z.number(), z.number()]).optional(),
     })
     .optional(),
 });
@@ -152,7 +155,13 @@ export const DuelServerMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("CLOCK"),
     onClockSeat: SeatSchema,
     deadlineAt: z.number(),
+    /** NEW (C5): absolute deadlines for both seats. [seat0, seat1]. Off-clock entry is banked time. */
+    deadlines: z.tuple([z.number(), z.number()]).optional(),
   }),
+  /** NEW (C6): typed event feed — normalised domain events for the event log. */
+  z.object({ type: z.literal("EVENTS"), events: z.array(DuelEventSchema) }),
+  /** NEW (C7): decision sidecar — sent immediately before the DECISION it describes. */
+  z.object({ type: z.literal("DECISION_CONTEXT"), context: DecisionContextSchema }),
   z.object({
     type: z.literal("DUEL_END"),
     winner: z.union([SeatSchema, z.null()]),

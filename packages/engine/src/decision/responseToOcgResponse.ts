@@ -176,6 +176,12 @@ export function responseToOcgResponse(
       if (pendingDecision.kind !== "SelectZone") {
         throw new Error("responseToOcgResponse: pending decision is not SelectZone");
       }
+      // C8.1: empty indices hang the engine permanently (verified live — Q4 runtime fact).
+      if (resp.indices.length === 0) {
+        throw new Error(
+          "SelectZone: indices must not be empty — an empty SELECT_PLACE hangs the engine permanently",
+        );
+      }
       const places = resp.indices.map((idx) => {
         const zone = pendingDecision.zones[idx];
         if (!zone) throw new Error(`SelectZone: index ${idx} out of range`);
@@ -272,6 +278,12 @@ export function responseToOcgResponse(
     case "SelectDisfield": {
       if (pendingDecision.kind !== "SelectDisfield") {
         throw new Error("responseToOcgResponse: pending decision is not SelectDisfield");
+      }
+      // C8.1: same guard as SelectZone — empty indices hang the engine permanently.
+      if (resp.indices.length === 0) {
+        throw new Error(
+          "SelectDisfield: indices must not be empty — an empty SELECT_DISFIELD hangs the engine permanently",
+        );
       }
       const places = resp.indices.map((idx) => {
         const zone = pendingDecision.zones[idx];

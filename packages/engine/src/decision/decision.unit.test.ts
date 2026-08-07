@@ -866,3 +866,44 @@ describe("validateDecisionResponse", () => {
     expect(validateDecisionResponse(resp, decision).ok).toBe(true);
   });
 });
+
+// ── C8.1: SELECT_PLACE empty-indices guard ────────────────────────────────────
+
+describe("responseToOcgResponse — C8.1 SELECT_PLACE empty-indices guard", () => {
+  const selectZoneDecision: DuelDecision = {
+    kind: "SelectZone",
+    player: 0,
+    count: 1,
+    zones: [
+      { controller: 0, location: "MZONE", sequence: 0 },
+      { controller: 0, location: "MZONE", sequence: 1 },
+    ],
+  };
+
+  it("SelectZone with empty indices throws (C8.1 — engine hang prevention)", () => {
+    const resp: DuelDecisionResponse = { kind: "SelectZone", indices: [] };
+    expect(() => responseToOcgResponse(resp, selectZoneDecision)).toThrow(/empty/i);
+  });
+
+  it("SelectZone with non-empty indices succeeds", () => {
+    const resp: DuelDecisionResponse = { kind: "SelectZone", indices: [0] };
+    expect(() => responseToOcgResponse(resp, selectZoneDecision)).not.toThrow();
+  });
+
+  const selectDisfieldDecision: DuelDecision = {
+    kind: "SelectDisfield",
+    player: 0,
+    count: 1,
+    zones: [{ controller: 0, location: "SZONE", sequence: 0 }],
+  };
+
+  it("SelectDisfield with empty indices throws (C8.1)", () => {
+    const resp: DuelDecisionResponse = { kind: "SelectDisfield", indices: [] };
+    expect(() => responseToOcgResponse(resp, selectDisfieldDecision)).toThrow(/empty/i);
+  });
+
+  it("SelectDisfield with non-empty indices succeeds", () => {
+    const resp: DuelDecisionResponse = { kind: "SelectDisfield", indices: [0] };
+    expect(() => responseToOcgResponse(resp, selectDisfieldDecision)).not.toThrow();
+  });
+});

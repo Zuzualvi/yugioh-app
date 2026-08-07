@@ -20,15 +20,16 @@
 import type { Seat, RedactedEngineMessage } from "@yugioh-app/contracts";
 import type { RawEngineMessage } from "./types.js";
 
-// ocgcore message type constants (from OcgMessageType enum in ocgcore-wasm).
-// Inlined here to avoid importing from ocgcore-wasm at the redaction layer;
-// these values are stable in the edo9300 codebase and verified in spike-c.
+// ocgcore message type constants — verified against OcgMessageType enum in ocgcore-wasm.
+// These values are stable in the edo9300 codebase; the original spike-c table had
+// several wrong entries which caused SUMMONING(60), BECOME_TARGET(83) and
+// CARD_SELECTED(80) to be incorrectly dropped for both seats (ZUH-94 fix).
 const MSG = {
   DRAW: 90,
   MOVE: 50,
   SET: 54,
-  SHUFFLE_HAND: 60,
-  SHUFFLE_SET_CARD: 67,
+  SHUFFLE_HAND: 33,
+  SHUFFLE_SET_CARD: 36,
   SELECT_BATTLECMD: 10,
   SELECT_IDLECMD: 11,
   SELECT_EFFECTYN: 12,
@@ -45,20 +46,20 @@ const MSG = {
   SELECT_DISFIELD: 24,
   SORT_CARD: 25,
   SELECT_UNSELECT_CARD: 26,
-  ROCK_PAPER_SCISSORS: 30,
-  ANNOUNCE_RACE: 31,
-  ANNOUNCE_ATTRIB: 32,
-  ANNOUNCE_CARD: 33,
-  ANNOUNCE_NUMBER: 34,
-  CONFIRM_DECKTOP: 81,
-  CONFIRM_CARDS: 83,
-  DECK_TOP: 85,
-  CONFIRM_EXTRATOP: 86,
-  HINT: 1,
-  PLAYER_HINT: 2,
-  CARD_HINT: 3,
-  SHOW_HINT: 80,
-  FLIPSUMMONING: 43,
+  ROCK_PAPER_SCISSORS: 132,
+  ANNOUNCE_RACE: 140,
+  ANNOUNCE_ATTRIB: 141,
+  ANNOUNCE_CARD: 142,
+  ANNOUNCE_NUMBER: 143,
+  CONFIRM_DECKTOP: 30,
+  CONFIRM_CARDS: 31,
+  DECK_TOP: 38,
+  CONFIRM_EXTRATOP: 42,
+  HINT: 2,
+  PLAYER_HINT: 165,
+  CARD_HINT: 160,
+  SHOW_HINT: 164,
+  FLIPSUMMONING: 64,
 } as const;
 
 // OcgLocation bit flags (stable ocgcore constants).
