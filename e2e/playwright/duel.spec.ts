@@ -134,16 +134,12 @@ test("backbone: two players connect, board renders, decision delivered, resign r
     await expect(alice.getByTestId("action-panel")).toBeVisible();
     await expect(bob.getByTestId("action-panel")).toBeVisible();
 
-    // A decision was delivered: the on-clock seat's action-panel is not stuck
-    // on no-decision. We cannot know which player is on clock, so check both
-    // and assert at least one is NOT showing the no-decision placeholder.
-    const aliceNoDecision = alice.getByTestId("no-decision");
-    const bobNoDecision = bob.getByTestId("no-decision");
-    const aliceHasDecision =
-      (await aliceNoDecision.count()) === 0 || !(await aliceNoDecision.isVisible());
-    const bobHasDecision =
-      (await bobNoDecision.count()) === 0 || !(await bobNoDecision.isVisible());
-    expect(aliceHasDecision || bobHasDecision).toBe(true);
+    // A decision was delivered: phase-ribbon is live (rendered by DuelBoard only
+    // when a STATE snapshot exists). "no-decision" now appears in act mode too
+    // (DuelStage shows the placeholder in act/waiting/ended modes alike), so it
+    // can no longer distinguish "waiting for engine" from "engine sent IdleCommand".
+    await expect(alice.getByTestId("phase-ribbon")).toBeVisible();
+    await expect(bob.getByTestId("phase-ribbon")).toBeVisible();
 
     // ── Two-step in-app resign (SettingsPopover) ─────────────────────────
     // Step 1: open settings
@@ -366,9 +362,11 @@ test("play-through: Normal Summon → End Phase → Battle Phase → direct atta
     // First-player attack restriction: toBattlePhase=false on turn 1.
     // ══════════════════════════════════════════════════════════════════════
 
-    // Wait for action-panel to be in act mode (not waiting for engine).
-    // The on-clock player should NOT show no-decision.
-    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
+    // Wait for the IdleCommand to arrive: end-turn-btn becomes enabled only
+    // when legalNextPhases includes EP (derived from IdleCommand.toEndPhase).
+    // "no-decision" appears in act/waiting/ended modes alike so it cannot
+    // distinguish a live decision from the waiting state.
+    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
 
     // Verb chip: click first hand card.
     const handRow1 = goesFirst.getByTestId("own-hand-row");
@@ -403,7 +401,8 @@ test("play-through: Normal Summon → End Phase → Battle Phase → direct atta
     // TURN 1 (seat 1 = goesSecond): End Turn immediately
     // ══════════════════════════════════════════════════════════════════════
 
-    await expect(goesSecond.getByTestId("no-decision")).toHaveCount(0);
+    // Wait for goesSecond's IdleCommand: end-turn-btn enabled means the
+    // engine has delivered a decision for this seat.
     await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
     await goesSecond.getByTestId("end-turn-btn").click();
 
@@ -411,7 +410,8 @@ test("play-through: Normal Summon → End Phase → Battle Phase → direct atta
     // TURN 2 (seat 0 = goesFirst): Battle Phase → direct attack → LP drops
     // ══════════════════════════════════════════════════════════════════════
 
-    await expect(goesFirst.getByTestId("no-decision")).toHaveCount(0);
+    // Wait for turn 2 IdleCommand (toBattlePhase=true → BP button enabled).
+    await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
 
     // Advance to Battle Phase via the phase rail.
     // PhaseRail renders BP cell as: aria-label="Battle Phase — advance here"
