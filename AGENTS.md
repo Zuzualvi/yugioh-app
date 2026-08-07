@@ -240,6 +240,41 @@ entrypoints project, and it is what `verify` and CI run.
 `ci/README.md` for the one-time step to enable it — requires a token with
 `workflow` scope.
 
+### `verify` does NOT run the browser suite — and you can now run it yourself
+
+`npm run verify` does **not** include Playwright. `npm run test:e2e` is a separate script
+and `.github/workflows/e2e.yml` is a separate workflow. So a branch can be **verify-green
+and still break E2E**, and for most of this repo's life that was only discoverable
+remotely, after the push. It happened three times in one day on the duel-UI rebuild:
+deleting components took `zone-option`, `pass-option` and `my-mzone` with them, and every
+one of those branches had a clean `verify`.
+
+**Build the engine binary once and E2E runs locally.** Measured 2026-08-07 in a standard
+sandbox — this was previously believed impossible and it is not:
+
+```sh
+bash packages/engine/scripts/build-wasm.sh    # ~2 min first run; self-installs emsdk, no manual toolchain
+bash packages/engine/scripts/fetch-assets.sh  # ~1 min; cards.cdb + 13,658 Lua scripts
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+
+Needs git, python3, network access to github.com and storage.googleapis.com, and ~1.5 GB
+free. Produces `packages/engine/vendor/ocgcore-custom.sync.{mjs,wasm}`. Subsequent runs
+skip the emsdk download.
+
+**The same build unskips the engine accuracy suite.** Without the binary, the
+`packages/engine/src/*.accuracy.test.ts` files skip at file level — so `npm test` reports
+green while the rules-correctness tests never ran. After the build: 24 engine test files,
+367 passing. **If your test output says files were skipped, you have not run the suite
+that matters.** A skip is not a pass.
+
+**Run `npm run test:e2e` before pushing any change to `packages/web`.** And note that
+`packages/web/src/duel/e2eTestidContract.test.ts` is a **source scan** — it proves a
+`data-testid` exists somewhere in the source, never that it is mounted in the render tree.
+`action-panel` existed in a file and was absent from the running app while that guard was
+green. Only E2E proves reachability.
+
 ---
 
 ## Where documents go (`docs/` has exactly four homes)
