@@ -96,8 +96,18 @@ jobs:
       - name: Build web SPA
         run: npm run build:web
 
+      # ── Run Playwright; tee all output (including harness server stderr that
+      #    Playwright captures from webServer.stderr:"pipe") to a log file so the
+      #    failure dump step below can print it at the log TAIL regardless of how
+      #    many lines of post-job cleanup follow. The JSON reporter writes a
+      #    machine-readable summary for the structured dump step. ───────────────
       - name: Run live duel E2E
-        run: npx playwright test e2e/playwright/duel.spec.ts
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/pw-results.json
+        run: |
+          npx playwright test e2e/playwright/duel.spec.ts --reporter=list,json \
+            2>&1 | tee /tmp/pw-run.log
+          exit ${PIPESTATUS[0]}
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -116,3 +126,65 @@ jobs:
             ❌ **E2E FAILED** on `${{ github.head_ref || github.ref_name }}`
             Commit: `${{ github.sha }}` by ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # ── MUST BE LAST STEP — failure diagnostics printed at the log TAIL ─────
+      # Why this exists: the only view some readers have of a run is the TAIL of
+      # the job log, and the tail is normally post-job git cleanup plus a Node
+      # deprecation warning. The actual Playwright failure — which spec step,
+      # which selector, expected vs actual — sits far above that and was
+      # effectively invisible. Three rounds of guessing at a duel-UI E2E failure
+      # were spent on exactly this before the step below was added.
+      #
+      # It re-surfaces what Playwright already printed so it lands where it can
+      # be read. Keep it LAST.
+      - name: "⛔ E2E failure dump (log tail rescue)"
+        if: failure()
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "  E2E FAILURE DUMP — scroll no further, the error is here"
+          echo "════════════════════════════════════════════════════════════"
+
+          # ── Full Playwright + harness output (last 300 lines) ──────────────
+          # Playwright's webServer captures harness stdout/stderr (configured
+          # with stdout:"pipe", stderr:"pipe") and prints them on failure, so
+          # WASM-not-found errors and other server-side crashes appear here too.
+          echo ""
+          echo "=== Playwright + harness output (last 300 lines) ==="
+          if [ -f /tmp/pw-run.log ]; then
+            tail -n 300 /tmp/pw-run.log
+          else
+            echo "(pw-run.log missing — the E2E step may not have reached Playwright)"
+          fi
+
+          # ── Structured summary from JSON reporter ──────────────────────────
+          echo ""
+          echo "=== Structured failure summary (test name · selector · expected/actual) ==="
+          if [ -f test-results/pw-results.json ]; then
+            node -e "
+              const r = JSON.parse(require('fs').readFileSync('test-results/pw-results.json', 'utf8'));
+              const stats = r.stats || {};
+              console.log('Stats: ' + (stats.expected||0) + ' passed, ' + (stats.unexpected||0) + ' failed, ' + (stats.skipped||0) + ' skipped');
+              function walk(suite) {
+                (suite.specs || []).forEach(sp => {
+                  (sp.tests || []).filter(t => t.status !== 'expected').forEach(t => {
+                    console.log('\nFAIL [' + t.projectName + '] ' + sp.file + ':' + sp.line + ' > ' + sp.title);
+                    (t.results || []).forEach(res => {
+                      if (res.error) {
+                        console.log('  Error   : ' + (res.error.message || JSON.stringify(res.error)).split('\n')[0]);
+                        if (res.error.snippet) console.log('  Snippet : ' + res.error.snippet.trim().split('\n').slice(0, 6).join('\n            '));
+                        if (res.error.stack)   console.log('  Stack   : ' + res.error.stack.trim().split('\n').slice(0, 5).join('\n            '));
+                      }
+                    });
+                  });
+                });
+                (suite.suites || []).forEach(walk);
+              }
+              walk(r);
+            " 2>/dev/null || echo "(JSON parse failed — see tee output above)"
+          else
+            echo "(test-results/pw-results.json not found — check if the E2E step ran at all)"
+          fi
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
