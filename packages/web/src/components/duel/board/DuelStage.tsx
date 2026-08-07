@@ -263,8 +263,20 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       {/* The dim scrim — z-index 2. Candidates get z-index 3 to lift out. */}
       <DimScrim active={inAnswerMode} />
 
-      {/* Board */}
-      <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+      {/* Board
+       * max-height keeps the board within the 1440×900 floor (G1).
+       * paddingBottom ≥ action-panel height (≈39px) so the own hand row
+       * is never occluded by the fixed bottom panel regardless of scroll.
+       */}
+      <div
+        style={{
+          flex: 1,
+          overflow: "auto",
+          padding: 12,
+          paddingBottom: 52,
+          maxHeight: "calc(100dvh - 40px)",
+        }}
+      >
         <DuelBoard
           state={state}
           mySeat={mySeat}
