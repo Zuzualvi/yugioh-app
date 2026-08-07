@@ -168,8 +168,11 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
     [decision, respond],
   );
 
+  // Hand cards for level lookup (MH-1: ZoneCard.level is on the wire)
+  const myHandCards = mySeat === 0 ? state.zones.p0_hand : state.zones.p1_hand;
+
   // Derive verbs for the clicked card
-  const verbs = showVerbCluster ? (deriveVerbs(decision, clickedRef) ?? []) : [];
+  const verbs = showVerbCluster ? (deriveVerbs(decision, clickedRef, myHandCards) ?? []) : [];
   const refusalReason =
     showVerbCluster && verbs.filter((v) => v.label !== "Inspect").length === 0
       ? deriveRefusalReason(decision, clickedRef)

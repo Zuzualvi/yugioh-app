@@ -13,7 +13,7 @@
  * Replaces ActionContextMenu.tsx.
  */
 import React, { useEffect, useRef } from "react";
-import type { DuelDecision } from "@yugioh-app/contracts";
+import type { DuelDecision, ZoneCard } from "@yugioh-app/contracts";
 import type { CardRef } from "../../../duel/contracts";
 
 export type VerbLabel =
@@ -65,20 +65,33 @@ interface Props {
 /**
  * Derives legal verbs from an IdleCommand or BattleCommand decision.
  * Returns null if the decision is not an IdleCommand or BattleCommand.
+ *
+ * `handCards` — the current player's hand from the board snapshot (MH-1).
+ * Used to read `ZoneCard.level` to distinguish tribute vs non-tribute summons.
+ * Level ≥ 5 → "Normal Summon — tribute" (no count — ND-1 withdrawn).
+ * Level unknown → "Normal Summon" (safe fallback, requirement H: don't fabricate).
  */
 export function deriveVerbs(
   decision: DuelDecision | null,
   clickedRef: CardRef | null,
+  handCards?: (ZoneCard | null)[],
 ): Verb[] | null {
   if (!decision || !clickedRef) return null;
 
   if (decision.kind === "IdleCommand") {
     const verbs: Verb[] = [];
 
-    // Summons (level cannot be determined from CardEntry alone — requires CardLookup from W3)
-    // "Normal Summon — tribute" label requires knowing if level ≥ 5. Until CardLookup
-    // is wired in from W3, all summons show "Normal Summon". The label is corrected to
-    // "Normal Summon — tribute" when CardLookup is real (W3 integration step).
+    // Level lookup from the snapshot (MH-1: ZoneCard.level is on the wire).
+    // CardEntry.location is the card's current location; sequence is its index.
+    function levelForEntry(location: string, sequence: number): number | null {
+      if (location === "HAND" && handCards) {
+        const card = handCards[sequence];
+        return card?.level ?? null;
+      }
+      return null;
+    }
+
+    // Summons: "Normal Summon — tribute" for level ≥ 5 (no count per ND-1).
     if (decision.summons) {
       for (const s of decision.summons) {
         if (
@@ -86,8 +99,10 @@ export function deriveVerbs(
           s.location === clickedRef.location &&
           s.sequence === clickedRef.sequence
         ) {
+          const level = levelForEntry(s.location, s.sequence);
+          const needsTribute = level != null && level >= 5;
           verbs.push({
-            label: "Normal Summon",
+            label: needsTribute ? "Normal Summon — tribute" : "Normal Summon",
             action: "summon",
             index: decision.summons.indexOf(s),
           });

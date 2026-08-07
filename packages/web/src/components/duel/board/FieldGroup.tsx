@@ -193,7 +193,10 @@ export function FieldGroup({
   );
 
   const monsterRow = (
-    <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
+    <div
+      data-testid={isOwn ? "my-mzone" : undefined}
+      style={{ display: "flex", gap: 3, justifyContent: "center" }}
+    >
       {mzone.slice(0, 5).map((card, idx) => {
         const ref = makeRef("MZONE", idx);
         const isSpent = hasRef(spentAttackers, ref);
