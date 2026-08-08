@@ -439,3 +439,137 @@ A slice is done when the **whole-repo** pipeline is green on a **clean clone** �
 (typecheck · lint · arch:check · actionlint · docs:check · build:check · test) — plus the acceptance
 criteria of its own Linear issue, verified by the QA Engineer and not by the implementer. "My package's
 tests pass" is not done.
+
+---
+
+## Closing slices — C1 and C2 (added 2026-08-08, before the PR #42 cutover)
+
+Two defects found after the W1–W4 slices merged into `integration/duel-ui-rebuild`. Both must land on
+that branch before it merges to `master`. They are sequential: **C2 depends on C1 being merged**,
+because C2's E2E cases exercise surfaces C1 makes reachable.
+
+### C1 — Phase rail is operable, and the `Choose zones` setting is actually wired
+
+**Owner:** one Full-Stack Engineer. **Branch:** `fix/duel-ui-phaserail-a11y-zone-prefs`, off
+`integration/duel-ui-rebuild`. **Base for its PR:** `integration/duel-ui-rebuild`, never `master`.
+
+**Files owned — exclusively, nothing else may be touched:**
+
+- `packages/web/src/components/duel/chrome/PhaseRail.tsx`
+- `packages/web/src/components/duel/chrome/PhaseRail.test.tsx` (new)
+- `packages/web/src/components/duel/board/DuelStage.tsx`
+- `packages/web/src/screens/DuelScreen.tsx`
+- `packages/web/src/components/duel/board/DuelStagePrefs.test.tsx` (new)
+- this spec file
+
+**Explicitly NOT owned:** `e2e/playwright/duel.spec.ts` (C2 owns it), `packages/web/src/duel/*`,
+`packages/contracts/**`, anything under `packages/server` or `packages/engine`.
+
+#### C1(a) — the phase rail's phase cells must be real buttons
+
+`PhaseRail.tsx` renders each phase cell as a `<button>` carrying `role="listitem"`, inside a wrapper
+with `role="list"`. An explicit ARIA role **overrides** the native role, so the phase-advance control
+— which the design spec §7 names as *the* phase-advance control — is announced to assistive tech as a
+list item and cannot be found by `getByRole("button")`. A keyboard or screen-reader user cannot
+operate it. QA previously adapted its E2E selector to `getByRole("listitem")` to match; that was the
+wrong direction and C2 reverts it.
+
+**Required change:**
+
+- Delete `role="listitem"` from the phase cell `<button>` elements. They keep their native button role.
+- Change the wrapper from `role="list"` to `role="group"`, keeping `aria-label="Duel phases"`. A
+  `role="list"` whose children are no longer list items is invalid ARIA; `group` is the correct
+  container for a set of related controls.
+- Everything else about the cells — `aria-current="step"` on the active phase, the `aria-label`
+  strings including the `" — advance here"` suffix when legal, the `disabled` state when not legal,
+  all styling — is **unchanged**. Do not restyle, do not rename, do not add keyboard handlers: native
+  buttons already give Enter/Space and tab order.
+
+**Locked output contract (an E2E suite asserts on these exact strings — do not alter them):**
+
+- active cell: `aria-label` = `"<Full Phase Name> (current)"`, e.g. `"Main Phase 1 (current)"`
+- legal, non-active cell: `aria-label` = `"<Full Phase Name> — advance here"` (em dash, spaces both
+  sides), e.g. `"Battle Phase — advance here"`
+- illegal, non-active cell: `aria-label` = `"<Full Phase Name>"`, and the element is `disabled`
+- the `data-testid="phase-ribbon"` wrapper and `data-testid="end-turn-btn"` are unchanged
+
+#### C1(b) — `Choose zones` in the settings popover must reach the interaction state machine
+
+`DuelScreen.tsx` owns `settings: DuelSettings` (which includes `chooseZones`) and passes it to
+`DuelTopBar` → `SettingsPopover`, so the toggle renders and flips. But `DuelStage.tsx` line ~81 holds
+its **own** hard-coded, setter-less `const [prefs] = useState({ chooseZones: false })` and feeds that
+to `useDuelInteraction`. The two are unconnected: flipping "Choose zones" in the UI changes nothing.
+
+The design spec is explicit that this must work — §"SelectZone" requires that with `Choose zones: ON`
+the board becomes the answer space (legal zones glow, the player clicks one), and
+`chooseZones: true` must disable `SelectZone` auto-answering except when `zones.length === 1`. The
+logic already exists and is unit-tested (`packages/web/src/duel/autoResolve.test.ts`); only the wire
+is missing. This is the same class as the seam-stub gap recorded above: the slice that built the
+control and the slice that built the consumer each assumed the other joined them.
+
+**Required change:**
+
+- Add a required prop `chooseZones: boolean` to `DuelStageProps` in `DuelStage.tsx`.
+- Delete the local `useState` for `prefs`. Build the object passed to `useDuelInteraction` from the
+  prop: `useMemo(() => ({ chooseZones }), [chooseZones])`.
+- In `DuelScreen.tsx`, pass `chooseZones={settings.chooseZones}` to `<DuelStage …>`. Nothing else in
+  `DuelScreen.tsx` changes — do not restructure the settings state, do not add persistence, do not
+  add a new setting.
+- `useDuelInteraction` and `autoResolve` are **not** modified. If you believe they must be, that is a
+  stop-and-ask.
+
+#### C1 acceptance criteria
+
+1. `PhaseRail` phase cells are found by `getByRole("button", { name: /Battle Phase.*advance/i })` in a
+   jsdom render where Battle Phase is legal; `getByRole("listitem")` finds **zero** elements in the rail.
+2. The rail container has `role="group"` and `aria-label="Duel phases"`; no `role="list"` remains in
+   `PhaseRail.tsx`.
+3. The three `aria-label` forms above are asserted verbatim by unit test (active / legal / illegal).
+4. Clicking a legal phase cell calls `onAdvancePhase` with that phase's numeric value; clicking an
+   illegal (disabled) cell calls it zero times.
+5. `DuelStage` accepts `chooseZones` as a prop and passes `{ chooseZones }` through to
+   `useDuelInteraction`; a unit test renders `DuelStage` with `chooseZones={true}` and with
+   `chooseZones={false}` and asserts the value reaching the hook differs.
+6. `DuelScreen` passes `settings.chooseZones` into `DuelStage` — asserted by test, not by inspection.
+7. `npm run verify` is green **whole-repo** on a clean clone, with the engine WASM binary built first
+   (`bash packages/engine/scripts/build-wasm.sh` then `bash packages/engine/scripts/fetch-assets.sh`).
+   A run whose output reports skipped `*.accuracy.test.ts` files has not run the suite that matters.
+8. `npm run test:e2e` is green. The existing `duel.spec.ts` still uses `getByRole("listitem")` for the
+   Battle Phase cell at the time C1 is built — **C1 does not touch that file**, so that one assertion
+   is expected to FAIL after C1(a). Report the failure with its exact test name and do not fix it;
+   C2 owns the revert. Every other E2E case must pass.
+
+### C2 — E2E: phase-rail selector revert, and the presented zone-selection path
+
+**Owner:** the QA Engineer. **Branch:** off `integration/duel-ui-rebuild` **after C1 has merged into
+it**. **Files owned exclusively:** `e2e/playwright/duel.spec.ts`.
+
+Requirement E3 (CEO-ratified) has two halves. The auto-answered half — `chooseZones: false` is the
+default, `SelectZone` auto-answers the leftmost free zone — is covered. The **presented** half — the
+board becomes the answer space and the player picks a zone — has unit coverage in
+`packages/web/src/duel/autoResolve.test.ts` and **no browser coverage at all**, so nothing proves the
+path is reachable in the running app. A source-scan guard cannot prove reachability; only E2E can.
+
+**Required changes:**
+
+1. Revert the Battle Phase selector at `e2e/playwright/duel.spec.ts` ~line 499 from
+   `getByRole("listitem", …)` back to `getByRole("button", { name: /Battle Phase.*advance/i })`, and
+   delete the three-line comment above it explaining the listitem workaround.
+2. Add an E2E case for the presented zone path: open the settings popover
+   (`data-testid="settings-btn"`), toggle **Choose zones** on, then perform a Normal Summon that
+   offers more than one legal zone, and assert the board enters zone-pick — the legal zones are
+   presented and clicking one commits the placement and advances the duel. Assert on the zone
+   surface actually rendered by the current board (find it by reading `DuelStage`/board source; do
+   not invent a `data-testid`, and do not add one to product code — you do not own product files).
+3. If the presented path proves unreachable in the browser even after C1(b), that is a **product
+   defect, not a test to weaken**. Report it with the exact selector you tried and stop. Do not
+   change a `data-testid`, do not adapt an assertion to match the code, and do not skip the case.
+
+#### C2 acceptance criteria
+
+1. `npm run test:e2e` green, with the phase-rail step asserting `getByRole("button", …)`.
+2. A new E2E case covers the `Choose zones: ON` presented zone-selection path end to end, and fails
+   if the toggle is disconnected from the interaction state machine (verify this by reverting C1(b)
+   locally and confirming the new case goes red, then restoring).
+3. No file outside `e2e/playwright/duel.spec.ts` is modified — proven with
+   `git diff --name-only origin/integration/duel-ui-rebuild...HEAD` pasted into the report.
