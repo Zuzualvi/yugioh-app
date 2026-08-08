@@ -79,6 +79,7 @@ const baseStageProps = {
   decision: null,
   respond: vi.fn(),
   connection: "open" as const,
+  promptLevel: "Standard" as const,
 };
 
 // ── Criterion 5: chooseZones prop reaches useDuelInteraction ─────────────────

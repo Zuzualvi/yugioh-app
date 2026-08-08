@@ -1,13 +1,13 @@
 /**
  * DuelTopBar — the 40px chrome bar at the top of the duel screen.
- * Carries: Exit · PresenceIndicator · TurnPill · VerbosityChip · SettingsPopover · LogToggle.
+ * Carries: Exit · PresenceIndicator · TurnPill · ResponsePromptControl · SettingsPopover · LogToggle.
  */
-import React, { useState } from "react";
+import React from "react";
 import type { Seat } from "@yugioh-app/contracts";
 import { PresenceIndicator } from "./PresenceIndicator";
 import { TurnPill } from "./TurnPill";
-import { VerbosityChip } from "./VerbosityChip";
-import type { VerbosityLevel } from "./VerbosityChip";
+import { ResponsePromptControl } from "./ResponsePromptControl";
+import type { PromptLevel } from "../../../duel/responsePrompts";
 import { SettingsPopover } from "./SettingsPopover";
 import type { DuelSettings } from "./SettingsPopover";
 import { LogToggle } from "./LogToggle";
@@ -22,6 +22,8 @@ interface Props {
   onLogToggle: () => void;
   settings: DuelSettings;
   onSettingsChange: (s: DuelSettings) => void;
+  promptLevel: PromptLevel;
+  onPromptLevelChange: (v: PromptLevel) => void;
   onResign: () => void;
   onExit: () => void;
   duelEnded: boolean;
@@ -37,12 +39,12 @@ export function DuelTopBar({
   onLogToggle,
   settings,
   onSettingsChange,
+  promptLevel,
+  onPromptLevelChange,
   onResign,
   onExit,
   duelEnded,
 }: Props) {
-  const [verbosity, setVerbosity] = useState<VerbosityLevel>("standard");
-
   return (
     <header
       data-testid="duel-top-bar"
@@ -81,7 +83,11 @@ export function DuelTopBar({
         <TurnPill turnNumber={turnNumber} currentTurn={currentTurn} mySeat={mySeat} />
       </div>
 
-      <VerbosityChip value={verbosity} onChange={setVerbosity} />
+      <ResponsePromptControl
+        value={promptLevel}
+        onChange={onPromptLevelChange}
+        disabled={duelEnded}
+      />
 
       <SettingsPopover
         settings={settings}

@@ -979,6 +979,8 @@ describe("Radio semantics — min===max===1 (design spec §0a, ZUH-105)", () => 
         duelEnded: false,
         respond,
         prefs: { chooseZones: false },
+        events: [],
+        promptLevel: "Standard",
       }),
     );
   }
@@ -1014,6 +1016,8 @@ describe("Radio semantics — min===max===1 (design spec §0a, ZUH-105)", () => 
         duelEnded: false,
         respond,
         prefs: { chooseZones: false },
+        events: [],
+        promptLevel: "Standard",
       }),
     );
     act(() => {
