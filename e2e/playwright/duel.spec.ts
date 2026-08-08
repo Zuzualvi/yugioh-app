@@ -22,6 +22,8 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 //      index === sequence, four remaining slots legitimately empty.
 //   4. Turn play-through: Normal Summon → End Phase → End Phase → Battle Phase
 //      → direct attack → opponent LP drops.
+//   5. E3 presented path (ZUH-109 / C2): mid-duel toggle of Choose zones ON →
+//      Normal Summon → board presents zone-option buttons → click one → placed.
 //
 // NOT tested here (explicitly untested per spec §1 CTO note / PRD G1):
 //   - All timing and motion, damage-number animation, audio.
@@ -540,6 +542,105 @@ test(
         "aria-label",
         /LP: 8000$/,
       );
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// TEST 5 — E3 presented path (ZUH-109 / C2)
+//
+// E3 has two halves:
+//   auto-answered  (chooseZones: false, default) — covered in test 3.
+//   presented      (chooseZones: true)           — this test.
+//
+// With ZUH-112 fixed, useDuelInteraction derives prefs via useMemo from
+// externalPrefs.chooseZones, so a mid-duel toggle takes effect immediately:
+// the next SelectZone decision with zones.length > 1 is NOT auto-answered
+// and the QuestionBar renders zone-option buttons for the player to click.
+//
+// Real user path, no WebSocket interception of any kind:
+//   board visible → toggle Choose zones ON mid-duel → Normal Summon →
+//   zone-option buttons appear → click one → placement commits.
+//
+// Load-bearing check (two mutations, both performed before push):
+//   (a) delete `&& !prefs.chooseZones` in autoResolve.ts → test RED
+//   (b) restore mount-only useState in useDuelInteraction.ts → test RED
+// ---------------------------------------------------------------------------
+test(
+  "E3 presented path: mid-duel Choose zones ON → zone-pick presented, clicking commits placement",
+  { timeout: 60_000 },
+  async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const alice = await ctxA.newPage();
+    const bob = await ctxB.newPage();
+
+    try {
+      await login(alice, "e2e_alice");
+      await login(bob, "e2e_bob");
+
+      const joinPath = await createRoomAsAlice(alice);
+      await bob.goto(joinPath);
+      await bob.waitForURL((u) => u.pathname.includes("/room"));
+
+      const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
+      void goesSecond;
+
+      // Wait for goesFirst's IdleCommand (end-turn-btn enabled = toEndPhase true).
+      await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+
+      // ── Toggle "Choose zones" ON mid-duel ─────────────────────────────────
+      // ZUH-112 fixed: useDuelInteraction now derives prefs from the prop via
+      // useMemo, so this mid-duel toggle propagates immediately to autoAnswer.
+      await goesFirst.getByTestId("settings-btn").click();
+      const popover = goesFirst.getByTestId("settings-popover");
+      await expect(popover).toBeVisible();
+      await popover.getByRole("checkbox", { name: "Choose zones" }).check();
+      await goesFirst.getByTestId("settings-btn").click();
+      await expect(popover).not.toBeVisible();
+
+      // ── Normal Summon via verb chip ────────────────────────────────────────
+      await expect(goesFirst.getByTestId("own-hand-row")).toBeVisible();
+      await clickSummonableHandCard(goesFirst);
+      await expect(goesFirst.getByTestId("verb-chip-cluster")).toBeVisible();
+
+      const summonChip = goesFirst
+        .getByTestId("verb-chip-cluster")
+        .getByRole("menuitem", { name: /Normal Summon/i })
+        .first();
+      await assertF12(summonChip, "Normal Summon chip (E3 test)");
+      await summonChip.click();
+
+      // ── Zone-pick is presented (SelectZone NOT auto-answered) ──────────────
+      // chooseZones=true → autoAnswer returns null → mode="answer" →
+      // question-bar renders with zone-option buttons (one per legal MZONE slot).
+      await expect(goesFirst.getByTestId("question-bar")).toBeVisible({ timeout: 5_000 });
+      const zoneOptions = goesFirst.getByTestId("zone-option");
+      await expect(zoneOptions.first()).toBeVisible();
+
+      // An empty field offers 5 MZONE slots — must be more than 1.
+      // (autoAnswer always handles zones.length===1 regardless of prefs; this
+      // confirms we are in the player-choice path, not a single-zone edge case.)
+      const zoneCount = await zoneOptions.count();
+      expect(
+        zoneCount,
+        "multiple zone-option buttons must be offered on an empty field",
+      ).toBeGreaterThan(1);
+
+      // F12: zone-option button must receive its own pointer click.
+      await assertF12(zoneOptions.first(), "zone-option[0]");
+
+      // ── Click to commit placement ──────────────────────────────────────────
+      await zoneOptions.first().click();
+
+      // question-bar gone; card placed in mzone (one slot occupied, four empty).
+      await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible({ timeout: 5_000 });
+      const myMzone = goesFirst.locator('[data-testid="my-mzone"]');
+      await expect(myMzone).toBeVisible();
+      await expect(myMzone.getByTestId("empty-zone")).toHaveCount(4);
     } finally {
       await ctxA.close();
       await ctxB.close();
