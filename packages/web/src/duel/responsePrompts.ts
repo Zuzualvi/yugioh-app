@@ -25,9 +25,8 @@
  *
  *   Every window: always offer (no event classification needed).
  *
- *   Minimal: ChainPrompt forced=false → suppress; everything else → fail-safe (true).
- *   Even with the event context, Minimal cannot reliably distinguish mandatory triggers
- *   from optional ones beyond the forced flag on ChainPrompt.
+ *   Minimal: ChainPrompt forced=false → suppress; otherwise defers to Standard.
+ *   This preserves the nesting invariant: offered(Minimal) ⊆ offered(Standard).
  */
 
 import type { DuelDecision, DuelEvent } from "@yugioh-app/contracts";
@@ -69,6 +68,10 @@ function lastTriggerEvent(events: DuelEvent[]): DuelEvent | null {
  * Classification is conservative: only returns false when we are certain the
  * decision represents an optional window that the player has opted out of at this level.
  * Everything unclassifiable returns true (fail-safe).
+ *
+ * The standing note in the control UI is binding: mandatory decisions are ALWAYS
+ * offered regardless of level. We identify mandatory decisions as those with no
+ * decline path — if the engine requires a response, we must present the window.
  */
 export function shouldOfferWindow(
   d: DuelDecision,
@@ -77,6 +80,12 @@ export function shouldOfferWindow(
 ): boolean {
   // Every window: always offer
   if (level === "Every window") return true;
+
+  // Mandatory decisions (no decline path) are always offered at every level —
+  // this is the "Mandatory effects are always offered" guarantee in the standing note.
+  if (getDeclineResponse(d) === null && d.kind !== "IdleCommand" && d.kind !== "BattleCommand") {
+    return true;
+  }
 
   if (level === "Standard") {
     const trigger = lastTriggerEvent(events);
@@ -90,15 +99,18 @@ export function shouldOfferWindow(
   }
 
   // Minimal: only mandatory effects and trigger effects.
-  // The only decision type we can unambiguously classify as an optional window
-  // from available data is a non-forced ChainPrompt.
-  // Even with the event context, we cannot reliably distinguish mandatory from
-  // optional triggers for SelectYesNo / SelectEffectYN etc. → fail-safe for those.
+  // Minimal suppresses everything Standard suppresses, and additionally suppresses
+  // optional chain responses. Defer to Standard's event-based result rather than
+  // returning a bare true — preserving the nesting invariant:
+  //   offered(Minimal) ⊆ offered(Standard) ⊆ offered(Every window)
+  // Standard's unclassifiable paths already return true (fail-safe), so no
+  // fail-safe information is lost by delegating here.
   if (level === "Minimal") {
     if (d.kind === "ChainPrompt" && d.forced === false) {
       return false; // Optional chain response — player opted for minimal interruptions
     }
-    return true; // everything else: fail-safe
+    // For everything else, Minimal defers to Standard.
+    return shouldOfferWindow(d, events, "Standard");
   }
 
   // Unclassifiable level — fail-safe

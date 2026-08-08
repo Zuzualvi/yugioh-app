@@ -163,8 +163,11 @@ describe("shouldOfferWindow — Minimal", () => {
     expect(shouldOfferWindow(chainPromptOptional, [evSummon], "Minimal")).toBe(false);
   });
 
-  it("offers forced ChainPrompt (mandatory) regardless of events", () => {
+  it("offers forced ChainPrompt (mandatory, no decline path) — always true at all levels", () => {
+    // Forced ChainPrompt has no decline response → mandatory → always offered
     expect(shouldOfferWindow(chainPromptForced, [evPhase], "Minimal")).toBe(true);
+    expect(shouldOfferWindow(chainPromptForced, [evChainSolving], "Minimal")).toBe(true);
+    expect(shouldOfferWindow(chainPromptForced, [], "Minimal")).toBe(true);
   });
 
   it("fail-safe: SelectYesNo → true (cannot classify as mandatory or optional)", () => {
@@ -179,15 +182,16 @@ describe("shouldOfferWindow — Minimal", () => {
 // ── Fail-safe: unclassifiable decisions ──────────────────────────────────────
 
 describe("shouldOfferWindow — fail-safe for unclassifiable decisions", () => {
-  it("SelectZone (no decline path) → true at all levels", () => {
+  it("SelectZone (no decline path = mandatory) → true at all levels and all event contexts", () => {
     const selectZone: DuelDecision = {
       kind: "SelectZone",
       player: 0,
       zones: [{ controller: 0, location: "MZONE", sequence: 0 }],
       count: 1,
     };
+    // Mandatory decisions are always offered regardless of event context or level
     expect(shouldOfferWindow(selectZone, [], "Minimal")).toBe(true);
-    expect(shouldOfferWindow(selectZone, [evPhase], "Standard")).toBe(false); // event-classified
+    expect(shouldOfferWindow(selectZone, [evPhase], "Standard")).toBe(true);
     expect(shouldOfferWindow(selectZone, [], "Standard")).toBe(true);
     expect(shouldOfferWindow(selectZone, [], "Every window")).toBe(true);
   });
@@ -208,4 +212,62 @@ describe("shouldOfferWindow — fail-safe for unclassifiable decisions", () => {
     expect(shouldOfferWindow(idle, [], "Minimal")).toBe(true);
     expect(shouldOfferWindow(idle, [], "Standard")).toBe(true);
   });
+});
+
+// ── Nesting-invariant test ────────────────────────────────────────────────────
+// offered(Minimal) ⊆ offered(Standard) ⊆ offered(Every window)
+// If a case is offered at Minimal it must be offered at Standard;
+// if offered at Standard it must be offered at Every window.
+
+describe("shouldOfferWindow — nesting invariant: Minimal ⊆ Standard ⊆ Every window", () => {
+  const decisions: DuelDecision[] = [
+    chainPromptForced,
+    chainPromptOptional,
+    selectYesNo,
+    {
+      kind: "SelectZone",
+      player: 0,
+      zones: [{ controller: 0, location: "MZONE", sequence: 0 }],
+      count: 1,
+    },
+    {
+      kind: "SelectEffectYN",
+      player: 0,
+      card: { controller: 0, location: "SZONE", sequence: 0, code: 12345, name: "Test" },
+      description: "Activate?",
+    },
+  ];
+
+  const eventSets: [string, DuelEvent[]][] = [
+    ["empty", []],
+    ["SUMMON", [evSummon]],
+    ["ATTACK", [evAttack]],
+    ["CHAINING", [evChaining]],
+    ["CHAIN_END", [evChainEnd]],
+    ["PHASE", [evPhase]],
+    ["CHAIN_SOLVING", [evChainSolving]],
+    ["BATTLE", [evBattle]],
+    ["LP_CHANGE only", [evLpChange]],
+    ["SUMMON then PHASE", [evSummon, evPhase]],
+    ["PHASE then SUMMON", [evPhase, evSummon]],
+  ];
+
+  for (const decision of decisions) {
+    for (const [evLabel, events] of eventSets) {
+      it(`${decision.kind} / events=[${evLabel}]: Minimal ⊆ Standard ⊆ Every window`, () => {
+        const minimal = shouldOfferWindow(decision, events, "Minimal");
+        const standard = shouldOfferWindow(decision, events, "Standard");
+        const everyWindow = shouldOfferWindow(decision, events, "Every window");
+
+        // If Minimal offers it, Standard must too
+        if (minimal) {
+          expect(standard).toBe(true);
+        }
+        // If Standard offers it, Every window must too
+        if (standard) {
+          expect(everyWindow).toBe(true);
+        }
+      });
+    }
+  }
 });
