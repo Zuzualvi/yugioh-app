@@ -22,11 +22,15 @@ export default defineConfig({
   },
   projects: [
     {
+      // G1: 1440×900 is the floor — sub-1440 is out of scope and untested.
       name: "desktop",
-      use: { browserName: "chromium", viewport: { width: 1280, height: 800 } },
+      use: { browserName: "chromium", viewport: { width: 1440, height: 900 } },
     },
     {
+      // Mobile is explicitly out of scope for the duel screen (PRD §14 / G1).
+      // duel.spec.ts is excluded here; other specs (prod-smoke) remain covered.
       name: "mobile",
+      testIgnore: /duel\.spec/,
       use: {
         browserName: "chromium",
         viewport: { width: 393, height: 851 },

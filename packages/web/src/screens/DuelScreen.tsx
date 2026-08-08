@@ -1,38 +1,54 @@
 /**
- * DuelScreen — the main duel board.
+ * DuelScreen — composition root for the duel UI rebuild (W1).
  *
- * Reads duelId from route params. Seat credential (seatToken + seat) comes from:
- *   1. location.state (set by RoomHandoff navigation) — fast path
- *   2. GET /api/duels/:id/seat — fallback for refresh during 'starting' (E45)
+ * Credential and socket layer is unchanged from the previous implementation.
+ * The rendering layer now uses DuelStage, which owns the interaction modes
+ * and the board/chrome layout.
  *
- * useMock is now EXPLICIT-ONLY: only active when location.state.useMock === true.
- * A missing or refused credential renders a real error, never a silent mock board
- * (R32, R43 — fixes the ZUH-21 symptom where a missing seatToken silently started
- * a fake duel while the player's real clock ran).
+ * Design authority: docs/specs/2026-08-06-duel-ui-design.md
+ * Engineering spec: docs/specs/2026-08-07-duel-ui-rebuild-engineering.md
  *
- * Renders:
- *   - DuelBoard (zone/LP/phase snapshot)
- *   - DuelTimer (server-authoritative countdown)
- *   - ActionPanel (typed DECISION response + RESIGN)
+ * CSS custom properties declared here (W1 owns them; W2 and W3 consume, never redefine):
+ *   --own   blue  (yours)
+ *   --opp   red   (theirs)
+ *   --dim-opacity  0.45 (Law 2)
+ *
+ * Preserved behaviours (G3 — no regressions):
+ *   - useMock explicit-only (AC7, R32, R43)
+ *   - Seat credential recovery from server (E45)
+ *   - role=alert on credential failure
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type {
   DuelClientMessage,
   DuelDecision,
   DuelDecisionResponse,
+  DuelEvent,
   DuelServerMessage,
   DuelStateSnapshot,
   Seat,
 } from "@yugioh-app/contracts";
-import { ActionPanel } from "../components/ActionPanel";
-import { DuelBoard } from "../components/DuelBoard";
-import { DuelTimer } from "../components/DuelTimer";
-import { DocsSlideIn } from "../components/DocsSlideIn";
+import { DuelStage } from "../components/duel/board/DuelStage";
+import { DuelTopBar } from "../components/duel/chrome/DuelTopBar";
 import { openDuelSocket } from "../api/duelSocket";
 import { getSeatCredential } from "../api/room";
+import type { DuelSettings } from "../components/duel/chrome/SettingsPopover";
+import type { PromptLevel } from "../duel/responsePrompts";
 import type { MockDuelSession } from "../mock/duelSession";
+import { EventLogRail } from "../components/duel/log/EventLogRail";
+import { DuelEndOverlay } from "../components/duel/DuelEndOverlay";
+import { createCardCache } from "../duel/cardCache";
+
+// ── CSS custom properties (W1 declares once) ─────────────────────────────────
+const DUEL_CSS = `
+:root {
+  --own: #3b82f6;
+  --opp: #ef4444;
+  --dim-opacity: 0.45;
+}
+`;
 
 interface LocationState {
   seatToken?: string;
@@ -40,6 +56,13 @@ interface LocationState {
   /** dev-only: use mock session instead of real WS */
   useMock?: boolean;
 }
+
+const DEFAULT_SETTINGS: DuelSettings = {
+  chooseZones: false,
+  selfChain: false,
+  activationOrder: false,
+  reduceMotion: false,
+};
 
 export function DuelScreen() {
   const { duelId } = useParams<{ duelId: string }>();
@@ -58,18 +81,37 @@ export function DuelScreen() {
   const [credentialError, setCredentialError] = useState<string | null>(null);
 
   const [state, setState] = useState<DuelStateSnapshot | null>(null);
-  const [clock, setClock] = useState<{ onClockSeat: Seat; deadlineAt: number } | null>(null);
+  const [clock, setClock] = useState<{
+    onClockSeat: Seat;
+    deadlineAt: number;
+    deadlines?: [number, number];
+  } | null>(null);
   const [pendingDecision, setPendingDecision] = useState<DuelDecision | null>(null);
+  const [events, setEvents] = useState<DuelEvent[]>([]);
   const [duelEnded, setDuelEnded] = useState<{
     winner: Seat | null;
     reason: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [docsOpen, setDocsOpen] = useState(false);
+  const [connection, setConnection] = useState<"open" | "reconnecting" | "closed">("closed");
+  const [settings, setSettings] = useState<DuelSettings>(DEFAULT_SETTINGS);
+  const [promptLevel, setPromptLevel] = useState<PromptLevel>("Standard");
+  const [logOpen, setLogOpen] = useState(false);
 
   const mockSessionRef = useRef<MockDuelSession | null>(null);
   const socketRef = useRef<ReturnType<typeof openDuelSocket> | null>(null);
+
+  // Card cache for EventLogRail (W3 — separate from DuelStage's own cache)
+  const [, setLogCacheTick] = useState(0);
+  const logCacheTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logCardCache = useMemo(
+    () =>
+      createCardCache(() => {
+        if (logCacheTimer.current) clearTimeout(logCacheTimer.current);
+        logCacheTimer.current = setTimeout(() => setLogCacheTick((n) => n + 1), 50);
+      }),
+    [],
+  );
 
   // Fetch seat credential if not provided via router state (E45 refresh recovery)
   useEffect(() => {
@@ -105,35 +147,30 @@ export function DuelScreen() {
     }
   }, []);
 
-  const sendMsg = useCallback(
-    (msg: DuelClientMessage) => {
-      if (mockSessionRef.current) {
-        if (msg.type === "RESIGN") {
-          mockSessionRef.current.stop();
-          setDuelEnded({ winner: mySeat === 0 ? 1 : 0, reason: "resign" });
-        }
-      } else if (socketRef.current) {
-        socketRef.current.send(msg);
-      }
-    },
-    [mySeat],
-  );
-
   const handleServerMessage = useCallback((msg: DuelServerMessage) => {
     switch (msg.type) {
       case "SEAT_ASSIGNED":
         setMySeat(msg.seat);
-        setConnected(true);
+        setConnection("open");
         break;
       case "STATE":
         setState(msg.state);
-        setPendingDecision(null);
+        // NOTE: pendingDecision is NOT cleared here (requirement B2 / intent survival).
+        // W2's state machine owns intent; W1 only tracks the decision for mode derivation.
+        // The decision is cleared when a new DECISION frame arrives (or DUEL_END).
         break;
       case "DECISION":
         setPendingDecision(msg.decision);
         break;
       case "CLOCK":
-        setClock({ onClockSeat: msg.onClockSeat, deadlineAt: msg.deadlineAt });
+        setClock({
+          onClockSeat: msg.onClockSeat,
+          deadlineAt: msg.deadlineAt,
+          deadlines: (msg as { deadlines?: [number, number] }).deadlines,
+        });
+        break;
+      case "EVENTS":
+        setEvents((prev) => [...prev, ...((msg as { events: DuelEvent[] }).events ?? [])]);
         break;
       case "DUEL_END":
         setDuelEnded({ winner: msg.winner, reason: msg.reason });
@@ -150,19 +187,16 @@ export function DuelScreen() {
   // Connect to the duel (mock or real) once credentials are available
   useEffect(() => {
     if (!duelId) return;
-    if (credentialLoading) return; // wait for credential fetch to complete
+    if (credentialLoading) return;
 
     if (useMock) {
-      // C1: The import() lives inside if (import.meta.env.DEV) so Rollup replaces
-      // that condition with if (false) in production builds, eliminating the chunk.
-      // In production useMock=true renders the credential-error path (ZUH-21).
       if (import.meta.env.DEV) {
         const seat: Seat = locationState.seat ?? 0;
         import("../mock/duelSession")
           .then(({ createMockDuelSession }) => {
             const session = createMockDuelSession(seat, handleServerMessage);
             mockSessionRef.current = session;
-            setConnected(true);
+            setConnection("open");
             setMySeat(seat);
             session.start();
           })
@@ -174,21 +208,22 @@ export function DuelScreen() {
           mockSessionRef.current = null;
         };
       }
-      // Production: mock unavailable — same hard error as a credential failure,
-      // never a silent fake board.
       setCredentialError(
         "Mock duel is not available. Please join a real duel from the home screen.",
       );
       return;
     }
 
-    if (!seatToken) return; // credential fetch failed — handled by credentialError state
+    if (!seatToken) return;
 
     const socket = openDuelSocket(duelId, seatToken, {
       onMessage: handleServerMessage,
-      onOpen: () => setConnected(true),
-      onClose: () => setConnected(false),
-      onError: () => setError("Connection error — reconnecting…"),
+      onOpen: () => setConnection("open"),
+      onClose: () => setConnection("closed"),
+      onError: () => {
+        setConnection("reconnecting");
+        setError("Connection error — reconnecting…");
+      },
     });
     socketRef.current = socket;
     return () => {
@@ -198,6 +233,16 @@ export function DuelScreen() {
   }, [duelId, seatToken, credentialLoading, useMock]);
 
   const effectiveSeat: Seat = mySeat ?? 0;
+
+  function handleResign() {
+    const msg: DuelClientMessage = { type: "RESIGN" };
+    if (mockSessionRef.current) {
+      mockSessionRef.current.stop();
+      setDuelEnded({ winner: effectiveSeat === 0 ? 1 : 0, reason: "resign" });
+    } else if (socketRef.current) {
+      socketRef.current.send(msg);
+    }
+  }
 
   if (!duelId) {
     return (
@@ -210,7 +255,6 @@ export function DuelScreen() {
     );
   }
 
-  // Credential loading state (E45 refresh during 'starting')
   if (credentialLoading) {
     return (
       <div
@@ -229,7 +273,6 @@ export function DuelScreen() {
     );
   }
 
-  // Credential error — real error, never a mock fallback
   if (credentialError) {
     return (
       <div style={{ padding: 32, textAlign: "center" }}>
@@ -243,202 +286,136 @@ export function DuelScreen() {
     );
   }
 
+  // Clock for DuelStage
+  const clockForStage = clock
+    ? {
+        onClockSeat: clock.onClockSeat,
+        deadlines: clock.deadlines ?? ([clock.deadlineAt, clock.deadlineAt] as [number, number]),
+      }
+    : null;
+
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      <header
+    <>
+      {/* W1 CSS custom properties — declared once here */}
+      <style>{DUEL_CSS}</style>
+
+      <div
         style={{
-          background: "var(--bg-1)",
-          borderBottom: "1px solid var(--border)",
-          padding: "12px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          className="btn"
-          onClick={() => navigate("/")}
-          style={{ minHeight: 44, padding: "6px 14px", fontSize: "1rem" }}
-        >
-          ← Home
-        </button>
-        <span style={{ fontWeight: 700, fontSize: "1rem" }}>
-          ⚔ Duel
-          {!connected && (
-            <span
-              style={{
-                color: "var(--text-2)",
-                fontWeight: 400,
-                fontSize: "1rem",
-                marginLeft: 8,
-              }}
-            >
-              (connecting…)
-            </span>
-          )}
-        </span>
-        {clock && mySeat !== null && (
-          <DuelTimer
-            onClockSeat={clock.onClockSeat}
-            deadlineAt={clock.deadlineAt}
-            mySeat={effectiveSeat}
-          />
-        )}
-        <button
-          className="btn btn-ghost"
-          onClick={() => setDocsOpen(true)}
-          aria-label="Open Rules & Guides"
-          style={{ padding: "6px 12px", minHeight: 44, marginLeft: "auto", fontSize: "1rem" }}
-          title="Rules & Guides"
-        >
-          ?
-        </button>
-      </header>
-
-      {docsOpen && <DocsSlideIn onClose={() => setDocsOpen(false)} />}
-
-      {error && (
-        <div
-          role="alert"
-          style={{
-            background: "rgba(224,82,82,0.15)",
-            border: "1px solid var(--invalid)",
-            color: "var(--invalid)",
-            padding: "10px 20px",
-            fontSize: "1rem",
-          }}
-        >
-          ⚠ {error}
-        </div>
-      )}
-
-      {duelEnded && (
-        <DuelEndBanner
-          winner={duelEnded.winner}
-          reason={duelEnded.reason}
-          mySeat={effectiveSeat}
-          onHome={() => navigate("/")}
-        />
-      )}
-
-      <main
-        style={{
-          flex: 1,
+          minHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
-          padding: 16,
-          maxWidth: 1024,
-          margin: "0 auto",
-          width: "100%",
+          background: "var(--bg-0)",
+          // 1440px is the floor (G1)
+          minWidth: 1440,
         }}
       >
+        {/* Error strip (amber, under top bar) */}
+        {error && (
+          <div
+            role="alert"
+            style={{
+              background: "rgba(212,135,42,0.15)",
+              border: "1px solid var(--warning)",
+              color: "var(--warning)",
+              padding: "6px 16px",
+              fontSize: "0.875rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            ⚠ {error}
+            <button
+              onClick={() => setError(null)}
+              aria-label="Dismiss error"
+              style={{
+                marginLeft: "auto",
+                background: "transparent",
+                border: "none",
+                color: "var(--warning)",
+                cursor: "pointer",
+                fontSize: "1rem",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Top bar */}
+        <DuelTopBar
+          opponentName="Opponent"
+          connection={connection}
+          turnNumber={state?.turnNumber ?? null}
+          currentTurn={state?.currentTurn ?? 0}
+          mySeat={effectiveSeat}
+          logOpen={logOpen}
+          onLogToggle={() => setLogOpen((v) => !v)}
+          settings={settings}
+          onSettingsChange={setSettings}
+          promptLevel={promptLevel}
+          onPromptLevelChange={setPromptLevel}
+          onResign={handleResign}
+          onExit={() => navigate("/")}
+          duelEnded={!!duelEnded}
+        />
+
+        {/* Main content */}
         {state ? (
-          <>
-            <DuelBoard state={state} mySeat={effectiveSeat} />
-            <ActionPanel
-              decision={pendingDecision}
-              respond={respond}
-              onSend={sendMsg}
-              disabled={!!duelEnded}
+          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            {/* DuelStage */}
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <DuelStage
+                state={state}
+                decision={pendingDecision}
+                mySeat={effectiveSeat}
+                clock={clockForStage}
+                events={events}
+                respond={respond}
+                connection={connection}
+                chooseZones={settings.chooseZones}
+                promptLevel={promptLevel}
+              />
+            </div>
+
+            {/* W3: EventLogRail — overlays right edge; always mounted, open/close via prop */}
+            <EventLogRail
+              events={events}
+              open={logOpen}
+              onOpenChange={setLogOpen}
+              mySeat={effectiveSeat}
+              playerNames={["You", "Opponent"]}
+              lookup={logCardCache}
             />
-          </>
+          </div>
         ) : (
           <div
             style={{
+              flex: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
               color: "var(--text-2)",
               fontSize: "1rem",
             }}
           >
-            {connected ? "Waiting for duel to start…" : "Connecting…"}
+            {connection === "open" ? "Waiting for duel to start…" : "Connecting…"}
           </div>
         )}
-      </main>
-    </div>
-  );
-}
 
-interface DuelEndBannerProps {
-  winner: Seat | null;
-  reason: string;
-  mySeat: Seat;
-  onHome: () => void;
-}
-
-function DuelEndBanner({ winner, reason, mySeat, onHome }: DuelEndBannerProps) {
-  const iWon = winner === mySeat;
-  const isDraw = winner === null;
-
-  let resultText: string;
-  if (isDraw) {
-    resultText = "Draw!";
-  } else if (iWon) {
-    resultText = "You win!";
-  } else {
-    resultText = "You lose.";
-  }
-
-  let reasonText: string;
-  if (reason === "timeout") {
-    resultText = iWon ? "🏆 You win!" : "You lose.";
-    reasonText = iWon ? "Opponent's move timer ran out." : "Your move timer ran out.";
-  } else if (reason === "resign") {
-    reasonText = iWon ? "Opponent resigned." : "You resigned.";
-  } else {
-    reasonText = iWon ? "Opponent's LP reached 0." : "Your LP reached 0.";
-  }
-
-  return (
-    <div
-      data-testid="duel-end-banner"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.72)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100,
-      }}
-    >
-      <div
-        style={{
-          background: "var(--bg-1)",
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          padding: 40,
-          textAlign: "center",
-          maxWidth: 360,
-          width: "90%",
-        }}
-      >
-        <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>
-          {isDraw ? "🤝" : iWon ? "🏆" : "💀"}
-        </div>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>{resultText}</h2>
-        <p
-          style={{
-            color: "var(--text-1)",
-            fontSize: "1rem",
-            marginBottom: 28,
-          }}
-          data-testid="duel-end-reason"
-        >
-          {reasonText}
-        </p>
-        <button
-          className="btn btn-primary"
-          onClick={onHome}
-          style={{ minHeight: 44, padding: "10px 32px", width: "100%" }}
-        >
-          Back to Home
-        </button>
+        {/* W3: DuelEndOverlay */}
+        {duelEnded && (
+          <DuelEndOverlay
+            winner={duelEnded.winner}
+            reason={duelEnded.reason}
+            mySeat={effectiveSeat}
+            finalLp={state?.lp ?? [0, 0]}
+            playerNames={["You", "Opponent"]}
+            onHome={() => navigate("/")}
+            onOpenLog={() => setLogOpen(true)}
+          />
+        )}
       </div>
-    </div>
+    </>
   );
 }
