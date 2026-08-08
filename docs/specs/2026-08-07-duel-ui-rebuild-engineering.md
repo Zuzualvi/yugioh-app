@@ -635,3 +635,192 @@ writes prefs except the settings toggle.
 `onAskNextTime` prop, so the receipt's "Ask me next time" control renders in no state at all
 (`AutoAnswerReceipt.tsx:53` gates on the prop). That is a separate missing affordance, it changes what
 a user can do, and it is parked for the CEO rather than folded in here.
+
+---
+
+## The seam rule — every seam names its owner (added 2026-08-08, permanent)
+
+**This project shipped four components wired to nothing.** `DuelDock`, `EventLogRail` and the
+inspectors all merged mounted nowhere; `AutoAnswerReceipt`'s "Ask me next time" renders in no state
+because `DuelStage` passes no `onAskNextTime` (ZUH-113); `VerbosityChip` holds a setting nothing
+reads; `ChainStrip` receives a `chain` array nothing populates. Every one passed `verify`, passed
+review and passed a QA gate.
+
+The mechanism is always the same, and it is not carelessness. A seam between two slices gets
+expressed as **an optional prop** or **a setter-less `useState`**. Both make the missing half
+invisible to the compiler, invisible to tests, and invisible in review — the code reads as complete
+from either side, and each slice ships believing the other one joined it.
+
+**Two rules, binding on every slice spec in this repo from now on:**
+
+1. **Every seam names its owner.** A spec that says component A renders inside B must say, by name,
+   which slice writes the line that mounts it and passes its props. File ownership alone does not do
+   this: two slices can own disjoint files and still both believe the other one owns the join. If a
+   seam's owner is not named, the seam is unowned, and unowned seams do not get built.
+2. **A prop that must be passed is REQUIRED, never optional-with-default.** An optional prop with a
+   safe-looking default converts a missing wire into silent wrong behaviour. A required prop converts
+   it into a compile error, which is the whole point. The same applies to state: a value that comes
+   from outside is a prop, never a local `useState` seeded from a prop — `useState`'s argument is an
+   initial value and it will not resync (this is exactly ZUH-110/ZUH-112).
+
+The check for a reviewer is one question: **for every component this slice adds, which line mounts
+it, and is that line in this diff or named in another slice?** If the answer is "someone else
+presumably", the slice is not done.
+
+---
+
+## C4 — the chain strip renders, and the response-prompt control works (C6, §11/§11b)
+
+**Owner:** one Full-Stack Engineer. **Branch:** `fix/c4-chain-and-response-prompts`, off
+`integration/duel-ui-rebuild`. **PR base:** `integration/duel-ui-rebuild`, never `master`.
+
+Two defects, one class — a control and a display, each fully built and each connected to nothing.
+Found by the final QA pass on `87687c3`. Both defeat **MUST** requirements, so the cutover is held
+until they land.
+
+### Files owned — exclusively
+
+- `packages/web/src/duel/useDuelInteraction.ts`
+- `packages/web/src/duel/chainFromEvents.ts` (new) + `chainFromEvents.test.ts` (new)
+- `packages/web/src/duel/responsePrompts.ts` (new) + `responsePrompts.test.ts` (new)
+- `packages/web/src/duel/contracts.ts` — **only** to extend `DuelInteractionInput`
+- `packages/web/src/components/duel/chrome/ResponsePromptControl.tsx` (new)
+- `packages/web/src/components/duel/chrome/VerbosityChip.tsx` (DELETE) and its test if one exists
+- `packages/web/src/components/duel/chrome/DuelTopBar.tsx`
+- `packages/web/src/components/duel/board/DuelStage.tsx`
+- `packages/web/src/screens/DuelScreen.tsx`
+- tests for the above
+- this spec file
+
+**NOT owned:** `packages/web/src/duel/autoResolve.ts` (see the conflation warning in C4(b)),
+`packages/contracts/**`, `e2e/playwright/duel.spec.ts`, `PhaseRail.tsx`, any workflow file.
+
+### C4(a) — populate the chain strip from the event feed (requirement C6, MUST)
+
+`useDuelInteraction.ts:173` is `const [chain] = useState<ChainLink[]>([])` — declared, never written.
+`ChainStrip` returns `null` whenever `links.length === 0`, so it has never rendered once. The file's
+own header comment says "in this stub implementation". C6 is a MUST and is not met.
+
+The data is already on the wire. `packages/contracts/src/duelEvent.ts` carries the typed events:
+`CHAINING { card, link, owner }` · `CHAIN_SOLVING { link }` · `CHAIN_SOLVED { link }` · `CHAIN_END`.
+`DuelScreen` already holds `events` and already passes them to `DuelStage`.
+
+**Required change:**
+
+- New pure module `packages/web/src/duel/chainFromEvents.ts`:
+  ```ts
+  export function chainFromEvents(events: DuelEvent[]): ChainLink[];
+  ```
+  Fold the event list into the current chain. `CHAINING` appends a link
+  (`{ link, card, code, name: "", owner, resolving: false }`, `code` from the event's card ref).
+  `CHAIN_SOLVING { link }` sets `resolving: true` on that link and `false` on every other.
+  `CHAIN_SOLVED { link }` sets `resolving: false` on that link. `CHAIN_END` returns `[]`.
+  Pure, synchronous, no timers, no React. Ordinals come from the event's `link` field — **do not
+  re-derive them from array position**, the re-indexing trap in the design spec §"The re-indexing
+  trap" is about exactly this.
+- Add `events: DuelEvent[]` to `DuelInteractionInput` in `contracts.ts` (**required**, not optional
+  — see the seam rule above).
+- In `useDuelInteraction`, delete the dead `useState` and derive:
+  `const chain = useMemo(() => chainFromEvents(events), [events]);`
+- `DuelStage` passes `events` into the hook, and resolves each link's `name` from its existing
+  `cardCache` before handing `chain` to `DuelDock`. A link whose name has not resolved yet keeps
+  `name: ""` — `ChainStrip`'s `loading` state (design spec §5) is the correct rendering, not a crash
+  and not a fabricated name.
+- **C6's auto-push:** when a link transitions to `resolving`, `DuelStage` calls its existing
+  `inspectorControl.inspectCard(ref, code)` for that link with **zero clicks**. This is the
+  `CHAIN_SOLVING` acceptance criterion in design spec §5 and it is the half most likely to be
+  skipped — it is not optional.
+
+**Deliberate deviation, recorded so it is not read as drift:** design spec §5 types `ChainLink` with
+`state: "declared" | "resolving" | "resolved"`. The shipped web `ChainLink` in
+`packages/web/src/duel/contracts.ts:90` uses `resolving: boolean`. **Keep `resolving: boolean`.**
+The tri-state exists only to animate links out as they resolve, and all motion is explicitly
+untested and out of scope for this cutover; churning a consumed type for an unshippable animation is
+not worth the blast radius. If the resolve-out animation is ever built, that is when the type changes.
+
+### C4(b) — the response-prompt control, rewritten and wired (design spec §11 and §11b)
+
+`DuelTopBar.tsx:44` holds `const [verbosity, setVerbosity] = useState<VerbosityLevel>("standard")`
+and **nothing reads it**. A player sets the level and every prompt still arrives. The rendered
+control also contradicts its own accessible name: the button reads `Chain: Standard ▾` while its
+`aria-label` reads `Response prompts: Standard`, and the options carry no descriptions.
+
+**Diff the whole component against design spec §11b — do not fix only the two defects named here.**
+§11b is a full rewrite (`ResponsePromptControl`, replacing the three-state cycler) and the shipped
+`VerbosityChip` is a partial implementation of it. Everything in §11b's Structure, Props, States and
+Acceptance criteria tables is in scope for this slice.
+
+**The control (design spec §11b), all of which must ship:**
+
+- Rename to `ResponsePromptControl.tsx`; delete `VerbosityChip.tsx`.
+- Closed state reads **`Response prompts: <value> ▾`** — the value legible without opening. The
+  `Chain:` prefix is wrong and goes.
+- Values are `"Minimal" | "Standard" | "Every window"`. Default **Standard**.
+- Open state shows **all three options with their one-line descriptions in one view** (§11b renders
+  them verbatim: *"Only mandatory effects and certain triggers."* / *"Also on summons, attacks and
+  activations."* / *"Also every phase change and battle step."*), the current one ticked.
+- **The standing note ships in the same view, verbatim:** *"Mandatory effects are always offered,
+  whatever this is set to — this cannot make you miss a forced response."* §11b: this note is the
+  answer to evaluator open question 1 and **must** ship with the control.
+- `disabled` when the duel has ended — the control goes inert (§11 states table).
+- **Do not advertise a held-key modifier.** Revision 1 promised `hold A to widen, D to narrow` with
+  nothing bound. Documented interactions that do nothing are worse than undocumented ones.
+- State lifts to `DuelScreen` alongside `settings`, and is passed down as a **required** prop.
+  `DuelTopBar` no longer owns it.
+
+**The wiring — and the mistake not to make.** Evaluator open question 4 is explicit: the prompt level
+*"decides when you are offered a response window — it never answers for you. Answering on your behalf
+is a separate mechanism (the §15 auto-resolve register, restricted to exactly-one-legal-answer cases)
+… The two were conflated in revision 1 and that conflation is what made B1 possible."*
+
+So: **this logic does NOT go in `autoResolve.ts`, and `autoAnswer`'s signature does not change.**
+Design spec §11's acceptance criteria still require `autoAnswer` to return `null` for every
+`SelectYesNo` and `SelectEffectYN`; that stays true. `autoResolve.ts` is not in your owned files.
+
+New pure module `packages/web/src/duel/responsePrompts.ts`:
+
+```ts
+export type PromptLevel = "Minimal" | "Standard" | "Every window";
+export function shouldOfferWindow(d: DuelDecision, level: PromptLevel): boolean;
+```
+
+Classification, from design spec §11's trigger list:
+
+| Level | Offers |
+|---|---|
+| `Minimal` | mandatory effects and trigger effects only |
+| `Standard` | the above, plus summon, attack declaration, spell/trap activation, effect activation, and before the opponent ends their turn |
+| `Every window` | the above, plus every phase change, each Battle Phase step, after each effect resolves, and minor actions |
+
+**The fail-safe rule, and it is binding: if a decision cannot be classified from the data available,
+`shouldOfferWindow` returns `true`.** Never suppress a window you could not classify. The accepted
+trade in the design is that `Minimal` may cost you an *optional* response; it is never acceptable to
+cost a player a response because a classifier was unsure. A wrong `true` costs a prompt. A wrong
+`false` silently costs a duel.
+
+When `shouldOfferWindow` returns `false`, `useDuelInteraction` responds with the **decline** answer
+for that decision and **writes an `AutoAnswerReceipt`** — requirement C9 says where the client acts
+on the player's behalf, that fact is recoverable. A suppressed window with no receipt is invisible,
+and invisible is the one thing it may not be.
+
+### C4 acceptance criteria
+
+1. `chainFromEvents` is pure and unit-tested against: single link · three links · `CHAIN_SOLVING`
+   moving the resolving flag · `CHAIN_SOLVED` clearing it · `CHAIN_END` emptying the chain · a
+   12-link chain preserving ordinals from the event `link` field, not array position.
+2. `ChainStrip` renders during a real chain in the browser. Prove it in a unit/integration test that
+   drives the events; the E2E for it is a separate QA slice.
+3. On `CHAIN_SOLVING`, the resolving link's card is pushed to the inspector with zero clicks.
+4. No `useState` for `chain` remains; `events` is a **required** field of `DuelInteractionInput`.
+5. `ResponsePromptControl` closed reads `Response prompts: <value> ▾`; open shows all three options
+   with descriptions plus the standing note verbatim; the control is inert when the duel has ended.
+   `VerbosityChip.tsx` is deleted and nothing imports it.
+6. The level lifts to `DuelScreen` and reaches `useDuelInteraction` as a **required** prop.
+7. `shouldOfferWindow` is pure and unit-tested per level, **including a test that an unclassifiable
+   decision returns `true`**.
+8. A suppressed window responds with the decline answer AND writes an `AutoAnswerReceipt`.
+9. `autoResolve.ts` is unmodified and `autoAnswer`'s signature is unchanged.
+10. `npm run verify` green whole-repo on a clean clone with the engine WASM binary built and **no
+    file-level `*.accuracy.test.ts` skips**; `npm run test:e2e` green.
+11. **Seam check, per the rule above:** for every component this slice adds or changes, the line that
+    mounts it and passes its props is in this diff. State that explicitly in the PR body.
