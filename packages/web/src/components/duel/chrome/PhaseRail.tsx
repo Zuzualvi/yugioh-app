@@ -114,7 +114,7 @@ export function PhaseRail({
       )}
 
       {/* Phase cells */}
-      <div role="list" aria-label="Duel phases" style={{ display: "flex", gap: 4, flex: 1 }}>
+      <div role="group" aria-label="Duel phases" style={{ display: "flex", gap: 4, flex: 1 }}>
         {PHASES.map((ph) => {
           const active = ph.value === currentPhase;
           const legal = isMyTurn && legalNextPhases.includes(ph.value) && !active;
@@ -123,7 +123,6 @@ export function PhaseRail({
           return (
             <button
               key={ph.value}
-              role="listitem"
               aria-current={active ? "step" : undefined}
               aria-label={`${ph.label}${active ? " (current)" : legal ? " — advance here" : ""}`}
               disabled={!legal}

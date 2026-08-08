@@ -369,6 +369,7 @@ export function DuelScreen() {
                 events={events}
                 respond={respond}
                 connection={connection}
+                chooseZones={settings.chooseZones}
               />
             </div>
 

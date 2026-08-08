@@ -63,7 +63,19 @@ interface PileInspectorState {
   location: "GRAVE" | "REMOVED" | "EXTRA" | "DECK";
 }
 
-export function DuelStage({ state, decision, mySeat, clock, respond, connection }: DuelStageProps) {
+interface DuelStageOwnProps extends DuelStageProps {
+  chooseZones?: boolean;
+}
+
+export function DuelStage({
+  state,
+  decision,
+  mySeat,
+  clock,
+  respond,
+  connection,
+  chooseZones = false,
+}: DuelStageOwnProps) {
   // ── Card cache (W3 real implementation) ─────────────────────────────────────
   // Debounce onChange to batch card-fetch completions into one re-render per 50ms.
   const [, setCacheTick] = useState(0);
@@ -78,7 +90,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
   );
 
   // ── Interaction state machine (W2 real implementation) ───────────────────────
-  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: false });
+  const prefs = useMemo(() => ({ chooseZones }), [chooseZones]);
   const interaction = useDuelInteraction({
     decision,
     mySeat,
