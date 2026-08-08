@@ -37,8 +37,8 @@
  * Not enumerated (ACT mode — no question bar, no confirm control):
  *   IdleCommand · BattleCommand — these arm ACT mode, not the bar.
  *     Outcome is the DuelDecisionResponse built from IdleCommand.summons[i] etc;
- *     each action+index pair is trivially distinct. See ActionPanel.test.ts
- *     for the ACT-mode surface contract.
+ *     each action+index pair is trivially distinct. See VerbChipCluster.test.ts
+ *     for the ACT-mode surface contract (ActionPanel.tsx was deleted in C3).
  *
  * The confirm-label-and-response-from-same-value invariant (B3/CEO) is
  * asserted structurally: both computeLabel() and computeResponse() receive

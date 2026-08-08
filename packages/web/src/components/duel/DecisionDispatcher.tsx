@@ -7,7 +7,7 @@
  * new code should import DecisionRenderer directly from dock/DecisionRenderer.
  *
  * NOTE: This component does NOT manage selection state. Selection state is
- * owned by useDuelInteraction and lives in ActionPanel / DuelDock.
+ * owned by useDuelInteraction and lives in DuelDock (via DuelStage).
  */
 
 import React from "react";
@@ -22,8 +22,9 @@ interface Props {
 }
 
 /**
- * @deprecated Use DuelDock (via ActionPanel) which owns the full state machine.
- *             DecisionDispatcher is kept only for backward-compatible imports.
+ * @deprecated Use DuelDock (via DuelStage) which owns the full state machine.
+ *             ActionPanel.tsx was deleted in C3. DecisionDispatcher is kept only
+ *             for backward-compatible imports.
  */
 export function DecisionDispatcher({ decision, respond, disabled }: Props) {
   // selection is stateless here — the full state lives in useDuelInteraction.

@@ -569,3 +569,69 @@ path is reachable in the running app. A source-scan guard cannot prove reachabil
    locally and confirming the new case goes red, then restoring).
 3. No file outside `e2e/playwright/duel.spec.ts` is modified — proven with
    `git diff --name-only origin/integration/duel-ui-rebuild...HEAD` pasted into the report.
+
+### C3 — `chooseZones` has one source of truth (ZUH-110)
+
+**Found by QA while writing C2, after C1 merged.** C1(b) wired `settings.chooseZones` from `DuelScreen`
+through `DuelStage` into `useDuelInteraction`'s input. That half is correct and stays. The defect is on
+the other side of the seam: **the hook ignores the input after mount.**
+
+`packages/web/src/duel/useDuelInteraction.ts:169`:
+
+```ts
+const [prefs, setPrefsState] = useState<{ chooseZones: boolean }>({
+  chooseZones: externalPrefs.chooseZones ?? false,
+});
+```
+
+`useState`'s argument is an **initial** value, read once at mount and never again. The hook then keeps
+its own copy and never resyncs. So a player who opens the settings popover mid-duel and flips
+**Choose zones** on gets nothing: the toggle moves, `DuelScreen` state updates, the prop changes, and
+the hook keeps answering from the value it captured when the board first rendered. `SelectZone`
+auto-answers the leftmost zone exactly as if the toggle were off. Requirement **E3** is CEO-ratified
+and is not met.
+
+**This is a duplicate-state bug, not a missing effect.** Adding a sync effect would make the parent win
+on each change while leaving two writeable copies of one setting — the same trap, re-armed. The fix is
+to remove the second copy.
+
+`setPrefs` exists for the receipt's "Ask me next time" affordance. Its only caller is
+`packages/web/src/components/ActionPanel.tsx:88`, and **`ActionPanel` is not mounted anywhere** — it was
+replaced by `DuelDock` in W2 and only its own tests still reference it. It is dead code, so nothing live
+writes prefs except the settings toggle.
+
+**Required change:**
+
+- In `useDuelInteraction.ts`, delete the local `prefs` state and the `setPrefsState` setter. Derive the
+  value from the input: `const prefs = useMemo(() => ({ chooseZones: externalPrefs.chooseZones }), [externalPrefs.chooseZones]);`
+- Remove `setPrefs` from `DuelInteractionOutput` and from the returned object. The parent owns the
+  setting; the hook reads it.
+- Delete `packages/web/src/components/ActionPanel.tsx` and `packages/web/src/components/ActionPanel.test.ts`.
+  Dead code, mounted nowhere, and the only reason `setPrefs` still had a caller.
+- **Do NOT add `prefs` to the dependency array of the auto-resolve effect at line ~275.** The existing
+  comment (`prefs intentionally read at effect time without being a dep`) is correct and must stay.
+  Adding it would re-run the effect when the toggle flips and re-answer a decision that has already
+  been answered. The intended behaviour is that a mid-duel toggle applies from the **next** decision
+  onward, which is what a `[decision]` dep gives.
+
+**Acceptance criteria:**
+
+1. No `useState` for prefs remains in `useDuelInteraction.ts`; `prefs` derives from the input prop.
+2. `setPrefs` is gone from `DuelInteractionOutput`; `ActionPanel.tsx` and `ActionPanel.test.ts` are deleted.
+3. A unit test rerenders the hook with `chooseZones` flipped `false → true` **after mount** and asserts
+   the next `SelectZone` decision with `zones.length > 1` is NOT auto-answered. This test fails against
+   the current code — confirm that it does before fixing. (Implementation note: `renderHook` from
+   `@testing-library/react` hung during development on some `SelectZone` cases; cause not established
+   — minimal extractions of the same hook pattern did not reproduce it. The test uses a rendered
+   `Harness` component with `act`+`setState` instead, which is a valid approach regardless.)
+4. A unit test asserts a `SelectZone` with `zones.length === 1` is still auto-answered with the toggle ON
+   (E1 — auto-answer where exactly one legal answer exists is unaffected).
+5. The auto-resolve effect's dep array is unchanged, and flipping the toggle does not re-answer an
+   already-answered decision.
+6. `npm run verify` green whole-repo on a clean clone with the WASM binary built, no file-level
+   `*.accuracy.test.ts` skips; `npm run test:e2e` green.
+
+**Out of scope, recorded so it is not silently absorbed:** `DuelStage` mounts `DuelDock` without an
+`onAskNextTime` prop, so the receipt's "Ask me next time" control renders in no state at all
+(`AutoAnswerReceipt.tsx:53` gates on the prop). That is a separate missing affordance, it changes what
+a user can do, and it is parked for the CEO rather than folded in here.

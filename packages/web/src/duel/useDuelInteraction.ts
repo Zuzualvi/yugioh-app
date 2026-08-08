@@ -1,8 +1,7 @@
 /**
  * useDuelInteraction — the W2-owned interaction state machine.
  *
- * Publishes DuelInteraction to every slice. Called by ActionPanel (or, once W1
- * integrates DuelStage, by DuelStage).
+ * Publishes DuelInteraction to every slice. Called by DuelStage (via DuelDock).
  *
  * Key invariants:
  *   - intent MUST NOT be cleared by a STATE frame (B2).
@@ -13,7 +12,7 @@
  * See: docs/specs/2026-08-06-duel-ui-design.md §1, contracts.ts DuelInteraction.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { DuelDecision, DuelDecisionResponse, Seat } from "@yugioh-app/contracts";
 import type {
   AutoAnswerReceipt,
@@ -38,8 +37,6 @@ export interface DuelInteractionInput {
 export interface DuelInteractionOutput extends DuelInteraction {
   /** Current prefs, for passing down to ResponsePromptControl */
   prefs: { chooseZones: boolean };
-  /** Update a preference */
-  setPrefs: (p: Partial<{ chooseZones: boolean }>) => void;
   /** Toggle a candidate in selection */
   toggleSelection: (ref: CardRef) => void;
   /** Submit the current selection as a confirm response */
@@ -166,9 +163,10 @@ export function useDuelInteraction({
   respond,
   prefs: externalPrefs,
 }: DuelInteractionInput): DuelInteractionOutput {
-  const [prefs, setPrefsState] = useState<{ chooseZones: boolean }>({
-    chooseZones: externalPrefs.chooseZones ?? false,
-  });
+  const prefs = useMemo(
+    () => ({ chooseZones: externalPrefs.chooseZones }),
+    [externalPrefs.chooseZones],
+  );
   const [intent, setIntent] = useState<PendingIntent | null>(null);
   const [selection, setSelection] = useState<CardRef[]>([]);
   const [receipts, setReceipts] = useState<AutoAnswerReceipt[]>([]);
@@ -179,10 +177,6 @@ export function useDuelInteraction({
   const intentIdRef = useRef(0);
   const receiptIdRef = useRef(0);
   const uniqueBase = useId();
-
-  const setPrefs = useCallback((p: Partial<{ chooseZones: boolean }>) => {
-    setPrefsState((prev) => ({ ...prev, ...p }));
-  }, []);
 
   // ── Auto-resolve check on new decision ─────────────────────────────────────
   useEffect(() => {
@@ -514,7 +508,6 @@ export function useDuelInteraction({
     receipts,
     status,
     prefs,
-    setPrefs,
     toggleSelection,
     confirm,
     decline,
