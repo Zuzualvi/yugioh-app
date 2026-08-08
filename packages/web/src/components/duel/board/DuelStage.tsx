@@ -64,7 +64,7 @@ interface PileInspectorState {
 }
 
 interface DuelStageOwnProps extends DuelStageProps {
-  chooseZones?: boolean;
+  chooseZones: boolean;
 }
 
 export function DuelStage({
@@ -74,7 +74,7 @@ export function DuelStage({
   clock,
   respond,
   connection,
-  chooseZones = false,
+  chooseZones,
 }: DuelStageOwnProps) {
   // ── Card cache (W3 real implementation) ─────────────────────────────────────
   // Debounce onChange to batch card-fetch completions into one re-render per 50ms.

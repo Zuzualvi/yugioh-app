@@ -460,9 +460,10 @@ because C2's E2E cases exercise surfaces C1 makes reachable.
 - `packages/web/src/components/duel/board/DuelStage.tsx`
 - `packages/web/src/screens/DuelScreen.tsx`
 - `packages/web/src/components/duel/board/DuelStagePrefs.test.tsx` (new)
+- `e2e/playwright/duel.spec.ts` (one-line selector revert only — see C1(a) below)
 - this spec file
 
-**Explicitly NOT owned:** `e2e/playwright/duel.spec.ts` (C2 owns it), `packages/web/src/duel/*`,
+**Explicitly NOT owned:** `packages/web/src/duel/*`,
 `packages/contracts/**`, anything under `packages/server` or `packages/engine`.
 
 #### C1(a) — the phase rail's phase cells must be real buttons
@@ -509,7 +510,7 @@ control and the slice that built the consumer each assumed the other joined them
 
 **Required change:**
 
-- Add a required prop `chooseZones: boolean` to `DuelStageProps` in `DuelStage.tsx`.
+- Add a required prop `chooseZones: boolean` to `DuelStageProps` in `DuelStage.tsx`. It must be required (not optional-with-default), because an optional default of `false` reintroduces the silent-disconnect defect this slice exists to fix: a caller that forgets the prop would get a settings toggle that silently does nothing, with no compile-time signal.
 - Delete the local `useState` for `prefs`. Build the object passed to `useDuelInteraction` from the
   prop: `useMemo(() => ({ chooseZones }), [chooseZones])`.
 - In `DuelScreen.tsx`, pass `chooseZones={settings.chooseZones}` to `<DuelStage …>`. Nothing else in
@@ -534,10 +535,7 @@ control and the slice that built the consumer each assumed the other joined them
 7. `npm run verify` is green **whole-repo** on a clean clone, with the engine WASM binary built first
    (`bash packages/engine/scripts/build-wasm.sh` then `bash packages/engine/scripts/fetch-assets.sh`).
    A run whose output reports skipped `*.accuracy.test.ts` files has not run the suite that matters.
-8. `npm run test:e2e` is green. The existing `duel.spec.ts` still uses `getByRole("listitem")` for the
-   Battle Phase cell at the time C1 is built — **C1 does not touch that file**, so that one assertion
-   is expected to FAIL after C1(a). Report the failure with its exact test name and do not fix it;
-   C2 owns the revert. Every other E2E case must pass.
+8. `npm run test:e2e` is **fully green** — all 4 cases pass. The Battle Phase selector revert (originally C2 item 1) moved into C1 so the integration branch is never merged red; C1 owns that one-line change in `e2e/playwright/duel.spec.ts`.
 
 ### C2 — E2E: phase-rail selector revert, and the presented zone-selection path
 
@@ -552,9 +550,7 @@ path is reachable in the running app. A source-scan guard cannot prove reachabil
 
 **Required changes:**
 
-1. Revert the Battle Phase selector at `e2e/playwright/duel.spec.ts` ~line 499 from
-   `getByRole("listitem", …)` back to `getByRole("button", { name: /Battle Phase.*advance/i })`, and
-   delete the three-line comment above it explaining the listitem workaround.
+1. ~~Revert the Battle Phase selector~~ — moved into C1 (selector revert landed in PR #46 to keep the integration branch green on merge).
 2. Add an E2E case for the presented zone path: open the settings popover
    (`data-testid="settings-btn"`), toggle **Choose zones** on, then perform a Normal Summon that
    offers more than one legal zone, and assert the board enters zone-pick — the legal zones are
@@ -567,7 +563,7 @@ path is reachable in the running app. A source-scan guard cannot prove reachabil
 
 #### C2 acceptance criteria
 
-1. `npm run test:e2e` green, with the phase-rail step asserting `getByRole("button", …)`.
+1. `npm run test:e2e` green (phase-rail step already asserts `getByRole("button", …)` after C1).
 2. A new E2E case covers the `Choose zones: ON` presented zone-selection path end to end, and fails
    if the toggle is disconnected from the interaction state machine (verify this by reverting C1(b)
    locally and confirming the new case goes red, then restoring).

@@ -493,10 +493,8 @@ test(
       await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
 
       // Advance to Battle Phase via the phase rail.
-      // PhaseRail phase cells have role="listitem" (inside role="list"),
-      // which overrides the native button role — use getByRole("listitem").
       // aria-label="Battle Phase — advance here" when the phase is legal.
-      const bpButton = goesFirst.getByRole("listitem", { name: /Battle Phase.*advance/i });
+      const bpButton = goesFirst.getByRole("button", { name: /Battle Phase.*advance/i });
       await expect(bpButton).toBeVisible();
       await assertF12(bpButton, "Battle Phase advance button");
       await bpButton.click();
