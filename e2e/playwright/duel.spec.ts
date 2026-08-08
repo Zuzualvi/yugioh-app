@@ -366,7 +366,6 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible();
 
     // F12 on the Normal Summon chip before clicking.
-    // Fails with OCCLUDED_BY:DIV[testid=action-panel] if ZUH-107 is present.
     const summonChip = goesFirst
       .getByTestId("verb-chip-cluster")
       .getByRole("menuitem", { name: /Normal Summon/i })
@@ -376,33 +375,21 @@ test("ACT-mode grammar: A1 assertion, verb chip → Normal Summon → zone place
     // Real pointer click on the chip.
     await summonChip.click();
 
-    // ── After summon intent: SelectZone decision ──────────────────────────
-    // The engine follows up with SelectZone. In answer mode:
-    //   - question-bar should appear (A5: exactly one)
-    //   - verb-chip-cluster must be dismissed (Law 1)
-    await expect(goesFirst.getByTestId("question-bar")).toBeVisible();
+    // ── After summon intent: SelectZone auto-answered ─────────────────────
+    // prefs.chooseZones = false (default): DuelStage auto-places the card in
+    // the leftmost available zone. No question-bar appears for SelectZone.
+    // Verb-chip-cluster is dismissed once the summon intent is sent.
     await expect(goesFirst.getByTestId("verb-chip-cluster")).not.toBeVisible();
-
-    // A5: exactly one question-bar at any instant.
-    await expect(goesFirst.getByTestId("question-bar")).toHaveCount(1);
-
-    // ── Zone selection ────────────────────────────────────────────────────
-    // zone-option buttons are rendered by DecisionRenderer for SelectZone
-    // when prefs.chooseZones === true (set in DuelStage).
-    const firstZoneOption = goesFirst.getByTestId("zone-option").first();
-    await expect(firstZoneOption).toBeVisible();
-    // F12 on zone option button.
-    await assertF12(firstZoneOption, "zone-option[0]");
-    await firstZoneOption.click();
+    // question-bar must NOT appear (auto-answer handled SelectZone — Law 1 holds).
+    await expect(goesFirst.getByTestId("question-bar")).not.toBeVisible();
 
     // ── mzone assertion: summoned card is in zone 0, four others empty ────
-    // Design C2 (dense arrays): index === sequence. Clicking zone-option[0]
-    // places the card at sequence 0. The remaining four slots are legitimately
-    // empty — asserting empty-zone count === 0 was wrong (old test defect).
+    // Design C2 (dense arrays): auto-answer places the card at index 0.
+    // The remaining four slots are legitimately empty.
     const myMzone = goesFirst.locator('[data-testid="my-mzone"]');
     await expect(myMzone).toBeVisible();
 
-    // Zone 0 must be occupied (aria-label contains "zone 0", not "Empty MZONE zone 0").
+    // Zone 0 must be occupied.
     const zone0 = myMzone.locator('[aria-label*="MZONE zone 0"]');
     await expect(zone0).toBeVisible();
     await expect(zone0).not.toHaveAttribute("data-testid", "empty-zone");
@@ -474,11 +461,8 @@ test(
       await assertF12(summonChip1, "Normal Summon chip (turn 1)");
       await summonChip1.click();
 
-      // SelectZone — pick first available zone.
-      const firstZone1 = goesFirst.getByTestId("zone-option").first();
-      await expect(firstZone1).toBeVisible();
-      await assertF12(firstZone1, "zone-option[0] (turn 1)");
-      await firstZone1.click();
+      // SelectZone auto-answered (chooseZones: false) — no zone-option step.
+      // Card lands in zone 0 automatically.
 
       // Zone 0 is occupied; four others empty (dense-array C2 invariant).
       await expect(
@@ -509,8 +493,10 @@ test(
       await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
 
       // Advance to Battle Phase via the phase rail.
-      // PhaseRail renders BP cell as: aria-label="Battle Phase — advance here"
-      const bpButton = goesFirst.getByRole("button", { name: /Battle Phase.*advance/i });
+      // PhaseRail phase cells have role="listitem" (inside role="list"),
+      // which overrides the native button role — use getByRole("listitem").
+      // aria-label="Battle Phase — advance here" when the phase is legal.
+      const bpButton = goesFirst.getByRole("listitem", { name: /Battle Phase.*advance/i });
       await expect(bpButton).toBeVisible();
       await assertF12(bpButton, "Battle Phase advance button");
       await bpButton.click();
