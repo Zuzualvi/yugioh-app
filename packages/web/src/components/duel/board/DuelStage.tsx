@@ -10,34 +10,32 @@
  *   - intent is NOT cleared by a STATE frame (cleared only on new intent/decision kind).
  *   - selection is cleared on every new DECISION frame.
  *
- * W2 slots: DuelDock (QuestionBar, IntentRibbon, ChainStrip) — currently null stubs.
- * W3 slots: CardInspector, PileInspector, WaitBanner, DuelEndOverlay — currently null stubs.
+ * Wiring (ZUH-105):
+ *   - W2: useDuelInteraction + DuelDock replace interactionStub + answer-mode-stub.
+ *   - W3: createCardCache + CardInspector + PileInspector + WaitBanner replace stubs.
+ *
+ * action-panel (E2E contract):
+ *   - Always mounted when the duel is active.
+ *   - answer mode → DuelDock (QuestionBar, chain strip, receipts).
+ *   - act mode (IdleCommand/BattleCommand) → per-card action buttons.
+ *   - waiting / ended → data-testid="no-decision" placeholder.
  */
-import React, { useCallback, useState } from "react";
-import type { DuelStageProps } from "../../../duel/contracts";
-import type { CardRef } from "../../../duel/contracts";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import type { DuelStageProps, CardRef, InspectorControl } from "../../../duel/contracts";
+import type { Seat } from "@yugioh-app/contracts";
 import type { Verb } from "./VerbChipCluster";
 import { DuelBoard } from "../../DuelBoard";
 import { DimScrim } from "../chrome/DimScrim";
 import { VerbChipCluster, deriveVerbs, deriveRefusalReason } from "./VerbChipCluster";
-import { interactionStub } from "../../../duel/stubs/interactionStub";
-import { inspectorControlStub } from "../../../duel/stubs/inspectorControlStub";
+import { useDuelInteraction } from "../../../duel/useDuelInteraction";
+import { createCardCache } from "../../../duel/cardCache";
+import { DuelDock } from "../dock/DuelDock";
+import { CardInspector } from "../inspect/CardInspector";
+import type { InspectorSource } from "../inspect/CardInspector";
+import { PileInspector } from "../inspect/PileInspector";
+import { WaitBanner } from "../WaitBanner";
+import type { WaitState } from "../WaitBanner";
 import type { DuelDecision } from "@yugioh-app/contracts";
-
-// Derive mode from the current decision and connection state
-function deriveMode(
-  decision: DuelDecision | null,
-  mySeat: number,
-  duelEnded: boolean,
-  connection: "open" | "reconnecting" | "closed",
-): "act" | "answer" | "waiting" | "ended" {
-  if (duelEnded) return "ended";
-  if (connection !== "open") return "waiting";
-  if (!decision) return "waiting";
-  if (decision.player !== mySeat) return "waiting";
-  if (decision.kind === "IdleCommand" || decision.kind === "BattleCommand") return "act";
-  return "answer";
-}
 
 // Derive legal next phases from the current decision
 function deriveLegalPhases(decision: DuelDecision | null): number[] {
@@ -53,45 +51,81 @@ function deriveLegalPhases(decision: DuelDecision | null): number[] {
   return phases;
 }
 
+// Inspector state — which card or pile is currently shown
+interface CardInspectorState {
+  ref: CardRef;
+  code: number;
+  source: InspectorSource;
+}
+
+interface PileInspectorState {
+  controller: Seat;
+  location: "GRAVE" | "REMOVED" | "EXTRA" | "DECK";
+}
+
 export function DuelStage({ state, decision, mySeat, clock, respond, connection }: DuelStageProps) {
-  // ── Verb chip cluster state ──────────────────────────────────────────────
+  // ── Card cache (W3 real implementation) ─────────────────────────────────────
+  // Debounce onChange to batch card-fetch completions into one re-render per 50ms.
+  const [, setCacheTick] = useState(0);
+  const cacheTickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardCache = useMemo(
+    () =>
+      createCardCache(() => {
+        if (cacheTickTimer.current) clearTimeout(cacheTickTimer.current);
+        cacheTickTimer.current = setTimeout(() => setCacheTick((n) => n + 1), 50);
+      }),
+    [],
+  );
+
+  // ── Interaction state machine (W2 real implementation) ───────────────────────
+  const [prefs] = useState<{ chooseZones: boolean }>({ chooseZones: false });
+  const interaction = useDuelInteraction({
+    decision,
+    mySeat,
+    duelEnded: state.duelEnded,
+    respond,
+    prefs,
+  });
+
+  const mode = interaction.mode;
+
+  // ── Inspector state ───────────────────────────────────────────────────────────
+  const [cardInspector, setCardInspector] = useState<CardInspectorState | null>(null);
+  const [pileInspector, setPileInspector] = useState<PileInspectorState | null>(null);
+
+  const inspectorControl = useRef<InspectorControl>({
+    inspectCard(ref: CardRef, code: number) {
+      setPileInspector(null);
+      setCardInspector({ ref, code, source: "click" });
+    },
+    inspectPile(controller: Seat, location: "GRAVE" | "REMOVED" | "EXTRA" | "DECK") {
+      setCardInspector(null);
+      setPileInspector({ controller, location });
+    },
+    close() {
+      setCardInspector(null);
+      setPileInspector(null);
+    },
+  }).current;
+
+  // ── Verb chip cluster state ──────────────────────────────────────────────────
   const [clickedRef, setClickedRef] = useState<CardRef | null>(null);
   const [clickedAnchor, setClickedAnchor] = useState<DOMRect | null>(null);
-
-  // Derive mode from current decision
-  const mode = deriveMode(decision, mySeat, state.duelEnded, connection);
 
   // In answer mode, VerbChipCluster is NEVER mounted (Law 1)
   const showVerbCluster = mode === "act" && clickedRef !== null && clickedAnchor !== null;
 
-  // Verb cluster is open → QuestionBar (W2 slot) is not mounted
-  // This is the Law 1 guarantee: both cannot be live simultaneously.
-
-  // Interaction state: use stub for now (W2 will provide real implementation)
-  // When W2 lands: replace interactionStub with real DuelInteraction from W2.
-  const interaction = {
-    ...interactionStub,
-    // In answer mode, the decision is what drives the question bar
-    mode: mode as "act" | "answer" | "waiting" | "ended",
-    decision: mode === "answer" ? decision : null,
-  };
-
-  // Legal phases from IdleCommand
+  // Legal phases from IdleCommand / BattleCommand
   const legalNextPhases = deriveLegalPhases(decision);
-
-  // Clock: already in DuelStageProps format (deadlines tuple)
-  const clockProps = clock;
 
   const handleCardClick = useCallback(
     (ref: CardRef, rect: DOMRect) => {
       if (mode === "answer") {
-        // In answer mode, clicking opens inspector (W3 slot)
-        inspectorControlStub.inspectCard(ref, 0);
+        inspectorControl.inspectCard(ref, 0);
         return;
       }
       if (mode !== "act") return;
 
-      // Toggle verb cluster
       if (
         clickedRef &&
         clickedRef.controller === ref.controller &&
@@ -106,23 +140,19 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       setClickedRef(ref);
       setClickedAnchor(rect);
     },
-    [mode, clickedRef],
+    [mode, clickedRef, inspectorControl],
   );
 
   const handleVerbPick = useCallback(
     (verb: Verb) => {
       if (verb.action === "inspect") {
-        // Open inspector (W3 slot)
-        if (clickedRef) inspectorControlStub.inspectCard(clickedRef, 0);
+        if (clickedRef) inspectorControl.inspectCard(clickedRef, 0);
         setClickedRef(null);
         setClickedAnchor(null);
         return;
       }
-      // Send decision response
       if (decision && clickedRef) {
         if (decision.kind === "IdleCommand") {
-          // action comes from deriveVerbs: "summon", "specialSummon", "posChange",
-          // "monsterSet", "spellSet", "activate" — all valid IdleCommandAction values
           respond({
             kind: "IdleCommand",
             action: verb.action as
@@ -140,7 +170,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       setClickedRef(null);
       setClickedAnchor(null);
     },
-    [decision, clickedRef, respond],
+    [decision, clickedRef, respond, inspectorControl],
   );
 
   const handleVerbDismiss = useCallback(() => {
@@ -168,10 +198,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
     [decision, respond],
   );
 
-  // Hand cards for level lookup (MH-1: ZoneCard.level is on the wire)
   const myHandCards = mySeat === 0 ? state.zones.p0_hand : state.zones.p1_hand;
-
-  // Derive verbs for the clicked card
   const verbs = showVerbCluster ? (deriveVerbs(decision, clickedRef, myHandCards) ?? []) : [];
   const refusalReason =
     showVerbCluster && verbs.filter((v) => v.label !== "Inspect").length === 0
@@ -179,6 +206,45 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       : null;
 
   const inAnswerMode = mode === "answer";
+
+  // WaitBanner state
+  const waitState: WaitState | null = (() => {
+    if (connection === "reconnecting") return { kind: "reconnecting", attempt: 1 };
+    if (mode === "waiting" && connection === "open")
+      return { kind: "opponent-thinking", opponentName: "Opponent" };
+    return null;
+  })();
+
+  // Pile cards for PileInspector
+  function getPileCards(
+    controller: Seat,
+    location: "GRAVE" | "REMOVED" | "EXTRA" | "DECK",
+  ): { code: number }[] {
+    const z = state.zones;
+    if (controller === 0) {
+      if (location === "GRAVE") return z.p0_grave;
+      if (location === "REMOVED") return z.p0_removed;
+      if (location === "EXTRA") return z.p0_extra;
+    } else {
+      if (location === "GRAVE") return z.p1_grave;
+      if (location === "REMOVED") return z.p1_removed;
+      if (location === "EXTRA") return z.p1_extra;
+    }
+    return [];
+  }
+
+  // Card info for CardInspector
+  const inspectedCode = cardInspector?.code ?? null;
+  const inspectedInfo =
+    inspectedCode !== null && inspectedCode !== 0 ? cardCache.get(inspectedCode) : null;
+  const inspectedLoading =
+    inspectedCode !== null && inspectedCode !== 0 ? cardCache.isLoading(inspectedCode) : false;
+
+  // Show no-decision only when the player truly has no action pending.
+  // ACT mode (IdleCommand/BattleCommand): the player's move is expressed via
+  // VerbChipCluster on the board (A1/A5). The action-panel container is still
+  // mounted but shows nothing in that mode.
+  const showNoDecision = mode === "waiting" || mode === "ended";
 
   return (
     <div
@@ -192,17 +258,32 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
         minHeight: 0,
       }}
     >
+      {/* WaitBanner — opponent thinking or reconnecting */}
+      <WaitBanner state={waitState} />
+
       {/* The dim scrim — z-index 2. Candidates get z-index 3 to lift out. */}
       <DimScrim active={inAnswerMode} />
 
-      {/* Board */}
-      <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+      {/* Board
+       * max-height keeps the board within the 1440×900 floor (G1).
+       * paddingBottom ≥ action-panel height (≈39px) so the own hand row
+       * is never occluded by the fixed bottom panel regardless of scroll.
+       */}
+      <div
+        style={{
+          flex: 1,
+          overflow: "auto",
+          padding: 12,
+          paddingBottom: 52,
+          maxHeight: "calc(100dvh - 40px)",
+        }}
+      >
         <DuelBoard
           state={state}
           mySeat={mySeat}
           interaction={interaction}
-          inspector={inspectorControlStub}
-          clock={clockProps}
+          inspector={inspectorControl}
+          clock={clock}
           connection={connection}
           onCardClick={handleCardClick}
           onAdvancePhase={handleAdvancePhase}
@@ -210,7 +291,7 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
         />
       </div>
 
-      {/* VerbChipCluster — ACT mode only. NEVER mounted when QuestionBar would be. */}
+      {/* VerbChipCluster — ACT mode only. NEVER mounted when QuestionBar would be (Law 1). */}
       {showVerbCluster && mode === "act" && (
         <VerbChipCluster
           anchor={clickedAnchor!}
@@ -222,41 +303,85 @@ export function DuelStage({ state, decision, mySeat, clock, respond, connection 
       )}
 
       {/*
-       * W2 SLOT: DuelDock (QuestionBar + IntentRibbon + ChainStrip)
-       * Mounted ONLY when mode === "answer".
-       * Law 1: showVerbCluster is false when mode === "answer", so only ONE
-       * of these two surfaces is ever live.
-       *
-       * Delete this comment and replace with:
-       *   {mode === "answer" && <DuelDock decision={decision!} ... />}
-       * when W2 lands on the integration branch.
+       * action-panel — ALWAYS mounted.
+       * E2E contract: getByTestId("action-panel") must be visible at all times during
+       * an active duel (both for the on-clock player and the waiting player).
+       * answer mode → DuelDock (QuestionBar, ChainStrip, IntentRibbon).
+       * act mode and waiting/ended → no-decision placeholder.
+       * ACT mode is expressed via VerbChipCluster on the board (A1/A5).
        */}
-      {mode === "answer" && (
-        <div
-          data-testid="answer-mode-stub"
-          aria-label="Decision pending — dock coming in W2"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--bg-1)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px 8px 0 0",
-            padding: "8px 16px",
-            fontSize: "0.875rem",
-            color: "var(--text-2)",
-            zIndex: 5,
-          }}
-        >
-          Awaiting decision input (W2)
-        </div>
+      <div
+        data-testid="action-panel"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "var(--bg-1)",
+          border: "1px solid var(--border)",
+          borderRadius: "8px 8px 0 0",
+          padding: "8px 12px",
+          zIndex: 5,
+          minWidth: 240,
+          maxWidth: 560,
+          maxHeight: "40vh",
+          overflowY: "auto",
+        }}
+      >
+        {showNoDecision && (
+          <p
+            data-testid="no-decision"
+            style={{ color: "var(--text-2)", fontSize: "0.875rem", fontStyle: "italic", margin: 0 }}
+          >
+            Waiting for engine…
+          </p>
+        )}
+
+        {mode === "answer" && (
+          <DuelDock
+            decision={interaction.decision}
+            selection={interaction.selection}
+            chain={interaction.chain}
+            receipts={interaction.receipts}
+            intent={interaction.intent}
+            mySeat={mySeat}
+            onToggle={interaction.toggleSelection}
+            onConfirm={interaction.confirm}
+            onDecline={interaction.decline}
+            onDirectRespond={respond}
+            onCancelIntent={interaction.cancelIntent}
+            loading={interaction.status === "Sending…"}
+          />
+        )}
+      </div>
+
+      {/* W3: CardInspector */}
+      {cardInspector !== null && (
+        <CardInspector
+          code={cardInspector.code}
+          info={inspectedInfo}
+          loading={inspectedLoading}
+          source={cardInspector.source}
+          onClose={() => setCardInspector(null)}
+        />
       )}
 
-      {/*
-       * W3 SLOT: CardInspector, WaitBanner, DuelEndOverlay
-       * Replace with real components when W3 lands.
-       */}
+      {/* W3: PileInspector */}
+      {pileInspector !== null && (
+        <PileInspector
+          controller={pileInspector.controller}
+          location={pileInspector.location}
+          cards={getPileCards(pileInspector.controller, pileInspector.location)}
+          hidden={
+            pileInspector.controller !== mySeat &&
+            (pileInspector.location === "DECK" || pileInspector.location === "EXTRA")
+          }
+          mySeat={mySeat}
+          lookup={cardCache}
+          inspector={inspectorControl}
+          onClose={() => setPileInspector(null)}
+        />
+      )}
     </div>
   );
 }

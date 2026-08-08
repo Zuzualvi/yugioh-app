@@ -329,6 +329,30 @@ to build the whole board against.
 **`DuelScreen.tsx` is the composition root and is owned by W1 alone.** W2 and W3 mount through the
 slots `DuelStage` exposes and may not edit it.
 
+### ⚠️ The wiring step is its own slice, and leaving it implicit cost a round
+
+**Correction, CTO 2026-08-07.** The stub rule above said each slice "deletes the stub when the real
+implementation lands." That sentence assigned the work to **nobody**. W1 owns the composition root and
+finished before W2 and W3 landed; W2 and W3 are forbidden from editing it. So when all three slices
+merged clean onto the integration branch, the result was a screen where `DuelStage` still rendered
+`answer-mode-stub`, `DuelScreen` still rendered `log-rail-stub` and an inline `DuelEndOverlay`, and
+**neither `DuelDock` nor `EventLogRail` nor W3's overlay was mounted at all.** Every component existed,
+every unit test passed, and none of it was reachable from the running app.
+
+This is the failure mode AGENTS.md names: *"A green pipeline measures what you thought to ask it."*
+Three slices met 100% of their own criteria and the product did not work, because no criterion asked
+whether the parts were connected.
+
+**The rule, so it does not recur:** when parallel slices hand off through stubs, the stub replacement
+is a **named deliverable with an owner** — a wiring slice that lands after the others and whose
+acceptance criteria are *runtime reachability*, not unit tests. A stub is a debt with a due date, and
+a due date needs a name against it.
+
+**Consequence for verification:** `packages/web/src/duel/e2eTestidContract.test.ts` is a source scan.
+It proves an id exists in the codebase, **not that it is mounted in the render tree** — `action-panel`
+was present in a file and absent from the running app, and the guard was green. Runtime reachability
+is what E2E and QA are for; do not read a green guard as evidence a surface is reachable.
+
 **Where the state machine lives, and why it is W2's.** `mode`, `selection`, `intent` and `chain` are
 the answer side of the screen: `intent` exists to survive the `STATE`-then-`DECISION` gap across
 sub-decisions, `chain` feeds the chain strip, `selection` feeds the confirm control. Only `mode` and

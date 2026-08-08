@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * answerFidelity.test.ts — the F14 invariant enforced mechanically.
  *
@@ -51,7 +52,7 @@
  * differs throughout.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Attribute, DuelDecision, DuelDecisionResponse, Race } from "@yugioh-app/contracts";
 
 // ── Fingerprint ───────────────────────────────────────────────────────────────
@@ -936,5 +937,107 @@ describe("Confirm label = response derivation (B3/CEO invariant)", () => {
     const label = computeLabel(d, sel, false);
     expect(label).toContain("Gorz");
     expect(resp).toEqual({ kind: "SelectCard", indices: [2] });
+  });
+});
+
+// ── Radio-semantics invariant (design spec §0a) ───────────────────────────────
+//
+// For min === max === 1 decisions, clicking the only selected card must NOT
+// deselect it (that would dead-end the step). This is the enumerating test
+// that found the toggle bug in the prototype — it cannot be caught by a
+// spot-check on the happy path.
+//
+// These tests exercise useDuelInteraction.toggleSelection directly.
+
+import { renderHook, act } from "@testing-library/react";
+import { useDuelInteraction } from "./useDuelInteraction";
+import type { CardRef } from "./contracts";
+
+// Typed CardRef helper for the hook tests (Sel has `location: string` which is too wide).
+const cref = (controller: 0 | 1, location: CardRef["location"], sequence: number): CardRef => ({
+  controller,
+  location,
+  sequence,
+});
+
+describe("Radio semantics — min===max===1 (design spec §0a, ZUH-105)", () => {
+  const decision: DuelDecision = {
+    kind: "SelectCard",
+    player: 0,
+    cards: [CARD(0, "Sangan")],
+    min: 1,
+    max: 1,
+    cancelable: false,
+  };
+
+  function makeHook() {
+    const respond = vi.fn();
+    return renderHook(() =>
+      useDuelInteraction({
+        decision,
+        mySeat: 0,
+        duelEnded: false,
+        respond,
+        prefs: { chooseZones: false },
+      }),
+    );
+  }
+
+  it("first toggle selects the card", () => {
+    const { result } = makeHook();
+    act(() => {
+      result.current.toggleSelection(cref(0, "MZONE", 0));
+    });
+    expect(result.current.selection).toHaveLength(1);
+    expect(result.current.selection[0]).toMatchObject({ sequence: 0 });
+  });
+
+  it("second toggle on the same card does NOT deselect (radio, never toggle)", () => {
+    const { result } = makeHook();
+    act(() => {
+      result.current.toggleSelection(cref(0, "MZONE", 0));
+    });
+    act(() => {
+      result.current.toggleSelection(cref(0, "MZONE", 0));
+    });
+    // Must still be selected — deselecting would dead-end the step.
+    expect(result.current.selection).toHaveLength(1);
+    expect(result.current.selection[0]).toMatchObject({ sequence: 0 });
+  });
+
+  it("confirm is callable after first toggle (selection satisfies min)", () => {
+    const respond = vi.fn();
+    const { result } = renderHook(() =>
+      useDuelInteraction({
+        decision,
+        mySeat: 0,
+        duelEnded: false,
+        respond,
+        prefs: { chooseZones: false },
+      }),
+    );
+    act(() => {
+      result.current.toggleSelection(cref(0, "MZONE", 0));
+    });
+    act(() => {
+      result.current.confirm();
+    });
+    expect(respond).toHaveBeenCalledWith({ kind: "SelectCard", indices: [0] });
+  });
+
+  it("enumerating: with 2 candidates and min===max===1, both selections produce distinct responses", () => {
+    const d2: DuelDecision = {
+      kind: "SelectCard",
+      player: 0,
+      cards: [CARD(0, "Sangan"), CARD(1, "Krebons")],
+      min: 1,
+      max: 1,
+      cancelable: false,
+    };
+    const answers: Fingerprint[] = [
+      fp(d2, [ref(0, "MZONE", 0)], "Select Sangan"),
+      fp(d2, [ref(0, "MZONE", 1)], "Select Krebons"),
+    ];
+    assertPairwiseDistinct(answers, "SelectCard 2-candidates radio min===max===1");
   });
 });

@@ -147,7 +147,7 @@ describe("F12 — PhaseRail End Turn button (jsdom)", () => {
 describe("F12 — PileBadge and SettingsPopover buttons (jsdom)", () => {
   it("PileBadge is a BUTTON with no pointer-events: none in chain", async () => {
     const { PileBadge } = await import("./PileBadge");
-    const { inspectorControlStub } = await import("../../../duel/stubs/inspectorControlStub");
+    const noopInspector = { inspectCard: () => {}, inspectPile: () => {}, close: () => {} };
     render(
       React.createElement(PileBadge, {
         label: "GY",
@@ -155,7 +155,7 @@ describe("F12 — PileBadge and SettingsPopover buttons (jsdom)", () => {
         controller: 0 as const,
         location: "GRAVE" as const,
         isOwn: true,
-        inspector: inspectorControlStub,
+        inspector: noopInspector,
       }),
     );
     const badge = screen.getByTestId("pile-badge-gy");

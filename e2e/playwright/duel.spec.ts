@@ -170,8 +170,8 @@ test("two-player live duel backbone: connect, render, decision delivered, resign
     alice.on("dialog", (d) => void d.accept());
     await alice.getByTestId("resign-btn").click();
 
-    await expect(alice.getByTestId("duel-end-banner")).toBeVisible();
-    await expect(bob.getByTestId("duel-end-banner")).toBeVisible();
+    await expect(alice.getByTestId("duel-end-overlay")).toBeVisible();
+    await expect(bob.getByTestId("duel-end-overlay")).toBeVisible();
     // Alice resigned → both banners reference the resign.
     await expect(alice.getByTestId("duel-end-reason")).toContainText(/resign/i);
     await expect(bob.getByTestId("duel-end-reason")).toContainText(/resign/i);

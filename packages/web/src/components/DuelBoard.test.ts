@@ -11,8 +11,24 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DuelStateSnapshot } from "@yugioh-app/contracts";
-import { interactionStub } from "../duel/stubs/interactionStub";
-import { inspectorControlStub } from "../duel/stubs/inspectorControlStub";
+import type { DuelInteraction, InspectorControl } from "../duel/contracts";
+
+const interactionStub: DuelInteraction = {
+  mode: "act",
+  decision: null,
+  candidates: [],
+  selection: [],
+  intent: null,
+  chain: [],
+  receipts: [],
+  status: null,
+};
+
+const inspectorControlStub: InspectorControl = {
+  inspectCard: () => {},
+  inspectPile: () => {},
+  close: () => {},
+};
 
 afterEach(() => {
   cleanup();

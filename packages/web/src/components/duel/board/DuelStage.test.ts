@@ -32,6 +32,21 @@ vi.mock("../chrome/PhaseRail", () => ({
 vi.mock("../../../utils/cardImageUrl", () => ({
   cardImageUrl: (id: number) => `https://test.img/${id}.jpg`,
 }));
+vi.mock("../dock/DuelDock", () => ({
+  DuelDock: () => React.createElement("div", { "data-testid": "duel-dock" }),
+}));
+vi.mock("../inspect/CardInspector", () => ({
+  CardInspector: () => null,
+}));
+vi.mock("../inspect/PileInspector", () => ({
+  PileInspector: () => null,
+}));
+vi.mock("../WaitBanner", () => ({
+  WaitBanner: () => null,
+}));
+vi.mock("../../../duel/cardCache", () => ({
+  createCardCache: () => ({ get: () => null, isLoading: () => false, prefetch: () => {} }),
+}));
 
 function makeState(overrides: Partial<DuelStateSnapshot> = {}): DuelStateSnapshot {
   return {
@@ -91,8 +106,8 @@ describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", 
 
     // VerbChipCluster is not open (no card clicked) — but QuestionBar definitely not mounted
     expect(screen.queryByTestId("question-bar")).toBeNull();
-    // The answer-mode stub is not shown in act mode
-    expect(screen.queryByTestId("answer-mode-stub")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("in answer mode (SelectYesNo): VerbChipCluster is NOT mounted", async () => {
@@ -112,8 +127,8 @@ describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", 
 
     // VerbChipCluster is never mounted in answer mode
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
-    // Answer-mode stub is shown (confirms mode is "answer")
-    expect(screen.getByTestId("answer-mode-stub")).toBeTruthy();
+    // DuelDock is shown in answer mode (via the action-panel wrapper)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("in waiting mode (no decision): neither VerbChipCluster nor QuestionBar mounted", async () => {
@@ -129,7 +144,8 @@ describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", 
 
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
     expect(screen.queryByTestId("question-bar")).toBeNull();
-    expect(screen.queryByTestId("answer-mode-stub")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("FAILS if both VerbChipCluster and QuestionBar are mounted simultaneously", () => {
@@ -169,8 +185,8 @@ describe("DuelStage — mode derivation", () => {
 
     // No VerbChipCluster (waiting mode)
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
-    // No answer stub (waiting)
-    expect(screen.queryByTestId("answer-mode-stub")).toBeNull();
+    // action-panel is always mounted (E2E contract)
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 
   it("derives 'answer' mode for SelectCard decision for my seat", async () => {
@@ -192,6 +208,6 @@ describe("DuelStage — mode derivation", () => {
     );
 
     expect(screen.queryByTestId("verb-chip-cluster")).toBeNull();
-    expect(screen.getByTestId("answer-mode-stub")).toBeTruthy();
+    expect(screen.getByTestId("action-panel")).toBeTruthy();
   });
 });
