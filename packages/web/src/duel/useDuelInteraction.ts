@@ -1,8 +1,7 @@
 /**
  * useDuelInteraction — the W2-owned interaction state machine.
  *
- * Publishes DuelInteraction to every slice. Called by ActionPanel (or, once W1
- * integrates DuelStage, by DuelStage).
+ * Publishes DuelInteraction to every slice. Called by DuelStage (via DuelDock).
  *
  * Key invariants:
  *   - intent MUST NOT be cleared by a STATE frame (B2).

@@ -21,8 +21,8 @@
  *   - disabled state disables all interactive elements
  *
  * IdleCommand and BattleCommand: do NOT render a question bar. Their response
- * paths are exercised by ActionPanel.test.ts (verb-chip to respond path is
- * owned by W1). Included here only for "must not throw" smoke.
+ * paths (verb-chip to respond) are exercised via W1's DuelStage/VerbChipCluster
+ * tests; ActionPanel.tsx was deleted in C3. Included here only for "must not throw" smoke.
  */
 
 import React from "react";
