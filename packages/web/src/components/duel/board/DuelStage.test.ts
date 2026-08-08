@@ -79,6 +79,7 @@ const baseProps = {
   events: [],
   respond: vi.fn(),
   connection: "open" as const,
+  chooseZones: false,
 };
 
 describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", () => {
