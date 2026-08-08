@@ -598,8 +598,7 @@ test(
       await goesFirst.getByTestId("settings-btn").click();
       const popover = goesFirst.getByTestId("settings-popover");
       await expect(popover).toBeVisible();
-      // "Choose zones" is the first checkbox in the settings popover.
-      await popover.getByRole("checkbox").first().check();
+      await popover.getByRole("checkbox", { name: "Choose zones" }).check();
       await goesFirst.getByTestId("settings-btn").click();
       await expect(popover).not.toBeVisible();
 
