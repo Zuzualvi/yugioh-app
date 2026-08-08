@@ -620,7 +620,9 @@ writes prefs except the settings toggle.
 2. `setPrefs` is gone from `DuelInteractionOutput`; `ActionPanel.tsx` and `ActionPanel.test.ts` are deleted.
 3. A unit test rerenders the hook with `chooseZones` flipped `false → true` **after mount** and asserts
    the next `SelectZone` decision with `zones.length > 1` is NOT auto-answered. This test fails against
-   the current code — confirm that it does before fixing.
+   the current code — confirm that it does before fixing. (Implementation note: `renderHook` from
+   `@testing-library/react` hangs when the hook is in non-auto-answer mode for `SelectZone`; use a
+   rendered `Harness` component with `act`+`setState` instead.)
 4. A unit test asserts a `SelectZone` with `zones.length === 1` is still auto-answered with the toggle ON
    (E1 — auto-answer where exactly one legal answer exists is unaffected).
 5. The auto-resolve effect's dep array is unchanged, and flipping the toggle does not re-answer an
