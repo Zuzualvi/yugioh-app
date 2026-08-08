@@ -1,16 +1,18 @@
 /**
  * responsePrompts unit tests — C4 acceptance criteria 7.
  *
- * Tests shouldOfferWindow per level, including:
- * - an unclassifiable decision returns true (fail-safe rule)
- * - non-forced ChainPrompt is suppressed at Minimal
- * - forced ChainPrompt is always offered
+ * Tests shouldOfferWindow per level with event sequences, including:
+ * - Standard suppresses phase-change/chain-resolution/battle-step contexts
+ * - Standard offers summon/attack/activation/turn contexts
+ * - Minimal suppresses non-forced ChainPrompt
+ * - Unclassifiable decision returns true (fail-safe rule)
  * - Every window always returns true
- * - Standard always returns true
  */
 import { describe, expect, it } from "vitest";
 import { shouldOfferWindow } from "./responsePrompts";
-import type { DuelDecision } from "@yugioh-app/contracts";
+import type { DuelDecision, DuelEvent } from "@yugioh-app/contracts";
+
+// ── Decision fixtures ─────────────────────────────────────────────────────────
 
 const chainPromptForced: DuelDecision = {
   kind: "ChainPrompt",
@@ -32,88 +34,165 @@ const selectYesNo: DuelDecision = {
   description: "Do you want to activate?",
 };
 
-const selectEffectYN: DuelDecision = {
-  kind: "SelectEffectYN",
-  player: 0,
-  card: { controller: 0, location: "SZONE", sequence: 0, code: 12345, name: "Test Card" },
-  description: "Activate effect?",
+// ── Event fixtures ────────────────────────────────────────────────────────────
+
+const COMMON = { seq: 0, turnNumber: 1, phase: 4 } as const;
+
+const evSummon: DuelEvent = {
+  kind: "SUMMON",
+  ...COMMON,
+  card: { code: 100, controller: 0, location: "MZONE", sequence: 0 },
+  position: 1,
+};
+const evSpsummon: DuelEvent = {
+  kind: "SPSUMMON",
+  ...COMMON,
+  card: { code: 100, controller: 0, location: "MZONE", sequence: 0 },
+  position: 1,
+};
+const evAttack: DuelEvent = {
+  kind: "ATTACK",
+  ...COMMON,
+  attacker: { code: 100, controller: 0, location: "MZONE", sequence: 0 },
+  target: null,
+};
+const evChaining: DuelEvent = {
+  kind: "CHAINING",
+  ...COMMON,
+  card: { code: 100, controller: 0, location: "SZONE", sequence: 0 },
+  link: 1,
+  owner: 0,
+};
+const evChainEnd: DuelEvent = { kind: "CHAIN_END", ...COMMON };
+const evTurn: DuelEvent = { kind: "TURN", ...COMMON, turnPlayer: 1, lpSnapshot: [8000, 8000] };
+
+const evPhase: DuelEvent = { kind: "PHASE", ...COMMON };
+const evChainSolving: DuelEvent = { kind: "CHAIN_SOLVING", ...COMMON, link: 1 };
+const evChainSolved: DuelEvent = { kind: "CHAIN_SOLVED", ...COMMON, link: 1 };
+const evBattle: DuelEvent = {
+  kind: "BATTLE",
+  ...COMMON,
+  attacker: { code: 100, controller: 0, location: "MZONE", sequence: 0 },
+  target: { code: 200, controller: 1, location: "MZONE", sequence: 0 },
 };
 
-const selectCard: DuelDecision = {
-  kind: "SelectCard",
-  player: 0,
-  cards: [],
-  min: 1,
-  max: 1,
-  cancelable: false,
+const evLpChange: DuelEvent = {
+  kind: "LP_CHANGE",
+  ...COMMON,
+  seat: 0,
+  delta: -500,
+  reason: "damage",
 };
+
+// ── Every window ──────────────────────────────────────────────────────────────
 
 describe("shouldOfferWindow — Every window", () => {
-  it("returns true for every decision type", () => {
-    for (const d of [
-      chainPromptForced,
-      chainPromptOptional,
-      selectYesNo,
-      selectEffectYN,
-      selectCard,
-    ]) {
-      expect(shouldOfferWindow(d, "Every window")).toBe(true);
+  it("returns true regardless of events or decision type", () => {
+    for (const d of [chainPromptForced, chainPromptOptional, selectYesNo]) {
+      for (const evs of [[], [evPhase], [evSummon]]) {
+        expect(shouldOfferWindow(d, evs, "Every window")).toBe(true);
+      }
     }
   });
 });
 
-describe("shouldOfferWindow — Standard", () => {
-  it("returns true for all tested decisions", () => {
-    for (const d of [
-      chainPromptForced,
-      chainPromptOptional,
-      selectYesNo,
-      selectEffectYN,
-      selectCard,
-    ]) {
-      expect(shouldOfferWindow(d, "Standard")).toBe(true);
-    }
+// ── Standard level ────────────────────────────────────────────────────────────
+
+describe("shouldOfferWindow — Standard: event-based classification", () => {
+  it("offers after SUMMON event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evSummon], "Standard")).toBe(true);
+  });
+
+  it("offers after SPSUMMON event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evSpsummon], "Standard")).toBe(true);
+  });
+
+  it("offers after ATTACK event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evAttack], "Standard")).toBe(true);
+  });
+
+  it("offers after CHAINING (activation) event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evChaining], "Standard")).toBe(true);
+  });
+
+  it("offers after CHAIN_END event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evChainEnd], "Standard")).toBe(true);
+  });
+
+  it("offers after TURN event (before opponent ends turn)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evTurn], "Standard")).toBe(true);
+  });
+
+  it("suppresses after PHASE event (phase change = Every window only)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evPhase], "Standard")).toBe(false);
+  });
+
+  it("suppresses after CHAIN_SOLVING event (chain resolution = Every window only)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evChainSolving], "Standard")).toBe(false);
+  });
+
+  it("suppresses after CHAIN_SOLVED event", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evChainSolved], "Standard")).toBe(false);
+  });
+
+  it("suppresses after BATTLE event (battle step = Every window only)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evBattle], "Standard")).toBe(false);
+  });
+
+  it("uses the most recent classifiable event (SUMMON then PHASE → last is PHASE → suppress)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evSummon, evPhase], "Standard")).toBe(false);
+  });
+
+  it("uses the most recent classifiable event (PHASE then SUMMON → last is SUMMON → offer)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evPhase, evSummon], "Standard")).toBe(true);
+  });
+
+  it("fail-safe: LP_CHANGE only (unclassifiable context) → true", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evLpChange], "Standard")).toBe(true);
+  });
+
+  it("fail-safe: no events → true", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [], "Standard")).toBe(true);
   });
 });
+
+// ── Minimal level ─────────────────────────────────────────────────────────────
 
 describe("shouldOfferWindow — Minimal", () => {
-  it("returns false for non-forced ChainPrompt (optional chain response)", () => {
-    expect(shouldOfferWindow(chainPromptOptional, "Minimal")).toBe(false);
+  it("suppresses non-forced ChainPrompt (optional chain response)", () => {
+    expect(shouldOfferWindow(chainPromptOptional, [evSummon], "Minimal")).toBe(false);
   });
 
-  it("returns true for forced ChainPrompt (mandatory)", () => {
-    expect(shouldOfferWindow(chainPromptForced, "Minimal")).toBe(true);
+  it("offers forced ChainPrompt (mandatory) regardless of events", () => {
+    expect(shouldOfferWindow(chainPromptForced, [evPhase], "Minimal")).toBe(true);
   });
 
-  it("returns true for SelectYesNo (fail-safe: cannot classify as mandatory or optional)", () => {
-    expect(shouldOfferWindow(selectYesNo, "Minimal")).toBe(true);
+  it("fail-safe: SelectYesNo → true (cannot classify as mandatory or optional)", () => {
+    expect(shouldOfferWindow(selectYesNo, [evSummon], "Minimal")).toBe(true);
   });
 
-  it("returns true for SelectEffectYN (fail-safe: cannot classify as mandatory or optional)", () => {
-    expect(shouldOfferWindow(selectEffectYN, "Minimal")).toBe(true);
-  });
-
-  it("returns true for SelectCard (fail-safe)", () => {
-    expect(shouldOfferWindow(selectCard, "Minimal")).toBe(true);
+  it("fail-safe: no events → true", () => {
+    expect(shouldOfferWindow(chainPromptForced, [], "Minimal")).toBe(true);
   });
 });
 
-describe("shouldOfferWindow — unclassifiable decision (fail-safe rule)", () => {
-  it("returns true for a SelectZone decision at any level (no decline path = must offer)", () => {
+// ── Fail-safe: unclassifiable decisions ──────────────────────────────────────
+
+describe("shouldOfferWindow — fail-safe for unclassifiable decisions", () => {
+  it("SelectZone (no decline path) → true at all levels", () => {
     const selectZone: DuelDecision = {
       kind: "SelectZone",
       player: 0,
       zones: [{ controller: 0, location: "MZONE", sequence: 0 }],
       count: 1,
     };
-    expect(shouldOfferWindow(selectZone, "Minimal")).toBe(true);
-    expect(shouldOfferWindow(selectZone, "Standard")).toBe(true);
-    expect(shouldOfferWindow(selectZone, "Every window")).toBe(true);
+    expect(shouldOfferWindow(selectZone, [], "Minimal")).toBe(true);
+    expect(shouldOfferWindow(selectZone, [evPhase], "Standard")).toBe(false); // event-classified
+    expect(shouldOfferWindow(selectZone, [], "Standard")).toBe(true);
+    expect(shouldOfferWindow(selectZone, [], "Every window")).toBe(true);
   });
 
-  it("returns true for any decision kind not explicitly handled (IdleCommand falls to fail-safe)", () => {
-    // IdleCommand is ACT mode and would never normally reach shouldOfferWindow,
-    // but if it did, fail-safe must apply.
+  it("IdleCommand (ACT mode, would never normally reach here) → true at all levels", () => {
     const idle: DuelDecision = {
       kind: "IdleCommand",
       player: 0,
@@ -126,6 +205,7 @@ describe("shouldOfferWindow — unclassifiable decision (fail-safe rule)", () =>
       toBattlePhase: false,
       toEndPhase: true,
     };
-    expect(shouldOfferWindow(idle, "Minimal")).toBe(true);
+    expect(shouldOfferWindow(idle, [], "Minimal")).toBe(true);
+    expect(shouldOfferWindow(idle, [], "Standard")).toBe(true);
   });
 });

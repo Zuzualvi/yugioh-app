@@ -230,7 +230,7 @@ export function useDuelInteraction({
 
     // Check whether the prompt level suppresses this window (C4b / §11).
     // Fail-safe: shouldOfferWindow returns true for anything it cannot classify.
-    if (!shouldOfferWindow(decision, promptLevel)) {
+    if (!shouldOfferWindow(decision, events, promptLevel)) {
       const declineResp = getDeclineResponse(decision);
       if (declineResp !== null) {
         // Respond with decline and write an AutoAnswerReceipt (requirement C9).
@@ -238,7 +238,7 @@ export function useDuelInteraction({
         const receipt: AutoAnswerReceipt = {
           id,
           summary: "Window suppressed — response prompt level: " + promptLevel,
-          reason: "only-one-legal-answer",
+          reason: "prompt-level-suppressed",
           at: Date.now(),
         };
         setReceipts((prev) => [...prev, receipt]);

@@ -18,6 +18,7 @@ import type { AutoAnswerReceipt } from "../../../duel/contracts";
 const REASON_LABELS: Record<AutoAnswerReceipt["reason"], string> = {
   "only-one-legal-answer": "Only one legal answer",
   "engine-unrestricted-placement": "Unrestricted placement",
+  "prompt-level-suppressed": "Prompt level",
 };
 
 interface Props {

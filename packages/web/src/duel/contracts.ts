@@ -112,8 +112,10 @@ export interface AutoAnswerReceipt {
   /**
    * Why it needed no input. Both values are facts about the decision we were
    * handed — never an inferred rules explanation (requirement H).
+   * "prompt-level-suppressed" is added in C4: the player set a prompt level
+   * that opted out of this window type; the client declined on their behalf.
    */
-  reason: "only-one-legal-answer" | "engine-unrestricted-placement";
+  reason: "only-one-legal-answer" | "engine-unrestricted-placement" | "prompt-level-suppressed";
   at: number;
 }
 
