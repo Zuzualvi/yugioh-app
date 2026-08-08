@@ -13,17 +13,19 @@
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import type { DuelDecision, DuelDecisionResponse, Seat } from "@yugioh-app/contracts";
+import type { DuelDecision, DuelDecisionResponse, DuelEvent, Seat } from "@yugioh-app/contracts";
 import type {
   AutoAnswerReceipt,
   CardRef,
-  ChainLink,
   DuelInteraction,
   DuelMode,
   IntentStep,
   PendingIntent,
 } from "./contracts";
 import { autoAnswer, autoAnswerReason, autoAnswerSummary } from "./autoResolve";
+import { chainFromEvents } from "./chainFromEvents";
+import { shouldOfferWindow, getDeclineResponse } from "./responsePrompts";
+import type { PromptLevel } from "./responsePrompts";
 
 export interface DuelInteractionInput {
   decision: DuelDecision | null;
@@ -32,6 +34,10 @@ export interface DuelInteractionInput {
   respond: (r: DuelDecisionResponse) => void;
   /** Preferences from ResponsePromptControl */
   prefs: { chooseZones: boolean };
+  /** Full event feed — chain is derived from this. Required. */
+  events: DuelEvent[];
+  /** Response prompt level from ResponsePromptControl. Required. */
+  promptLevel: PromptLevel;
 }
 
 export interface DuelInteractionOutput extends DuelInteraction {
@@ -162,6 +168,8 @@ export function useDuelInteraction({
   duelEnded,
   respond,
   prefs: externalPrefs,
+  events,
+  promptLevel,
 }: DuelInteractionInput): DuelInteractionOutput {
   const prefs = useMemo(
     () => ({ chooseZones: externalPrefs.chooseZones }),
@@ -170,7 +178,8 @@ export function useDuelInteraction({
   const [intent, setIntent] = useState<PendingIntent | null>(null);
   const [selection, setSelection] = useState<CardRef[]>([]);
   const [receipts, setReceipts] = useState<AutoAnswerReceipt[]>([]);
-  const [chain] = useState<ChainLink[]>([]);
+  // chain derives from the event feed — no useState (C4a)
+  const chain = useMemo(() => chainFromEvents(events), [events]);
   // Track if we're waiting for the server's response (between confirm and next frame)
   const [loading, setLoading] = useState(false);
 
@@ -217,6 +226,29 @@ export function useDuelInteraction({
         setReceipts((prev) => prev.filter((r) => r.id !== id));
       }, 240);
       return;
+    }
+
+    // Check whether the prompt level suppresses this window (C4b / §11).
+    // Fail-safe: shouldOfferWindow returns true for anything it cannot classify.
+    if (!shouldOfferWindow(decision, events, promptLevel)) {
+      const declineResp = getDeclineResponse(decision);
+      if (declineResp !== null) {
+        // Respond with decline and write an AutoAnswerReceipt (requirement C9).
+        const id = `${uniqueBase}-receipt-${receiptIdRef.current++}`;
+        const receipt: AutoAnswerReceipt = {
+          id,
+          summary: "Window suppressed — response prompt level: " + promptLevel,
+          reason: "prompt-level-suppressed",
+          at: Date.now(),
+        };
+        setReceipts((prev) => [...prev, receipt]);
+        respond(declineResp);
+        setTimeout(() => {
+          setReceipts((prev) => prev.filter((r) => r.id !== id));
+        }, 240);
+        return;
+      }
+      // No decline path for this decision — fall through and offer to the player.
     }
 
     // Player must answer: clear selection for the new decision.

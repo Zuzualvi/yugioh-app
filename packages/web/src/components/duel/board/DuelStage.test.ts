@@ -80,6 +80,7 @@ const baseProps = {
   respond: vi.fn(),
   connection: "open" as const,
   chooseZones: false,
+  promptLevel: "Standard" as const,
 };
 
 describe("DuelStage — Law 1: at most one of VerbChipCluster and QuestionBar", () => {

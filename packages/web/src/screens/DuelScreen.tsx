@@ -35,6 +35,7 @@ import { DuelTopBar } from "../components/duel/chrome/DuelTopBar";
 import { openDuelSocket } from "../api/duelSocket";
 import { getSeatCredential } from "../api/room";
 import type { DuelSettings } from "../components/duel/chrome/SettingsPopover";
+import type { PromptLevel } from "../duel/responsePrompts";
 import type { MockDuelSession } from "../mock/duelSession";
 import { EventLogRail } from "../components/duel/log/EventLogRail";
 import { DuelEndOverlay } from "../components/duel/DuelEndOverlay";
@@ -94,6 +95,7 @@ export function DuelScreen() {
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<"open" | "reconnecting" | "closed">("closed");
   const [settings, setSettings] = useState<DuelSettings>(DEFAULT_SETTINGS);
+  const [promptLevel, setPromptLevel] = useState<PromptLevel>("Standard");
   const [logOpen, setLogOpen] = useState(false);
 
   const mockSessionRef = useRef<MockDuelSession | null>(null);
@@ -351,6 +353,8 @@ export function DuelScreen() {
           onLogToggle={() => setLogOpen((v) => !v)}
           settings={settings}
           onSettingsChange={setSettings}
+          promptLevel={promptLevel}
+          onPromptLevelChange={setPromptLevel}
           onResign={handleResign}
           onExit={() => navigate("/")}
           duelEnded={!!duelEnded}
@@ -370,6 +374,7 @@ export function DuelScreen() {
                 respond={respond}
                 connection={connection}
                 chooseZones={settings.chooseZones}
+                promptLevel={promptLevel}
               />
             </div>
 

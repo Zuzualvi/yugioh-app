@@ -42,7 +42,15 @@ function Harness({
   chooseZones: boolean;
   respond: ReturnType<typeof vi.fn>;
 }) {
-  useDuelInteraction({ decision, mySeat: 0, duelEnded: false, respond, prefs: { chooseZones } });
+  useDuelInteraction({
+    decision,
+    mySeat: 0,
+    duelEnded: false,
+    respond,
+    prefs: { chooseZones },
+    events: [],
+    promptLevel: "Standard",
+  });
   return React.createElement("div", { "data-testid": "harness" });
 }
 

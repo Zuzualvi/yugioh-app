@@ -20,7 +20,7 @@
  *   - act mode (IdleCommand/BattleCommand) → per-card action buttons.
  *   - waiting / ended → data-testid="no-decision" placeholder.
  */
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DuelStageProps, CardRef, InspectorControl } from "../../../duel/contracts";
 import type { Seat } from "@yugioh-app/contracts";
 import type { Verb } from "./VerbChipCluster";
@@ -33,6 +33,7 @@ import { DuelDock } from "../dock/DuelDock";
 import { CardInspector } from "../inspect/CardInspector";
 import type { InspectorSource } from "../inspect/CardInspector";
 import { PileInspector } from "../inspect/PileInspector";
+import type { PromptLevel } from "../../../duel/responsePrompts";
 import { WaitBanner } from "../WaitBanner";
 import type { WaitState } from "../WaitBanner";
 import type { DuelDecision } from "@yugioh-app/contracts";
@@ -65,6 +66,7 @@ interface PileInspectorState {
 
 interface DuelStageOwnProps extends DuelStageProps {
   chooseZones: boolean;
+  promptLevel: PromptLevel;
 }
 
 export function DuelStage({
@@ -72,9 +74,11 @@ export function DuelStage({
   decision,
   mySeat,
   clock,
+  events,
   respond,
   connection,
   chooseZones,
+  promptLevel,
 }: DuelStageOwnProps) {
   // ── Card cache (W3 real implementation) ─────────────────────────────────────
   // Debounce onChange to batch card-fetch completions into one re-render per 50ms.
@@ -97,6 +101,8 @@ export function DuelStage({
     duelEnded: state.duelEnded,
     respond,
     prefs,
+    events,
+    promptLevel,
   });
 
   const mode = interaction.mode;
@@ -124,11 +130,38 @@ export function DuelStage({
   const [clickedRef, setClickedRef] = useState<CardRef | null>(null);
   const [clickedAnchor, setClickedAnchor] = useState<DOMRect | null>(null);
 
+  // ── CHAIN_SOLVING auto-push (C4a, design spec §5) ────────────────────────────
+  // When a link transitions to resolving, push its card text to the inspector
+  // with zero clicks (requirement C6 / §5 acceptance criterion).
+  const prevChainRef = useRef(interaction.chain);
+  useEffect(() => {
+    const prev = prevChainRef.current;
+    const curr = interaction.chain;
+    prevChainRef.current = curr;
+    const justResolving = curr.find(
+      (link) => link.resolving && !prev.find((p) => p.link === link.link && p.resolving),
+    );
+    if (justResolving) {
+      inspectorControl.inspectCard(justResolving.card, justResolving.code);
+    }
+  }, [interaction.chain, inspectorControl]);
+
   // In answer mode, VerbChipCluster is NEVER mounted (Law 1)
   const showVerbCluster = mode === "act" && clickedRef !== null && clickedAnchor !== null;
 
   // Legal phases from IdleCommand / BattleCommand
   const legalNextPhases = deriveLegalPhases(decision);
+
+  // Resolve chain link names from cardCache; links with unresolved code keep name: ""
+  // cardCache is stable (useMemo with []) so it is not a dep here.
+  const chainWithNames = useMemo(
+    () =>
+      interaction.chain.map((link) => ({
+        ...link,
+        name: link.code !== 0 ? (cardCache.get(link.code)?.name ?? "") : "",
+      })),
+    [interaction.chain], // cardCache is stable — created with useMemo([])
+  );
 
   const handleCardClick = useCallback(
     (ref: CardRef, rect: DOMRect) => {
@@ -353,7 +386,7 @@ export function DuelStage({
           <DuelDock
             decision={interaction.decision}
             selection={interaction.selection}
-            chain={interaction.chain}
+            chain={chainWithNames}
             receipts={interaction.receipts}
             intent={interaction.intent}
             mySeat={mySeat}
