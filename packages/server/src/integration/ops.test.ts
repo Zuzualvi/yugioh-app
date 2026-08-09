@@ -656,3 +656,150 @@ describe("DELETE /api/ops/user/:id", () => {
     expect(deleted["responseLog"]).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/ops/duels — bounded enumeration (ZUH-77)
+// ---------------------------------------------------------------------------
+
+describe("GET /api/ops/duels", () => {
+  it("lists duels without needing an id, newest first", async () => {
+    const uid = seedUser("u1", "alice");
+    seedDuel("duel-old", uid, null, "ended");
+    seedDuel("duel-new", uid, null, "active");
+
+    const res = await request(app)
+      .get("/api/ops/duels")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.duels as Array<{ id: string }>).map((d) => d.id);
+    expect(ids).toContain("duel-old");
+    expect(ids).toContain("duel-new");
+  });
+
+  it("filters by exact status", async () => {
+    const uid = seedUser("u1", "alice");
+    seedDuel("d-active", uid, null, "active");
+    seedDuel("d-ended", uid, null, "ended");
+
+    const res = await request(app)
+      .get("/api/ops/duels?status=active")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.duels as Array<{ id: string }>).map((d) => d.id);
+    expect(ids).toEqual(["d-active"]);
+  });
+
+  it("hard-caps limit server-side and never leaks secrets", async () => {
+    const uid = seedUser("u1", "alice");
+    for (let i = 0; i < 3; i++) seedDuel(`d${i}`, uid);
+
+    const res = await request(app)
+      .get("/api/ops/duels?limit=9999")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.limit).toBe(50);
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain("seed_json");
+    expect(raw).not.toContain("seat0Token");
+    expect(raw).not.toContain("joinToken");
+  });
+
+  it("requires the ops token", async () => {
+    const res = await request(app).get("/api/ops/duels");
+    expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/ops/rooms — bounded enumeration (ZUH-77)
+// ---------------------------------------------------------------------------
+
+describe("GET /api/ops/rooms", () => {
+  it("lists rooms without needing an id", async () => {
+    const uid = seedUser("u1", "alice");
+    seedRoom("room1", uid);
+
+    const res = await request(app)
+      .get("/api/ops/rooms")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.rooms as Array<{ id: string }>).map((r) => r.id);
+    expect(ids).toEqual(["room1"]);
+  });
+
+  it("never returns join_token, deck json, or seed_json", async () => {
+    const uid = seedUser("u1", "alice");
+    seedRoom("room1", uid);
+
+    const res = await request(app)
+      .get("/api/ops/rooms")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain("joinToken");
+    expect(raw).not.toContain("join_token");
+    expect(raw).not.toContain("seedJson");
+    expect(raw).not.toContain("deckJson");
+  });
+
+  it("requires the ops token", async () => {
+    const res = await request(app).get("/api/ops/rooms");
+    expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/ops/duel/:id/log — read the decisions a duel actually received
+// ---------------------------------------------------------------------------
+
+describe("GET /api/ops/duel/:id/log", () => {
+  it("returns the ordered response log with parsed entries", async () => {
+    const uid = seedUser("u1", "alice");
+    seedDuel("duel1", uid);
+    seedResponseLog("duel1", 0);
+    seedResponseLog("duel1", 1);
+    seedResponseLog("duel1", 2);
+
+    const res = await request(app)
+      .get("/api/ops/duel/duel1/log")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(3);
+    expect(res.body.truncated).toBe(false);
+    const seqs = (res.body.entries as Array<{ seq: number }>).map((e) => e.seq);
+    expect(seqs).toEqual([0, 1, 2]);
+    expect(res.body.entries[0].response).toEqual({});
+  });
+
+  it("reports truncation when the log exceeds the limit", async () => {
+    const uid = seedUser("u1", "alice");
+    seedDuel("duel1", uid);
+    for (let i = 0; i < 4; i++) seedResponseLog("duel1", i);
+
+    const res = await request(app)
+      .get("/api/ops/duel/duel1/log?limit=2")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.entries).toHaveLength(2);
+    expect(res.body.total).toBe(4);
+    expect(res.body.truncated).toBe(true);
+  });
+
+  it("404s for an unknown duel", async () => {
+    const res = await request(app)
+      .get("/api/ops/duel/nope/log")
+      .set("Authorization", `Bearer ${OPS_TOKEN}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("requires the ops token", async () => {
+    const res = await request(app).get("/api/ops/duel/duel1/log");
+    expect(res.status).toBe(401);
+  });
+});

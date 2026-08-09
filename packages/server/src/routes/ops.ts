@@ -36,6 +36,27 @@ const COUNT_KEYS: Record<(typeof COUNT_TABLES)[number], string> = {
   response_log: "responseLog",
 };
 
+/** Hard server-side cap for every list endpoint — the client cannot exceed it. */
+const MAX_LIMIT = 50;
+const DEFAULT_LIMIT = 50;
+
+/** Parse and hard-cap a `limit` query parameter. Anything invalid → default. */
+function clampLimit(raw: unknown): number {
+  if (typeof raw !== "string") return DEFAULT_LIMIT;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return DEFAULT_LIMIT;
+  return Math.min(n, MAX_LIMIT);
+}
+
+/** response_json is written by us, but never let one bad row 500 the endpoint. */
+function safeParse(json: string): unknown {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return { unparseable: json };
+  }
+}
+
 export function createOpsRouter(db: Db): Router {
   const router = Router();
 
@@ -216,6 +237,167 @@ export function createOpsRouter(db: Db): Router {
 
     console.log(`${req.method} ${req.originalUrl} 200`);
     res.json({ duel });
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /api/ops/duels?status=<status>&limit=<n>
+  // Bounded LIST of duels, newest first. Named, bounded query — not arbitrary
+  // SQL: `status` is matched exactly and `limit` is hard-capped server-side.
+  // Same reduced row shape as GET /duel/:id — never seat tokens or seed_json.
+  // -------------------------------------------------------------------------
+  router.get("/duels", (req, res) => {
+    const limit = clampLimit(req.query["limit"]);
+    const status = typeof req.query["status"] === "string" ? req.query["status"] : null;
+
+    const rows = (
+      status === null
+        ? db
+            .prepare(
+              `SELECT id, status, winner, end_reason, seat0_user_id, seat1_user_id,
+                      on_clock_seat, deadline_at, created_at
+               FROM duel ORDER BY created_at DESC LIMIT ?`,
+            )
+            .all(limit)
+        : db
+            .prepare(
+              `SELECT id, status, winner, end_reason, seat0_user_id, seat1_user_id,
+                      on_clock_seat, deadline_at, created_at
+               FROM duel WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
+            )
+            .all(status, limit)
+    ) as Array<{
+      id: string;
+      status: string;
+      winner: number | null;
+      end_reason: string | null;
+      seat0_user_id: string;
+      seat1_user_id: string | null;
+      on_clock_seat: number | null;
+      deadline_at: number | null;
+      created_at: number;
+    }>;
+
+    const duels = rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      winner: r.winner,
+      endReason: r.end_reason,
+      seat0UserId: r.seat0_user_id,
+      seat1UserId: r.seat1_user_id,
+      onClockSeat: r.on_clock_seat,
+      deadlineAt: r.deadline_at,
+      createdAt: r.created_at,
+    }));
+
+    console.log(`${req.method} ${req.originalUrl} 200 (${duels.length} rows)`);
+    res.json({ duels, limit });
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /api/ops/rooms?status=<status>&limit=<n>
+  // Bounded LIST of rooms, newest first. Never returns join_token or deck json.
+  // -------------------------------------------------------------------------
+  router.get("/rooms", (req, res) => {
+    const limit = clampLimit(req.query["limit"]);
+    const status = typeof req.query["status"] === "string" ? req.query["status"] : null;
+
+    const cols = `id, status, closed_reason, creator_user_id, opponent_user_id,
+                  creator_deck_name, opponent_deck_name,
+                  creator_ready_at, opponent_ready_at,
+                  flip_winner_user_id, flip_choice,
+                  room_deadline_at, created_at`;
+
+    const rows = (
+      status === null
+        ? db.prepare(`SELECT ${cols} FROM duel_room ORDER BY created_at DESC LIMIT ?`).all(limit)
+        : db
+            .prepare(
+              `SELECT ${cols} FROM duel_room WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
+            )
+            .all(status, limit)
+    ) as Array<{
+      id: string;
+      status: string;
+      closed_reason: string | null;
+      creator_user_id: string;
+      opponent_user_id: string | null;
+      creator_deck_name: string | null;
+      opponent_deck_name: string | null;
+      creator_ready_at: number | null;
+      opponent_ready_at: number | null;
+      flip_winner_user_id: string | null;
+      flip_choice: string | null;
+      room_deadline_at: number;
+      created_at: number;
+    }>;
+
+    const rooms = rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      closedReason: r.closed_reason,
+      creatorUserId: r.creator_user_id,
+      opponentUserId: r.opponent_user_id,
+      creatorDeckName: r.creator_deck_name,
+      opponentDeckName: r.opponent_deck_name,
+      creatorReadyAt: r.creator_ready_at,
+      opponentReadyAt: r.opponent_ready_at,
+      flipWinnerUserId: r.flip_winner_user_id,
+      flipChoice: r.flip_choice,
+      roomDeadlineAt: r.room_deadline_at,
+      createdAt: r.created_at,
+    }));
+
+    console.log(`${req.method} ${req.originalUrl} 200 (${rooms.length} rows)`);
+    res.json({ rooms, limit });
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /api/ops/duel/:id/log?limit=<n>
+  // The duel's ordered response log — the decisions each seat actually sent.
+  //
+  // This is the only way to see what happened inside a duel after the fact:
+  // the engine is rehydrated by replaying exactly these rows, so reading them
+  // back reproduces the duel deterministically. Contains player decisions
+  // only — no tokens, no deck lists, no seed.
+  // -------------------------------------------------------------------------
+  router.get("/duel/:id/log", (req, res) => {
+    const { id } = req.params;
+    const limit = clampLimit(req.query["limit"]);
+
+    const exists = db.prepare("SELECT 1 FROM duel WHERE id = ?").get(id);
+    if (!exists) {
+      console.log(`${req.method} ${req.originalUrl} 404`);
+      res.status(404).json({ error: { code: "not_found", message: "Duel not found." } });
+      return;
+    }
+
+    const rows = db
+      .prepare(
+        `SELECT seq, seat, response_json, received_at
+         FROM response_log WHERE duel_id = ? ORDER BY seq LIMIT ?`,
+      )
+      .all(id, limit) as Array<{
+      seq: number;
+      seat: number;
+      response_json: string;
+      received_at: number;
+    }>;
+
+    const total = (
+      db.prepare("SELECT COUNT(*) AS n FROM response_log WHERE duel_id = ?").get(id) as {
+        n: number;
+      }
+    ).n;
+
+    const entries = rows.map((r) => ({
+      seq: r.seq,
+      seat: r.seat,
+      response: safeParse(r.response_json),
+      receivedAt: r.received_at,
+    }));
+
+    console.log(`${req.method} ${req.originalUrl} 200 (${entries.length}/${total} rows)`);
+    res.json({ duelId: id, entries, total, limit, truncated: total > entries.length });
   });
 
   // -------------------------------------------------------------------------
