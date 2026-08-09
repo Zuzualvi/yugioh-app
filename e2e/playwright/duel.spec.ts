@@ -647,3 +647,94 @@ test(
     }
   },
 );
+
+test(
+  "E3 seat-1 path: the SECOND player picks a zone and the card lands on their own field",
+  { timeout: 90_000 },
+  async ({ browser }) => {
+    // Regression guard for the SELECT_PLACE seat-mapping defect.
+    //
+    // Every other zone-picking assertion in this file drives `goesFirst`. At
+    // seat 0 ocgcore's relative field_mask and its absolute response player
+    // coincide, so a decoder that confuses the two still passes. Only seat 1
+    // can catch it: pre-fix, the zones offered here belonged to the OPPONENT,
+    // the engine rejected the placement, and the player was stranded with
+    // "No pending decision to respond to" for the rest of the duel.
+    const ctxA = await browser.newContext();
+    const ctxB = await browser.newContext();
+    const alice = await ctxA.newPage();
+    const bob = await ctxB.newPage();
+
+    try {
+      await login(alice, "e2e_alice");
+      await login(bob, "e2e_bob");
+
+      const joinPath = await createRoomAsAlice(alice);
+      await bob.goto(joinPath);
+      await bob.waitForURL((u) => u.pathname.includes("/room"));
+
+      const { goesFirst, goesSecond } = await enterRoomAndReachBoard(alice, bob);
+
+      // ── Seat 0 passes the turn without acting ─────────────────────────────
+      await expect(goesFirst.getByTestId("end-turn-btn")).toBeEnabled();
+      await goesFirst.getByTestId("end-turn-btn").click();
+
+      // ── Seat 1 is now on the clock ────────────────────────────────────────
+      await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
+
+      // Turn "Choose zones" ON so the zone pick is presented rather than auto-answered.
+      await goesSecond.getByTestId("settings-btn").click();
+      const popover = goesSecond.getByTestId("settings-popover");
+      await expect(popover).toBeVisible();
+      await popover.getByRole("checkbox", { name: "Choose zones" }).check();
+      await goesSecond.getByTestId("settings-btn").click();
+      await expect(popover).not.toBeVisible();
+
+      // ── Normal Summon via verb chip ───────────────────────────────────────
+      await expect(goesSecond.getByTestId("own-hand-row")).toBeVisible();
+      await clickSummonableHandCard(goesSecond);
+      await expect(goesSecond.getByTestId("verb-chip-cluster")).toBeVisible();
+
+      const summonChip = goesSecond
+        .getByTestId("verb-chip-cluster")
+        .getByRole("menuitem", { name: /Normal Summon/i })
+        .first();
+      await assertF12(summonChip, "Normal Summon chip (seat 1)");
+      await summonChip.click();
+
+      // ── The zone pick must be offered ─────────────────────────────────────
+      await expect(goesSecond.getByTestId("question-bar")).toBeVisible({ timeout: 5_000 });
+      const zoneOptions = goesSecond.getByTestId("zone-option");
+      await expect(zoneOptions.first()).toBeVisible();
+      expect(
+        await zoneOptions.count(),
+        "seat 1 must be offered multiple zones on an empty field",
+      ).toBeGreaterThan(1);
+
+      // Every offered zone must be seat 1's OWN. Pre-fix these read "Player 0".
+      const labels = await zoneOptions.allInnerTexts();
+      for (const label of labels) {
+        expect(
+          label,
+          `zone option offered to seat 1 names the wrong controller: ${label}`,
+        ).toContain("Player 1");
+      }
+
+      // ── Clicking commits the placement (pre-fix: engine RETRY, nothing happens) ──
+      await zoneOptions.first().click();
+
+      await expect(goesSecond.getByTestId("question-bar")).not.toBeVisible({ timeout: 5_000 });
+
+      // The monster is on SEAT 1's field: one slot filled, four empty.
+      const myMzone = goesSecond.locator('[data-testid="my-mzone"]');
+      await expect(myMzone).toBeVisible();
+      await expect(myMzone.getByTestId("empty-zone")).toHaveCount(4);
+
+      // And seat 1 is still able to act — the decision was not torn down.
+      await expect(goesSecond.getByTestId("end-turn-btn")).toBeEnabled();
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+    }
+  },
+);

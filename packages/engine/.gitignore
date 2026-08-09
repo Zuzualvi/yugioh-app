@@ -4,3 +4,5 @@
 # Card DB + scripts (populated by card-data pipeline / spike-a assets)
 /assets/cards.cdb
 /assets/scripts/
+# Marker written by fetch-assets.sh once cards-unofficial.cdb has been merged
+/assets/.unofficial-merged

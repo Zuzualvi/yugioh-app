@@ -134,6 +134,37 @@ seeds, and deck combinations). Engine auto-resolves opening hand selection.
 
 ---
 
+## Amendment — 2026-08-09: `SELECT_PLACE` uses two opposite seat conventions
+
+The variant table above records `SelectZone` as "decoded from `field_mask`" without
+stating whose field the mask describes. That omission produced a production defect in
+which a player at seat 1 could not place a card at all: the zone picker offered the
+OPPONENT's zones, the engine rejected the placement with `RETRY`, the pending decision
+was torn down, and the player was stranded with "No pending decision to respond to".
+
+The two directions of `SELECT_PLACE` do NOT share a convention, and neither is
+documented in `ocgcore-wasm`'s `.d.ts`:
+
+| direction | field | convention |
+|---|---|---|
+| engine → us | `OcgMessageSelectPlace.field_mask` | **RELATIVE** — low 16 bits are the MESSAGING PLAYER'S own field; high 16 bits the opponent's |
+| us → engine | `SelectFieldPlace.player` | **ABSOLUTE** — the real seat number |
+
+So a decoder must resolve the relative bit-group to an absolute controller, and the
+responder must then send that absolute value back unchanged. Mapping the low group to
+`controller: 0` is correct only when the messaging player IS seat 0 — which is why the
+defect was invisible to every test that drove the first player.
+
+Both conventions are now asserted against a live duel in
+`packages/engine/src/selectPlaceSeatMapping.accuracy.test.ts`, including the negative
+case (a seat-1 player responding with `player: 0` is rejected with `RETRY`). That test,
+not this prose, is the source of truth — if ocgcore ever changes, it fails.
+
+`SelectDisfield` (type 24) decodes the same `field_mask` through the same helper and
+therefore carries the same convention, despite still being marked unverified-live above.
+
+---
+
 ## References
 - Spec: `specs/interactive-duel-phase0.md`
 - Catalog: `docs/reference/2026-07-16-ocgcore-decision-catalog.md`

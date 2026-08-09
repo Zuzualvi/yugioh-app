@@ -124,19 +124,44 @@ describe.skipIf(!WASM_AVAILABLE)("Determinism (R5) [requires custom WASM]", () =
     expect(JSON.stringify(state1)).toBe(JSON.stringify(state2));
   });
 
-  it("different seeds produce different message sequences", async () => {
-    const duel1 = await createEdisonDuel({ seed: 1n, deck0: DECK, deck1: DECK });
-    const result1 = duel1.step();
-    duel1.destroy();
+  it("different seeds produce different opening hands (the deck is actually shuffled)", async () => {
+    // This assertion is the point of the test: a seed that does not reach the
+    // shuffle would hand every player the same opening hand every duel.
+    // Asserting only "both ran without error" cannot detect that.
+    const openingHand = async (seed: bigint) => {
+      const duel = await createEdisonDuel({ seed, deck0: DECK, deck1: DECK });
+      duel.step();
+      const state = duel.getStateForSeat(0);
+      duel.destroy();
+      return JSON.stringify(state.zones.p0_hand);
+    };
 
-    const duel2 = await createEdisonDuel({ seed: 2n, deck0: DECK, deck1: DECK });
-    const result2 = duel2.step();
-    duel2.destroy();
+    const hands = await Promise.all([1n, 2n, 3n, 4n, 5n].map(openingHand));
+    const distinct = new Set(hands);
 
-    // Messages may differ (different shuffle due to different seed)
-    // At minimum the test validates both run without error
-    expect(result1.messages.length).toBeGreaterThanOrEqual(0);
-    expect(result2.messages.length).toBeGreaterThanOrEqual(0);
+    // Five different seeds must not all deal the same hand. (Any two seeds
+    // could theoretically collide; all five collapsing to one means no shuffle.)
+    expect(
+      distinct.size,
+      `all ${hands.length} seeds dealt the same opening hand — the deck is not being shuffled`,
+    ).toBeGreaterThan(1);
+  });
+
+  it("both players get different opening hands from the same decklist", async () => {
+    // Guards the "both of us drew the identical hand" failure mode: two players
+    // using the same decklist must still be shuffled independently.
+    const duel = await createEdisonDuel({ seed: 12345n, deck0: DECK, deck1: DECK });
+    duel.step();
+    const state0 = duel.getStateForSeat(0);
+    const state1 = duel.getStateForSeat(1);
+    duel.destroy();
+
+    const hand0 = JSON.stringify(state0.zones.p0_hand.map((c) => c.code));
+    const hand1 = JSON.stringify(state1.zones.p1_hand.map((c) => c.code));
+
+    expect(hand0).not.toBe("[]");
+    expect(hand1).not.toBe("[]");
+    expect(hand0, "both players were dealt the identical opening hand").not.toBe(hand1);
   });
 });
 

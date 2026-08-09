@@ -191,21 +191,32 @@ function decodeAttributeMask(available: number): Attribute[] {
  */
 function decodeFieldMask(fieldMask: number, messagingPlayer: 0 | 1): ZoneEntry[] {
   const zones: ZoneEntry[] = [];
-  for (const p of [0, 1] as const) {
-    const shift = p * 16;
+  // ocgcore lays SELECT_PLACE's field_mask out RELATIVE to the player being
+  // asked: the low 16 bits are THAT PLAYER'S OWN field, the high 16 bits the
+  // opponent's. The SELECT_PLACE *response*, by contrast, takes an ABSOLUTE
+  // seat. Both conventions verified live against the engine — see
+  // selectPlaceSeatMapping.accuracy.test.ts.
+  //
+  // So the relative group index must be resolved to an absolute controller
+  // here. Treating the low group as controller 0 unconditionally is correct
+  // only when the messaging player IS seat 0; for seat 1 it names the
+  // opponent's zones, and the resulting response is rejected with RETRY —
+  // which tears down the pending decision and strands the duel.
+  for (const rel of [0, 1] as const) {
+    const shift = rel * 16;
     const mask = (fieldMask >> shift) & 0xffff;
+    const controller = (rel === 0 ? messagingPlayer : 1 - messagingPlayer) as 0 | 1;
     for (let s = 0; s < 5; s++) {
       if (!(mask & (1 << s))) {
-        zones.push({ controller: p, location: "MZONE", sequence: s });
+        zones.push({ controller, location: "MZONE", sequence: s });
       }
     }
     for (let s = 0; s < 5; s++) {
       if (!(mask & (1 << (s + 8)))) {
-        zones.push({ controller: p, location: "SZONE", sequence: s });
+        zones.push({ controller, location: "SZONE", sequence: s });
       }
     }
   }
-  void messagingPlayer; // unused but part of the signature for future context
   return zones;
 }
 

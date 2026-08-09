@@ -61,7 +61,8 @@ if [ -f "$UNOFFICIAL_MERGED_MARKER" ]; then
   echo "[1b] cards-unofficial.cdb already merged — skipping."
 else
   echo "[1b] Downloading and merging cards-unofficial.cdb..."
-  UNOFFICIAL_TMP="$(mktemp --suffix=.cdb)"
+  # `mktemp --suffix` is GNU-only; -d is portable (BSD/macOS included).
+  UNOFFICIAL_TMP="$(mktemp -d)/cards-unofficial.cdb"
   curl -fsSL "$BABEL_UNOFFICIAL_URL" -o "$UNOFFICIAL_TMP"
   python3 - "$UNOFFICIAL_TMP" "$CDB_PATH" <<'PYEOF'
 import sqlite3, sys
