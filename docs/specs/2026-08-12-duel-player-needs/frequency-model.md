@@ -1,3 +1,7 @@
+---
+linear_project: Duel Experience Redo
+---
+
 # Frequency model — how the ZUH-119 gap list was ranked
 
 **This is a model, not a measurement.** Every number here is `[I]` — my estimate from the format,

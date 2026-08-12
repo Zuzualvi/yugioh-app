@@ -9,7 +9,7 @@ ZUH-118, Linear Project **Duel Experience Redo**).
 
 | Folder | What it is |
 | --- | --- |
-| `logs/` | 15 scenario logs. Each contains the browser console output, **every WebSocket frame in both directions**, and DOM probe results (including `document.elementFromPoint` checks). These are the primary evidence — a finding that cites `logs/sN-*.log` can be checked against the actual wire traffic. |
+| `logs/` | 15 scenario logs. Each contains the browser console output, **every WebSocket frame in both directions**, and DOM probe results (including `document.elementFromPoint` checks). These are the primary evidence — a finding that cites `logs/sN-*.log` can be checked against the actual wire traffic. ⚠️ **The files here carry a `.log.txt` extension, not `.log`** — the repo's `.gitignore` excludes `*.log`, which would have silently dropped the entire evidence set from this commit. The enumeration's citations name them as `.log`; append `.txt` when you go looking. |
 | `driver/` | The Playwright drivers that produced the logs, one per scenario, plus `lib.mjs` and `insertDeck.mjs`. **Re-runnable** — this is what makes the findings reproducible rather than merely recorded. |
 
 ## What is NOT here, and why

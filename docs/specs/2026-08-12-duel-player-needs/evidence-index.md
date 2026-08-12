@@ -1,3 +1,7 @@
+---
+linear_project: Duel Experience Redo
+---
+
 # Evidence index — ZUH-119 player needs model
 
 Every non-obvious claim in `../player-needs-model.md` and where it came from. Ordered by source
