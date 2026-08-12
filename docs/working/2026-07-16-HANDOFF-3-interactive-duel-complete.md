@@ -92,3 +92,15 @@ update. Contract schema tests + per-kind panel tests + 8 playability regression 
    most valuable next input. Turn feedback into a polish slice.
 3. Otherwise, pick up the non-blocking follow-ups above (effect-chain E2E and the deprecated-frame cleanup are the
    highest-value). Nothing is on fire; the epic is complete.
+
+---
+## ⚠️ NOTE added post-push (UNVERIFIED — next session investigate)
+While pushing this handoff I found master had advanced beyond my epic commits with work I did NOT author or
+verify this session:
+- `82e2683` **Merge pull request #50 from Zuzualvi/fix/select-place-seat-mapping-and-shuffle**
+- `7e63e81` `docs(adr-0001): record the two opposite SELECT_PLACE seat conventions`
+This looks like a `SELECT_PLACE` (zone-placement) seat-mapping + shuffle fix (possibly a Copilot/CEO/external PR).
+**Unverified by me.** NEXT SESSION: run `read_ci_status` to confirm master is green at HEAD, `git show 82e2683
+7e63e81` to review the change, and re-run the E2E — a SELECT_PLACE seat-mapping bug would affect which zones a
+player can place into, so confirm the real-turn play-through still passes and the ADR-0001 note is consistent with
+the `SelectZone` contract. Everything ELSE in this handoff was verified green at `677eb933` before this PR landed.
