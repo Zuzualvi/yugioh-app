@@ -160,6 +160,13 @@ export function useDuel(scenario: Scenario) {
           return nb;
         });
       }
+      // A PHASE event moves the board's own phase, exactly as the next STATE frame
+      // would. The rail reads the board and never re-derives the phase itself.
+      const phaseEv = c.events?.find((e) => e.kind === "PHASE" && typeof e["phase"] === "number");
+      if (phaseEv) {
+        const next = phaseEv["phase"] as number;
+        setBoard((b) => ({ ...b, currentPhase: next }));
+      }
       if (c.events?.length) {
         setFeed((f) => [
           ...f,

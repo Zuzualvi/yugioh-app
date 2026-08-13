@@ -2,6 +2,9 @@ import type { DuelEvent, Seat } from "../proto/types";
 import { cardInfo } from "../proto/scenarios";
 
 const PHASES = ["DP", "SP", "M1", "BP", "M2", "EP"];
+/** The web-side phase codes carried on every STATE frame
+ *  (`mapOcgPhaseToWeb`: DRAW 1 · STANDBY 2 · MAIN1 4 · BATTLE 8 · MAIN2 16 · END 32). */
+const PHASE_CODE: Record<string, number> = { DP: 1, SP: 2, M1: 4, BP: 8, M2: 16, EP: 32 };
 const PHASE_LABEL: Record<string, string> = {
   DP: "Draw",
   SP: "Standby",
@@ -20,9 +23,19 @@ const PHASE_LABEL: Record<string, string> = {
  * the most common self-check in the game, from an EVENT the engine emitted —
  * not from the absence of an option, which is not a statement, and not from a
  * cause the engine did not give (D1/D2).
+ *
+ * ⚠ THE CURRENT-PHASE MARKER IS READ FROM `STATE.currentPhase` AND FROM NOTHING
+ * ELSE. It was previously inferred from the kind of decision being held, so the
+ * moment an attack-target question opened — a `SelectCard`, not a
+ * `BattleCommand` — the marker fell back to M1 and told the player they were in
+ * Main Phase 1 while they were mid-declaration of an attack. That is the screen
+ * stating something untrue, which is requirement D1's class, on the surface the
+ * player uses to orient. The engine puts the phase on every STATE frame; the rail
+ * reads it, and a question cannot move it because a question does not change the
+ * board.
  */
 export function PhaseRail({
-  current,
+  currentPhase,
   legal,
   onPhase,
   onEndTurn,
@@ -30,7 +43,8 @@ export function PhaseRail({
   summonSpent,
   onTurn,
 }: {
-  current: number;
+  /** `STATE.currentPhase` — the engine's own value, never inferred. */
+  currentPhase: number;
   legal: string[];
   onPhase: (p: string) => void;
   onEndTurn: () => void;
@@ -41,10 +55,10 @@ export function PhaseRail({
   return (
     <div className="railbar" data-testid="phase-rail">
       <div className="phaserail">
-        {PHASES.map((p, i) => (
+        {PHASES.map((p) => (
           <button
             key={p}
-            className={`phase ${i === current ? "current" : ""} ${legal.includes(p) ? "legal" : ""}`}
+            className={`phase ${PHASE_CODE[p] === currentPhase ? "current" : ""} ${legal.includes(p) ? "legal" : ""}`}
             disabled={!legal.includes(p)}
             onClick={() => onPhase(p)}
             aria-label={`${PHASE_LABEL[p]} Phase`}

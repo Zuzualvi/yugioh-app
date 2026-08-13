@@ -168,8 +168,8 @@ function scSummon(): Scenario {
 
 function branchIdle(idle: Extract<DuelDecision, { kind: "IdleCommand" }>, zone: Extract<DuelDecision, { kind: "SelectZone" }>, a: DecisionResponse): Continuation {
   if (a.kind !== "IdleCommand") throw new Error("wrong answer kind");
-  if (a.action === "toEP") return { named: "End Turn", handOver: true, events: [ev("PHASE", { phase: 8 })] };
-  if (a.action === "toBP") return { named: "Battle Phase", events: [ev("PHASE", { phase: 6 })] };
+  if (a.action === "toEP") return { named: "End Turn", handOver: true, events: [ev("PHASE", { phase: 32 })] };
+  if (a.action === "toBP") return { named: "Battle Phase", events: [ev("PHASE", { phase: 8 })] };
   const list =
     a.action === "summon" ? idle.summons : a.action === "monsterSet" ? idle.monsterSets : idle.spellSets;
   const card = list[a.index ?? 0]!;
@@ -337,7 +337,7 @@ function scAttack(multi: boolean): Scenario {
       branch: (a) => {
         if (a.kind !== "BattleCommand") throw new Error("wrong answer kind");
         if (a.action === "toEP") return { named: "End Turn", handOver: true };
-        if (a.action === "toM2") return { named: "Main Phase 2", events: [ev("PHASE", { phase: 7 })] };
+        if (a.action === "toM2") return { named: "Main Phase 2", events: [ev("PHASE", { phase: 16 })] };
         return {
           named: `Attack with ${nameOf(attacker)}`,
           next: [
@@ -514,8 +514,8 @@ function scHandover(): Scenario {
       },
       branch: (a) => {
         if (a.kind !== "IdleCommand") throw new Error("wrong answer kind");
-        if (a.action === "toBP") return { named: "Battle Phase", events: [ev("PHASE", { phase: 6 })] };
-        return { named: "End Turn", handOver: true, events: [ev("PHASE", { phase: 8 })] };
+        if (a.action === "toBP") return { named: "Battle Phase", events: [ev("PHASE", { phase: 8 })] };
+        return { named: "End Turn", handOver: true, events: [ev("PHASE", { phase: 32 })] };
       },
     },
   };

@@ -11,7 +11,6 @@ import { CardArt } from "./components/CardArt";
 import { hand, row } from "./proto/board";
 import type { CardEntry, Seat } from "./proto/types";
 
-const PHASE_IDX: Record<string, number> = { DP: 0, SP: 1, M1: 2, BP: 3, M2: 4, EP: 5 };
 
 export default function App() {
   const [sid, setSid] = useState(SCENARIOS[1]!.id);
@@ -228,7 +227,7 @@ export default function App() {
             </div>
             {parts.oppField}
             <PhaseRail
-              current={PHASE_IDX[legalPhases.includes("BP") && d?.kind === "BattleCommand" ? "BP" : "M1"] ?? 2}
+              currentPhase={m.board.currentPhase}
               legal={legalPhases}
               onPhase={(p) => {
                 if (p === "BP" && d?.kind === "IdleCommand") answer({ kind: "IdleCommand", action: "toBP", index: null });
