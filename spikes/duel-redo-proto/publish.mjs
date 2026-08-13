@@ -5,13 +5,17 @@
 // dies with the sandbox. GitHub is therefore the durable route: the built file is
 // committed, and a reviewer downloads it and opens it locally.
 //
+// NOTE: the path is `review/`, not `build/` — the repo root .gitignore ignores
+// `build/`, and a committed review artefact must not need a `git add -f` that
+// someone will forget. Do not "fix" this by editing the root ignore file.
+//
 // It runs as part of `npm run build` rather than as a step someone has to remember,
 // because a review artefact that is one forgotten command away from being stale is
 // worse than no artefact.
 import { mkdirSync, copyFileSync, statSync } from "node:fs";
 
 const SRC = "dist/index.html";
-const OUT = "build/duel-redo-prototype.html";
-mkdirSync("build", { recursive: true });
+const OUT = "review/duel-redo-prototype.html";
+mkdirSync("review", { recursive: true });
 copyFileSync(SRC, OUT);
 console.log(`published ${OUT} (${(statSync(OUT).size / 1024).toFixed(0)} kB, self-contained)`);
