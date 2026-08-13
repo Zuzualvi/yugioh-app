@@ -314,12 +314,22 @@ Expanded, it lists the rows and simultaneously marks the feed rail with a
 | State | Trigger | Sees | Motion in | Motion out |
 |---|---|---|---|---|
 | unread | control returns and ≥1 event arrived | the strip, blue-ruled | `--m-narrate` slide | — |
-| expanded | `Show` | the rows | `--m-base` | `--m-base` |
+| expanded | `Show` | the rows, **and the dock's armed hint yields its space to them** — see below | `--m-base` | `--m-base` |
 | empty | control returns, nothing happened | **not rendered** | — | — |
 | dismissed / spent | player dismisses, or takes their first action | gone, feed mark stays | — | `--m-base` |
 
 **It never auto-fades.** Recovery for "I did not read it" is "read it again".
 **Cessation of the STRIP:** first action this turn · dismiss · control leaves me · `DUEL_END`.
+
+**Expanded, the list takes the band's spare room — and the band only has spare room because the armed
+hint gives it up.** While the delta is expanded, `Your move — click a card, or use the phase rail.` does
+not render: **one statement at a time** (§3.4), and the player who pressed `Show` is reading the delta.
+The hint is redundant in that moment — the board is armed, the phase rail is on screen and `End Turn` is
+in it — and the dock band's **132 px is reserved and may never grow** (requirement B3, the structural fix
+for ZUH-118 break 3), so those 32 px are the only space there is. **Measured: 42 px showing 2 of 5 rows
+before, 74 px showing 4 of 5 after, with the band still at exactly 132 px and no control occluded.** A
+**question is never** suppressed this way; only the armed hint. *Anything deeper than the band can hold
+still scrolls, and the rail still holds all of it — which is the division of labour below.* (ZUH-148.)
 
 **The strip and the mark have DIFFERENT lifetimes, and that is the point of having both.** The strip is
 the transient summary; **the feed rail's `— since you last acted —` mark is the durable boundary** and

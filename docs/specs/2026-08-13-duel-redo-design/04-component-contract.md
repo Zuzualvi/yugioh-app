@@ -334,10 +334,28 @@ No step array, no step index, no budget, no glyph.
 |---|---|
 | DL1 | Appears when control transitions to `mine` **and** ≥1 event arrived while it was away. |
 | DL2 | Never auto-fades. Cleared by: first action this turn · dismiss · control leaves · `DUEL_END`. |
-| DL3 | Expanding it marks the feed rail at the same boundary. *(⚠️ wording under review — the mark is created at **control return**, not on expand: `02 §7`, F7 and the prototype all agree. ZUH-147.)* |
+| DL3 | Expanding it marks the feed rail at the same boundary. **⚠️ CORRECTED — see §4.4a.** |
 | DL4 | With zero events it is **absent**, not an empty strip. |
 | DL5 | **The rail mark outlives the strip.** It survives `Show`/`Hide`, `Dismiss`, the player's own actions and `DUEL_END`, and is replaced only by the next handover. Four separate tests, one per cessation the strip has and the mark does not. *The strip is the notification; the rail is the reading surface, and it is the only one that can hold a 100-second turn (`02 §3.5`).* |
-| DL6 | **It must survive a busy turn without growing the dock.** The band's height is reserved (`--dock-h`); a delta of 40 rows must leave it at that height and must not occlude a single hand card, asserted with `elementFromPoint` over every hand card. *Driven in the prototype at N=10, 20 and 40: band 132 px throughout, 0 occlusions. **What the same probe also shows is that the expanded list is only ~42 px tall and scrolls with 2 rows visible at the recorded delta size of 5** — filed as ZUH-148, because how it earns more room is the presentation layer's call, not this contract's.* |
+| DL6 | **It must survive a busy turn without growing the dock.** The band's height is reserved (`--dock-h`); a delta of 40 rows must leave it at that height and must not occlude a single control, asserted with `elementFromPoint`. *Driven at N=5 (recorded), 10, 20 and 40: band **132 px** throughout, never scrolling, hand top unmoved at 798 px, **0 of 14 controls occluded** (every hand card, both phase buttons, `End Turn`, `Resign`, both delta buttons).* |
+| DL7 | **Expanded, the list gets the band's spare room, and the band has spare room because the armed hint yields it.** While the delta is expanded the dock's `Your move — click a card, or use the phase rail.` hint does **not** render: one statement at a time (`02 §3.4`), and the delta is the statement. It is redundant in that moment — the board is armed, the rail is on screen, `End Turn` is in it — and its 32 px is the only space available without growing the band. *Measured: 42 px showing **2 of 5** rows before, **74 px showing 4 of 5** after; the hint returns the moment the list collapses. A question is **never** suppressed this way — only the armed hint.* (ZUH-148.) |
+
+### 4.4a · Correction to DL3 — appended 2026-08-13, after ZUH-139
+
+**Appended, not edited.** DL3's original wording is left exactly as it was written, because a criterion
+that is quietly reworded by whoever is nearest is worse than one that is visibly wrong — the same rule
+the ADRs run on.
+
+| | |
+|---|---|
+| **What DL3 says** | *"Expanding it marks the feed rail at the same boundary."* |
+| **Why it is wrong** | Read as an acceptance criterion it is testable as *expand the strip → the mark appears*, and that test would fail against the build and against two other statements in this same document set. |
+| **What is true** | **The mark appears when control returns**, at the boundary the strip summarises. **Expanding the strip neither creates nor moves it.** `02 §7` gives the `delta-marked` state the trigger "control just returned"; `03` F7 has the strip and the rule arriving together at control return; and the prototype has always created it there. **Driven:** after control returns the mark is present with the strip still collapsed, and pressing `Show` leaves it at the same boundary. |
+| **Where the origin was** | `02 §3.5`'s prose — *"Expanded, it lists the rows and simultaneously marks the feed rail"* — which has a benign reading (expanded, the strip and the marked rail are the same object seen twice) that does not conflict. DL3 is the version that reads as a trigger. |
+| **Filed as** | ZUH-147 |
+
+**DL5 supersedes DL3's implication about lifetime**: the mark outlives the strip and is replaced only by
+the next handover.
 
 ---
 

@@ -508,3 +508,74 @@ edits and a rebuild:
   unchanged and its status moved from "no number" to "register corroborated, medium confidence".
 - **The delta's clear-on-first-action (DL2).** Still not driveable: the handover scenario offers no legal
   verb when control returns.
+
+---
+
+## Pass 2 · closing items — ZUH-148 and ZUH-147, fixed after the pass
+
+Both were **filed, not fixed**, during the pass above. The Product Lead's call was to fix them before the
+build goes to review, on a rule worth writing down: **a defect inside the thing the CEO is being asked to
+judge is never held.** He is being asked whether the feed rail earns its 320 px; a delta surface that
+silently truncates, and a criterion that contradicts the build, would both make his answer describe
+something other than the design.
+
+### ZUH-148 · the expanded delta list showed 2 of its 5 rows
+
+**What was wrong.** Expanded, `[data-testid=delta-list]` measured **42 px** and showed **2 of 5 rows** —
+at the *recorded* delta size, before any of ZUH-139's corrections — scrolling with nothing to say it
+scrolled.
+
+**Why it could not be fixed by making the list taller.** The dock band's **132 px is reserved** and may
+never grow: that is requirement **B3**, the structural fix for ZUH-118 break 3 (a `position: fixed`
+panel that grew over the hand until `elementFromPoint` returned the panel for every hand card). Measured
+rather than assumed: the band's children at that moment are `deltastrip: 41` + `deltalist: 42` +
+`quiet: 25` and the band is **exactly full**. Freeing the list's own `max-height` cap changed **nothing**
+(the cap is 100 px and was never the binding constraint — flex shrink was). **There was no spare space to
+give it.**
+
+**What actually changed, and it is content, not CSS.** While the delta is expanded, the dock's armed hint
+`Your move — click a card, or use the phase rail.` does not render. **One statement at a time** (`02 §3.4`)
+— the player who pressed `Show` is reading the delta, the hint is redundant in that moment (the board is
+armed, the phase rail is on screen and `End Turn` is in it), and its **32 px is the only space that
+exists**. A **question is never** suppressed this way; only the armed hint. `02 §3.5` and contract **DL7**
+carry the rule.
+
+**On the ownership constraint, precisely, because it was overridden deliberately.** The Product Lead
+authorised a targeted fix inside ZUH-120's surface under the never-hold rule, and **ZUH-120 may revise
+it**. In the event **no stylesheet change was needed at all** — not one line of `styles.css` was touched —
+so the override was not spent: the space was funded by a **component decision in `Dock.tsx`**, which is
+this design's own. Recorded so that "the Product Lead let someone edit the stylesheet" cannot become a
+precedent from a change that did not do it.
+
+**Driven, and the B3 check re-run because a change inside the reserved band is exactly what could
+un-establish it:**
+
+| State | Band | List | Rows visible | Controls occluded |
+|---|---|---|---|---|
+| collapsed (unread) | **132 px**, no scroll | — | — | **0 of 14** |
+| expanded, recorded size | **132 px**, no scroll | **74 px** (was 42) | **4 of 5** (was 2 of 5) | **0 of 14** |
+| expanded, cloned to 10 rows | **132 px**, no scroll | 74 px | 4, scrolls | **0 of 14** |
+| expanded, cloned to 20 rows | **132 px**, no scroll | 74 px | 4, scrolls | **0 of 14** |
+| expanded, cloned to 40 rows | **132 px**, no scroll | 74 px | 4, scrolls | **0 of 14** |
+| collapsed again | **132 px** | — | hint **returns** | **0 of 14** |
+
+The 14 controls are every hand card, both legal phase buttons, `End Turn`, `Resign` and both delta
+buttons, each checked with `elementFromPoint` at its own centre. The hand's top stays at **798 px** in
+every row of that table. **Break 3 still cannot recur.** And anything deeper than the band can hold still
+scrolls, with the rail holding all of it — which is the division of labour B5 above settles on.
+
+### ZUH-147 · DL3 said the mark appears on expand
+
+Corrected as an **appended** entry at `04 §4.4a`, with DL3's original wording left exactly as written and
+a pointer added to it. The mark appears **when control returns**; expanding the strip neither creates nor
+moves it, which `02 §7`, `03` F7 and the build all already agreed on. A criterion reworded in place by
+whoever is nearest is worse than one that is visibly wrong, so the original conclusion is not rewritten —
+the same rule the ADRs run on.
+
+### The follow-up this chain is NOT allowed to start
+
+B5 above names what would settle the delta's row count: **count relayed `EVENTS` per opponent turn across
+the 3,008-frame capture the fixtures were cut from.** It is in-house, cheap, and **it waits until after
+the CEO has reviewed** — filed as ZUH-149. The CEO's own condition: *"if 139 spins off a follow-up the way
+131 spun off 139, that one waits until after I've looked — otherwise this chains forever and I never see
+it."* **No one on this pass counted them.**

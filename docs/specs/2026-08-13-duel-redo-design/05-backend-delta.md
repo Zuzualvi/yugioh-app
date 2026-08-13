@@ -46,6 +46,33 @@ Sizes are S (a field or a frame), M (a behaviour), L (a subsystem).
 | **MH-3b** | **Make the decision-context sidecar actually carry a subject, and send it for every decision.** Two changes: (1) populate `caption` reliably — today `relay.pendingCaption` is cleared at `duelSocket.ts:643` and no observed frame carried one; (2) carry the **triggering event** for non-activation windows, above all a **summon**, which is the commonest Edison response window and currently produces a sidecar with nothing in it. Shape: `trigger?: { kind: "SUMMON" \| "SET" \| "ATTACK" \| "PHASE" \| "ACTIVATE"; card?: EventCardRef; actor: Seat }`. And remove the `hasContent` gate so a decision always gets a sidecar, even an empty one. | Needs-model **gap 1**, the top-ranked gap: *the response window has no subject*. 5–20 hits per duel, each decisive. Also fixes the duplicated link-1 entry visible in the recorded `chain` array. **The client half is in scope for engineering regardless** — the frame is already sent and already dropped. | **M** |
 | **ND-7** | **Stop leaking the opponent's hidden hand.** `buildStateForSeat.ts:47-59` — `toZoneCard` spreads `...card` and zeroes only `code`, so `level`, `attack`, `defense` and `isPublic` go out for every hidden card. Recorded verbatim: `{"code":0,"position":10,"level":6,"attack":2400,"defense":1000,...}`. **Omit the fields rather than zero them, and make redaction allowlist-shaped** — name the fields an opponent may see (`code`, `position`, `sequence`) — because a denylist fails open every time the type grows a field. | Integrity. Readable from any browser network tab. Touches the same `ZoneCard` type as MH-1, so they land together — MH-1 is already shipped, which means ND-7 is now a change to a live type and its optional fields must stay optional. | **S** |
 
+### What the pacing evidence did to these priorities — appended 2026-08-13 (ZUH-139)
+
+**No delta is added, removed or resized. What changed is how much time the player has to use them.**
+
+**The response window's budget is ~1 second, measured.** Four response prompts in the reference client,
+put to two competitive players, were on screen and answered in **0.25–1.5 s**, and in one case the click
+is visible on the frame, so that is answer time and not display time. The needs model said *"a few
+seconds"* (M11); it is about one. **In a one-second decision, anything that forces a second fixation is
+not a refinement — it is the difference between answering and guessing.** Two items above are exactly
+that, and both become more urgent without changing size or shape:
+
+- **MH-3b** — with no `caption` and no trigger on the wire, the commonest window in Edison (*respond to a
+  summon*) renders `Something happened that you may respond to.` plus, in caption weight, `The engine did
+  not say what.` **That second line is a second fixation, in a one-second window.** It was already the
+  top-ranked gap; the measurement is why it is not a polish item.
+- **ND-9** — a candidate the engine redacted from its own owner reads `your set card 1`, which sends the
+  player to the board to work out which card that is. **Also a second fixation, in the same second.** The
+  client-side join (`resolveCode`) covers everything the `STATE` snapshot holds, which is why ND-9 stayed
+  a should-have; what the measurement changes is the cost of the residue it does **not** cover — a
+  `DECK`-located candidate, where the client has only a count.
+
+*Recorded, not acted on:* the reference client, faced with **exactly one legal answer, asks anyway and
+requires a click**, and prints its own step count (`1` of `2`) because its engine knows it. Ours does not,
+which is why the design deleted the step budget as *"a client-side guess printed next to an engine fact"*
+— **that deletion still holds.** Whether we should ask where one legal answer exists is PRD **A1/A2** and
+sits on the escalation list at `01 §8.1`; it is not reopened here.
+
 ### Nice-to-have
 
 | # | Item | Why | Size |
