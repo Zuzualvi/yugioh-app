@@ -303,8 +303,8 @@ confirm and no decline. With the clock deleted, a player who reaches one is lock
 | Q7 | The instruction line is generated from the zones the candidate set occupies, not hard-coded. |
 | Q5 | The answer-outcome enumeration passes (CC-A2). |
 | Q6 | A decision whose candidate list contains two entries with the same `name` produces two **different** confirm labels. |
-| Q8 | **No question times out** (ZUH-131 B4). No timer, interval, countdown, auto-answer-on-expiry or fade exists in this component or its children; asserted by a source scan for timer APIs in the question path **and** by a test that holds one question for 60 s and finds the sentence, both control labels and the enabled state unchanged. A real player held one decision for 25–30 s in the observed match. |
-| Q9 | **The amber error line has no timer** (B2). It is cleared only by the question being re-answered or replaced. |
+| Q8 | **No question times out** (ZUH-131 B4, measured by ZUH-139). No timer, interval, countdown, auto-answer-on-expiry or fade exists in this component or its children; asserted by a source scan for timer APIs in the question path **and** by a test that holds one question for 60 s and finds the sentence, both control labels and the enabled state unchanged. *A real player held **one** dialog open for **25.75 s** — 103 consecutive frames at 4 fps — and ended it by selecting. The 60 s in the test is a margin, not a measurement: no observed question lasts a minute.* |
+| Q9 | **The amber error line has no timer** (B2). It is cleared only by the question being re-answered or replaced. ⚠️ *This one is an inference twice over: no answer is rejected anywhere in 980 dense frames of the reference client, and the strip has no surface in the prototype either. Build it to the rule; do not record it as verified behaviour.* |
 
 ### 4.2 `IntentLine`
 
@@ -334,8 +334,10 @@ No step array, no step index, no budget, no glyph.
 |---|---|
 | DL1 | Appears when control transitions to `mine` **and** ≥1 event arrived while it was away. |
 | DL2 | Never auto-fades. Cleared by: first action this turn · dismiss · control leaves · `DUEL_END`. |
-| DL3 | Expanding it marks the feed rail at the same boundary. |
+| DL3 | Expanding it marks the feed rail at the same boundary. *(⚠️ wording under review — the mark is created at **control return**, not on expand: `02 §7`, F7 and the prototype all agree. ZUH-147.)* |
 | DL4 | With zero events it is **absent**, not an empty strip. |
+| DL5 | **The rail mark outlives the strip.** It survives `Show`/`Hide`, `Dismiss`, the player's own actions and `DUEL_END`, and is replaced only by the next handover. Four separate tests, one per cessation the strip has and the mark does not. *The strip is the notification; the rail is the reading surface, and it is the only one that can hold a 100-second turn (`02 §3.5`).* |
+| DL6 | **It must survive a busy turn without growing the dock.** The band's height is reserved (`--dock-h`); a delta of 40 rows must leave it at that height and must not occlude a single hand card, asserted with `elementFromPoint` over every hand card. *Driven in the prototype at N=10, 20 and 40: band 132 px throughout, 0 occlusions. **What the same probe also shows is that the expanded list is only ~42 px tall and scrolls with 2 rows visible at the recorded delta size of 5** — filed as ZUH-148, because how it earns more room is the presentation layer's call, not this contract's.* |
 
 ---
 

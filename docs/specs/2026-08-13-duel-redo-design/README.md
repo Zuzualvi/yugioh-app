@@ -11,7 +11,7 @@ PRD: https://linear.app/zuzu-io/document/prd-22f37a25d15c
 | --- | --- |
 | `00-README.md` | The designer's own index and escalations |
 | `01-object-model.md` | **Read first** — the decision classification law (OFFER vs STEP) that the rest depends on |
-| `02-surface-inventory.md` | 16 surfaces, 91 state rows |
+| `02-surface-inventory.md` | 16 surfaces, 92 state rows |
 | `03-flows.md` | 10 flows |
 | `04-component-contract.md` | What engineering builds |
 | `05-backend-delta.md` | Backend deltas, with a **binding** gate on adding new ones |
@@ -32,7 +32,7 @@ around that and do not copy it into a feature branch to save the work. What surv
 is: this document set, the fixtures, the stylesheet and its markup contract, and the backend deltas.
 `shots/` exists so the look has a record after the branch is gone.
 
-**Coverage: 60 of 91 states reachable in the prototype.** `07` §1.2 states which 31 are not and why —
+**Coverage: 61 of 92 states reachable in the prototype.** `07` §1.2 states which 31 are not and why —
 the pile inspector (0/5) and chain strip (0/6) are built nowhere. A prototype is done to a stated
 coverage, never just done.
 

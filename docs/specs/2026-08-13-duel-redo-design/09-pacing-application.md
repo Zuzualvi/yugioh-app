@@ -174,8 +174,11 @@ undescribable event before rendering the mark — and the recorded opponent turn
 event. Its boundary is also no longer derived from `feed.length - delta.length`, which drifted one row
 per event appended after the delta landed.
 
-*Still open on the same element, filed not fixed:* the mark **disappears on `Dismiss`**, where §3.5
-says *"gone, feed mark stays"* — its lifetime is borrowed from the delta's. **ZUH-145.**
+*And on the same element, also fixed:* the mark **disappeared on `Dismiss`**, where §3.5 says *"gone,
+feed mark stays"* — its lifetime was borrowed from the strip's. **ZUH-145.** The mark now has its own
+state, set at control return and never unset with the strip, and its lifetime is written down in two
+places it was missing from: `01 §7`'s persistence audit (which had no row for it at all) and `02 §7`'s
+`delta-marked` row. **The strip is the transient summary; the mark is the durable boundary.**
 
 Also note the prototype compresses a whole opponent turn into **2.6 s** — a review convenience so
 nobody waits half a minute at a desaturated board, now commented as such in `useDuel.ts`. **No pacing
@@ -274,8 +277,13 @@ Chromium at 1440×900.
   mark is **unchanged**, so the boundary does not drift. Second handover, with the recorded delta
   replayed: **a battle-result row now precedes the mark** — the state where the events-space /
   rows-space divergence bites — and the mark sits above the *second* replay's `TURN 4`, not the first.
-  The same probe found **0** mark nodes before the fix. **Not fixed:** it still disappears on
-  `Dismiss` (ZUH-145).
+  The same probe found **0** mark nodes before the fix.
+- **B5 · the mark's own lifetime** (ZUH-145), all seven states driven in one session: absent at load
+  (no handover yet) · created at control return, above the first drawing row · unmoved by `Show` ·
+  **survives `Dismiss`** (strip 1→0 nodes, mark stays at 1, same boundary) · unmoved by the player's
+  own next action although the feed grew · **replaced** at the second handover, with a battle-result
+  row above it · **survives `DUEL_END`** (resign: overlay up, mark still at the same boundary) · absent
+  again in a fresh scenario and in scenarios with no handover.
 
 **Edited but NOT observed**
 
@@ -288,3 +296,215 @@ Chromium at 1440×900.
   driven with a receipt on screen.
 - **B2** in its entirety, for the reason above.
 - **B5 ·** the delta strip's clear-on-first-action, for the reason above.
+
+---
+---
+
+# Pass 2 · ZUH-139 · the dense-footage re-test
+
+`docs/specs/2026-08-13-duel-pacing-dense/` — six 4 fps windows (980 frames) and eleven native-1080p
+turn-badge sheets, against the same VOD. **It re-tests B1–B6 and it does not agree with Pass 1
+everywhere.** Where the two conflict, ZUH-139 wins on the facts it measures directly and Pass 1's
+sections above are left standing as the record of what was applied when — the design text itself is
+corrected in place, per finding, below.
+
+**Its own limits, which bound every answer here.** The VOD is a **two-feed multicam edit of both
+players' clients** switching ~34 times, so a duration crossing a cut carries ±0.5 s; **the editor
+follows the turn player**, so the off-turn player's screen — where the interrupt lives — is never on
+screen; the **game-1 boundary is a hard editorial cut** with the whole between-game sequence and at
+least one turn removed; there is **no cursor in any frame** and the client's own phase controls are
+under a facecam, so **no click is directly observable**; and it is still four minutes of a performed,
+commentated match with no audio. Every duration remains an **upper bound on what a player tolerates**.
+
+## Pass 2 · summary
+
+| Budget | Verdict | What it did here |
+|---|---|---|
+| **B1** | **Conclusion survives; one argument WITHDRAWN and replaced** | The receipt still has no timer. But "the reference product waits for you" is deleted from `02 §3.3` — the dialog it rested on is a **question**, not a receipt — and replaced by the **bimodal-valley** argument. "≥10 s" is struck as a measured figure. Prototype comment corrected too. |
+| **B2** | **Change stands; its STATUS is corrected** | Now labelled an **inference** in `02 §3.1` and `04 Q9`: no answer is rejected in 980 frames, and it has no prototype surface either. **Doubly unverified**, stated in both places. |
+| **B3** | **Confirmed, with measured beats** | `03`'s gap rule swaps "≥5 s sampled" for 2.00 / 2.25 s damage bands, ≈6.5 / ≈6.75 s to a result screen, 3.0 / 4.25 s chain exchanges, ≈2.0 s answer→consequence with ~1.5 s of visible nothing. Still **no number** above 5 s. |
+| **B4** | **Confirmed; inference → measurement, with the number corrected** | **25.75 s, one dialog, 103 frames**, not "30 s". `02 §3.1` and `04 Q8` now say so, and the ≥1-minute requirement is explicitly **kept but not measured**. Zone glow ~21×, not ~25×. |
+| **B5** | 🔴 **WRONG TWICE — the design-changing one. `02 §3.5` rewritten, `07 §3a` added** | ~6 visits a game at ~70–88 s, each up to 100 s. The surface is **low-traffic and deep**, not high-traffic and shallow. My judgement is below. |
+| **B6** | **Change stands; the evidence is weaker than it read** | **n = 1**, and the second instance was destroyed by an editorial cut. `03 F9` now says so, and adds the measured **≈6.5 s** front and the **blocking `OK`** on the result screen. |
+| **`--m-narrate`** | **New: 600 ms is inside the observed register** | Adopted at **two boundaries, medium confidence**, in `03`, `07 §4` and the token comment. The register, not the value. |
+| **M4 / M11** | **Two needs-model contradictions land on my flows** | `03 F10`'s "probe constantly" is falsified where testable; `03 F5` gains the measured **~1 s** response budget. Both below. |
+
+## B5 · What the corrected load does to the delta surface — my judgement
+
+**The load was wrong by 2–3× in both directions at once**: met **~6 times a game** rather than 13–15,
+at intervals of **median ~70 s / mean ~88 s** rather than 30–35 s, each visit describing **up to 100 s**
+of opponent activity rather than ~30 s. ZUH-131's instruction — *a handful of rows, not a session log* —
+was written for the opposite shape of problem. My answer is in three parts, and one of them is a refusal.
+
+**1 · The frequency correction changes the surface's ROLE, and the design absorbs that — because of the
+half it already had.** A surface met six times a game after ~70–88 s away is not learned by repetition
+and is not glanceable furniture: each visit is most of what the player knows about a turn they did not
+watch. So **recoverability**, not glanceability, is the requirement — and the design's answer to
+recoverability already exists and is now the load-bearing half: **the strip is the notification, the
+permanent 320 px rail and its `— since you last acted —` mark are the reading surface.** The strip is
+cleared by the player's own first action, which on a real turn arrives within seconds of control
+returning; the rail is what survives, and it is the only surface on the screen that can hold 100 s of
+anything. **This is also the honest answer to "does the rail earn its 320 px": under Pass 1's numbers the
+mark was a nice-to-have, and under these it is the mechanism.** Which is exactly why the mark never
+rendering (ZUH-141) and then vanishing on `Dismiss` (ZUH-145) were defects rather than details — both
+fixed and driven before this pass.
+
+**2 · The depth correction does NOT convert into a row count, and I will not invent one.** Neither study
+counted **events per opponent turn**; both counted seconds. And the same footage shows why seconds do not
+convert: a **30.00 s** own-turn think with **zero** board change, and **25.75 s** of the single longest
+turn (100 s) spent inside one dialog. **Rows scale with what the opponent DID, not with how long they
+took.** The one measurement anyone has is **ours**: `fixtures/s07-opponent-turn.json` is one complete
+recorded opponent turn from our own engine — 28 events, 18 after the `HINT` filter, **5 rendered delta
+rows**, from 11.9 s of captured wire time. **What would settle it is in-house and cheap: count relayed
+`EVENTS` per opponent turn across the 3,008-frame capture the fixtures were cut from.** Until then the
+design states the size it must survive rather than the size it expects, which is the change made to
+`02 §3.5`.
+
+**3 · What I drove rather than reasoned, because a claim about a container is testable.** The dock band's
+height is **reserved** (`--dock-h`), and a deep delta is exactly the thing that reproduced ZUH-118
+break 3 last time. Driven in the built file at delta sizes **10, 20 and 40 rows**: the band measures
+**132 px** at every size, its scroll never grows, the hand's top stays at 798 px and `elementFromPoint`
+over every hand card returns **0 occlusions**. **The layout contract survives the corrected load by
+construction.** The same probe found the thing I did **not** fix: expanded, the list is **~42 px tall and
+scrolls with 2 of its 5 rows visible** — at the *recorded* delta size, before any of this. Filed as
+**ZUH-148** and reported, not fixed, because the remedy is a flex/height change inside the reserved band
+and the presentation layer (ZUH-120) owns that; changing shrink behaviour in the band that requirement B3
+depends on is not a change to make in passing.
+
+**What I did not do:** resize, group, paginate or scroll the delta's content, or move `Show` to point at
+the rail. Each is a real option (ZUH-139's own `[INFERENCE]` suggests scrollable-or-grouped), each is a
+surface decision rather than an application of a measurement, and the row count that would justify one is
+the number nobody has measured. **The design now says what the surface must survive; it does not claim a
+size.**
+
+## B1 · The conclusion stands. The argument under it does not
+
+`02 §3.3`'s blockquote cited *"the reference product does not fade this information out — it blocks until
+the player acknowledges it"*, from ZUH-131 P11's reading of a `● Draw 1 card.` + `OK` dialog as the
+reference client's auto-answer receipt. **At 4 fps that dialog is titled `Use which effect?` and carries a
+two-segment step indicator: it is a question with one legal option, not a receipt.** Nothing in 980 dense
+frames is an auto-answer receipt at all, so **this footage carries no reference precedent for the
+surface** and that sentence is gone from the spec and from my own comment in `useDuel.ts`.
+
+**What replaces it is stronger.** The client's timings are **bimodal with an empty valley**: reflexive
+prompts live **0.25–1.5 s** (four measured, one with the click visible), deliberative surfaces live
+**25–30 s+** (25.75 s dialog; 30.00 s think). **A 2.4 s artefact does no work in either mode** —
+superseded inside ~1 s in the fast mode, long gone before the player looks back in the slow one. And
+**"≥10 s" is struck as a measured floor**: nothing in either study measures a receipt lifetime, so if a
+timer is ever mandatory the evidence supplies no value for it.
+
+*A precedent that cuts the other way, recorded not resolved:* **the reference client, faced with exactly
+one legal answer, asks anyway and requires a click** — where our classification law answers it and shows a
+receipt. That is a PRD A1/A2 question, already on the escalation list at `01 §8.1`, and it is not mine to
+reopen. Its step indicator (`1` of `2`) is also the thing our design deliberately deleted as *"a
+client-side guess printed next to an engine fact"* — **that deletion still holds**, because the reference
+client prints a count its engine knows and ours would be guessing.
+
+## B2 · The change stands; it is an inference and is now labelled one
+
+No answer is rejected anywhere in 980 frames — no error strip, no refusal, no re-ask. B2's **premise**
+(the 25–30 s re-deciding dwell) is now measured, so the reasoning is stronger than it was; the
+**behaviour** has never been observed. Combined with my own Pass 1 finding that the strip has **no
+surface in the prototype** — a dead `error` field, no renderer, no scenario — this requirement is
+**unverified twice over**, and `02 §3.1` and `04 Q9` both say so in those words.
+
+## B3 · Confirmed, with beats to cite instead of inference
+
+The gap rule keeps its shape and its floor and now cites measurements: damage bands **2.00 s / 2.25 s**;
+lethal flash → result screen **≈6.5 s / ≈6.75 s**; chain exchanges **3.0 s / 4.25 s**; answer → visible
+consequence **≈2.0 s, of which ~1.5 s shows nothing happening**. Neither player reacts to any of it. **The
+number above 5 s is still refused**, and the 30 s static stretch is **the player** being slow and knowing
+it — it is not a tolerance measurement and `03` now says so explicitly, because it is exactly the figure
+someone would misquote.
+
+## B4 · Confirmed; the inference is now a measurement and the number moved
+
+**25.75 s, one dialog, 103 consecutive frames, ended by the player's own selection** — replacing "30 s
+from 5-second sampling". `02 §3.1` and `04 Q8` carry the measurement; the **hold-for-a-minute requirement
+is kept and explicitly not measured**, since no observed question lasts a minute (what lasts longer than a
+minute is a *turn*, at 100 s). The zone-pick glow runs **~21 times** through the measured decision, not
+~25 — still flagged, still no change requested.
+
+## B6 · The change stands; the number under it is n = 1 and provably so
+
+The rematch requirement in `03 F9` never depended on the 20 s — it is "no timer, and re-enter F1 before
+the board arms" — so it stands unchanged. What changes is how the evidence may be quoted: **n = 1**, with
+the second instance destroyed by an editorial cut rather than missed by the instrument. Two measured
+additions support the same rule: the **≈6.5 s** front of the beat (twice, agreeing), and a result screen
+that **blocks on `OK`** rather than auto-advancing — which is the reference client doing exactly what
+`02 §10` and `03 F9` now require of the end card.
+
+## `--m-narrate` · the one value that gained corroboration
+
+A `TURN CHANGE` banner is on screen **~1 s** (partial sweep → ~0.5 s at full width → ghost → gone), the
+`DRAW PHASE` banner after it is gone within **0.5 s**, and the whole `END PHASE → TURN CHANGE → DRAW`
+handover runs **≈2.5 s**. **600 ms is inside that register for a single narration beat.** Adopted at the
+confidence it was given — **two boundaries, medium** — in `03`, `07 §4` and the token comment, and stated
+as corroboration of the **register** rather than a measurement of the value. **The token is unchanged.**
+
+## The two needs-model contradictions that land on my flows
+
+**M4 · "fluent players probe constantly" is falsified where it could be tested**, and `03 F10` keeps its
+shape anyway. 30.00 s of a competitive player's own Main Phase 1 with **not one visible probe** — no
+card-text panel appearing or disappearing, nothing highlighting — and the researcher's own caveat that no
+cursor is visible, so the honest form is *"no inspection this client would have rendered, for 30 s"*.
+**Every consequence of F10 is correct whether probing happens fifty times a turn or twice** (probing costs
+nothing; `Esc` closes; the inspector is free and never broadcast; a card that affords nothing shakes and
+says nothing) — the cost of over-serving it is zero and the cost of charging for a probe is unbounded, so
+**a flow whose value does not depend on its frequency is not resized by a frequency finding.** What is
+weakened is the *argument* — "its frequency is invisible" was doing work as a reason to prioritise it, and
+it must not be quoted as high-traffic. Backing out (M7) was never observed at all: untested.
+
+**M11 · a response prompt is answered in ~1 s, not "a few seconds"** — four measured, one with the click
+visible. `03 F5` now carries that budget, and the consequence is a **priority** claim rather than a design
+change: the two things in that surface that force a **second fixation** are the stated
+`The engine did not say what.` fallback (**MH-3b**) and a candidate the engine redacted from its own owner,
+rendered `your set card 1` (**ND-9**). In a one-second decision those are on the critical path. Neither is
+new; both now matter more.
+
+**V9 · the first turn of a game is ≤10 s, twice** — nothing in this design budgets an opening turn, so
+nothing changes; recorded so that nobody later builds a per-turn allowance around a single median.
+
+## 🔴 Still authored and unverified, after two studies
+
+**Unchanged and unweakened:** `--m-instant` 90 ms · `--m-quick` 140 ms · `--m-base` 200 ms ·
+`--m-settle` 320 ms · the **150 ms** hover threshold. **4 fps is 250 ms per frame**, so a 90 ms transition
+is at most one frame and usually zero; a four-times-denser instrument that is still 250 ms does not reach
+them. **`--m-gap` 260 ms** likewise has no measurement — what is measured is that the gap it fills is real
+(≈2.0 s answer → consequence, ~1.5 s of it visibly empty). **And there is still no number for how long a
+`Resolving…` reading may sit before it reads as a hang.**
+
+**Do not let the arrival of numbers elsewhere make these blanks look like oversights.** They are the
+part of both studies to preserve hardest. What settles them is unchanged and is not more footage: **a
+build and a stopwatch, or a capture of our own client.**
+
+## Pass 2 · what was driven, and what was only edited
+
+**Observed** in the built reviewable file from `file://` (headless Chromium 1440×900), after the Pass 2
+edits and a rebuild:
+
+- **B5 · the container under the corrected load.** Delta cloned to **10, 20 and 40** rendered rows: dock
+  band **132 px** at every size, never scrolling; hand top **798 px**; `elementFromPoint` over every hand
+  card → **0 occlusions**. And at the **recorded** size of 5 rows: expanded list **42 px**, scrolling,
+  **2 rows visible** (ZUH-148).
+- **B5 · the rail is the surviving half.** Re-driven end to end after the edits: mark at the right
+  boundary, surviving `Dismiss`, surviving the player's next action, replaced at the next handover with a
+  battle-result row above it, surviving `DUEL_END`.
+- **B1 / B3 / B4 / B6 regressions**, all unchanged by this pass: receipt still present at **+62 s** and
+  cleared by the player's next action; chain question **byte-identical after 65 s** and still answerable;
+  end card alive at **+12 s**; `Play Sakura again` re-enters seating; `answer-matrix.py` 5 points / 19
+  answers / **0 collisions / 0 label failures**.
+- **The row-count input**, read from our own recorded fixture rather than from the VOD: 28 events → 18
+  after `HINT` → **5 delta rows** for one complete opponent turn.
+
+**Edited but NOT observed**
+
+- **Every ZUH-139 number itself.** I did not read the footage; I applied a published study. Its
+  measurements are its own, with its own confidence labels, and I have quoted them with those labels
+  attached rather than flattening them.
+- **B2**, still, for the same two reasons as Pass 1 — no rejection in the footage and no surface in the
+  prototype.
+- **`--m-narrate`.** Nothing about our own client's narration beat was measured here; the token is
+  unchanged and its status moved from "no number" to "register corroborated, medium confidence".
+- **The delta's clear-on-first-action (DL2).** Still not driveable: the handover scenario offers no legal
+  verb when control returns.

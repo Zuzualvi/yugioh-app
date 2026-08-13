@@ -10,21 +10,30 @@ while they wait, and how they recover from each failure.
 
 **Timing values are named tokens, not numbers in prose.** Every duration below is
 `--m-gap` (260 ms, the modelled round trip), `--m-settle` (320 ms) or `--m-narrate` (600 ms).
-**All three are still authored and unverified.** ZUH-131's pacing study has landed and did **not**
-give a number for any of them — it reached only the long end of the scale, where a player's attention
-rather than a CSS transition is the unit. Its answer, budget by budget, is
-`09-pacing-application.md`. `--m-receipt` no longer exists: the auto-answer receipt has **no
-lifetime** (B1).
+Two pacing studies have landed and their answers, budget by budget, are in
+`09-pacing-application.md`. **`--m-gap` and `--m-settle` are still authored and unverified** — both
+studies refuse a number below 250 ms, which is their frame interval. **`--m-narrate` 600 ms is the one
+value with corroboration**: a `TURN CHANGE` banner in the reference client is on screen ~1 s and the
+`DRAW PHASE` banner after it is gone within 0.5 s, so 600 ms sits inside the observed register for one
+narration beat — **two boundaries, medium confidence, the register and not the value.**
+`--m-receipt` no longer exists: the auto-answer receipt has **no lifetime** (B1).
 
 **What fills every gap, once, so no flow repeats it.**
 1. The dock band **does not unmount**. It swaps its content to the `Resolving…` reading.
 2. The **intent line stays**, unchanged, naming the verb and the card.
 3. The board **does not move**. Nothing reflows, ever — the feed rail's width is permanent.
 4. If the gap exceeds 2 s, the same reading persists; there is no second escalation and no clock.
-   **And no escalation may be introduced earlier than 5 s** (ZUH-131 B3): the reference client's
-   own resolution beats run **≥5 s** and neither player treats one as a stall, so a threshold below
-   that would be invented. Above 5 s there is still no number, and this design does not supply one —
-   what the evidence licenses is the *negative*.
+   **And no escalation may be introduced earlier than 5 s** (ZUH-131 B3, now with measured beats
+   rather than sampled ones): in the reference client a full-screen damage band runs **2.00 s and
+   2.25 s**, a lethal flash reaches the result screen in **≈6.5 s and ≈6.75 s**, a whole chain exchange
+   takes **3.0 s and 4.25 s**, and an answer reaches its visible consequence in **≈2.0 s of which
+   ~1.5 s shows nothing happening at all** — with neither player reacting to any of it. A threshold
+   below 5 s would be invented. **Above 5 s there is still no number and this design does not supply
+   one**: what the evidence licenses is the *negative*. (The 30 s static stretch in that footage is the
+   **player** being slow and knowing it. It is not a tolerance measurement and must not be cited as
+   one.)
+   *That ~1.5 s of visible nothing after an answer is exactly the gap rule 1 fills — it is why the
+   `Resolving…` reading exists, though it is not a measurement of `--m-gap`.*
 5. **Nothing on this screen ever times out a question, and no rejection removes itself** (B4, B2).
 
 ---
@@ -182,6 +191,17 @@ with consequences, so it is presented every time. There is no setting.
 
 **Actions to goal: 2, or 1 to decline.**
 
+**The budget for this whole surface is about ONE SECOND, measured.** Four response prompts in the
+reference client, put to two competitive players, were on screen and answered in **0.25–1.5 s** — and in
+one case the click is visible on the frame, so that is answer time and not display time (ZUH-139 M11).
+The needs model said *"a few seconds"*; it is ~1 s. **That confirms the "line 1 must carry the whole
+story" rule harder than the model stated it — a surface needing two fixations does not fit in one
+second — and it raises the priority of the two things here that force a second fixation:** the stated
+`The engine did not say what.` fallback (closed by **MH-3b**) and a candidate the engine redacted from
+its owner, read as `your set card 1`, which sends the player to the board to work out which card it is
+(closed by **ND-9**). Neither is new; both are now on the critical path of a one-second decision rather
+than a multi-second one.
+
 **What line 1 does when the engine gave nothing.** Recorded: `DECISION_CONTEXT` fired **twice in
 fifteen scenarios**, both times only because a chain already existed, and no observed frame
 carried a `caption`. So the commonest window of all — *respond to a summon* — has no subject on
@@ -295,7 +315,15 @@ reference client spends **~15–20 s** of read-only screens between two games an
 full-screen before the board exists. So: **the end card has no exit timer and no countdown**, and the
 rematch route **must** land on F1 rather than on an armed board. Both were already true of this
 design; neither was written down, and "not an instant bounce" is exactly what an implementation
-quietly gets wrong. (The louder-register question this raises for F1 is *not* answered here — see
+quietly gets wrong.
+
+**How strong that evidence is, precisely: n = 1.** ZUH-139 proved the other game boundary was **cut by
+the editor** — game 1's `VICTORY` and game 2's `TURN CHANGE` are 250 ms apart in the same VOD — so the
+second instance was destroyed, not missed. Do not present ~20 s as typical; it is the only one ever
+seen. **What is measured twice is the front of that beat: the lethal damage flash reaches the result
+screen in ≈6.5 s and ≈6.75 s, and the result screen carries an `OK` that blocks rather than
+auto-advancing.** Both support the rule above — the requirement is "no timer", which does not depend on
+the 20 s at all. (The louder-register question this raises for F1 is *not* answered here — see
 `09-pacing-application.md` B6.)
 
 🔴 **A finding that lands squarely on this flow.** Driving a full duel against the real engine on
@@ -310,8 +338,26 @@ until it is fixed.
 
 ## F10 · Probing — the flow whose frequency is invisible
 
-Fluent or learning, players probe constantly: click, read, escape, click the next. Its frequency
-is invisible because a player who cannot back out stops probing altogether.
+Fluent or learning, players probe: click, read, escape, click the next. Its frequency is invisible
+because a player who cannot back out stops probing altogether.
+
+⚠️ **"Players probe constantly" is FALSIFIED where it could be tested, and this flow keeps its shape
+anyway.** In the only full-density own-turn think available — **30.00 s**, one competitive player's own
+Main Phase 1 — there is **not one visible probe**: no card-text panel appears or disappears, nothing
+highlights, and the board's frame-to-frame change never rises above noise. The researcher's own limit
+is that no cursor is visible in any frame, so the honest form is *"the player made no inspection this
+client would have rendered, for 30 s"* — they were **looking, not touching**. Two things follow, and
+they point in opposite directions, so both are stated:
+- **Nothing below changes.** Every consequence of this flow — probing costs nothing, `Esc` closes, the
+  inspector is free and never broadcast, a card that affords nothing gets a shake and no sentence — is
+  correct whether the behaviour happens 50 times a turn or twice. The cost of being wrong about the
+  frequency is zero; the cost of a probe that charges the player is unbounded. **A flow whose value does
+  not depend on its frequency should not be resized by a frequency finding.**
+- **What is weakened is the ARGUMENT, not the flow:** "its frequency is invisible" was doing work as a
+  reason to prioritise this, and there is now one measurement suggesting the frequency is lower than the
+  needs model assumed. **It should not be quoted as high-traffic.** (ZUH-139 M4;
+  `09-pacing-application.md` Pass 2.) Backing out was also never observed at all in four minutes of
+  full-density footage — untested, not disconfirmed.
 
 - Clicking a card you control while armed → verb chips. `Esc` closes, costs nothing, and the chip
   cluster says so.

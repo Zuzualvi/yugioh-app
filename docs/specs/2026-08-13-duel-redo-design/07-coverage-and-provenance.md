@@ -13,11 +13,17 @@ something I drove and can point at, or something I am telling you I did not.
 
 ## 1 · Coverage — what the prototype reaches, and what it does not
 
-**Inventory: 16 surfaces · 91 state rows · 10 flows.**
-**Prototype: 14 scenarios · 60 of 91 state rows reachable · 31 not reachable.**
+**Inventory: 16 surfaces · 92 state rows · 10 flows.**
+**Prototype: 14 scenarios · 61 of 92 state rows reachable · 31 not reachable.**
 
 *(Round 2: `end-overlay/dismissed`, `top-bar/duel-ended` review path and the verb-cluster dismissal
 states became reachable with the blocker fixes.)*
+
+*(Round 3, the pacing passes: **+1 row and +1 reachable**, and that is the whole arithmetic —
+deleting the receipt's timer (B1) gave §3.3 a `spent` state, which is driven. Two states this table
+previously counted as reachable **were not actually rendering**: the feed rail's `delta-marked` row
+never drew at all until ZUH-141, and it then disappeared on `Dismiss` until ZUH-145. Both are now
+driven. The count did not change; it became true.)*
 
 ### 1.1 Reachable, by surface
 
@@ -27,12 +33,12 @@ states became reachable with the blocker fixes.)*
 | Verb chips | 3 / 3 | — |
 | Dock · Question | 5 / 8 | `partial` (no multi-select decision exists in the captured duel — no `SelectUnselectCard`, no `min !== max`) · `empty candidates` (never emitted) · `error` (nothing rejects a response) |
 | Dock · Intent line | 5 / 5 | — |
-| Dock · Receipt | 1 / 3 | `stacked` and `superseded` need two auto-answers in sequence; the capture has none |
+| Dock · Receipt | 2 / 4 | `stacked` and `superseded` need two auto-answers in sequence; the capture has none — **`superseded` is implemented and unreachable, and it was unreachable before too**: 4a is the only auto-answer path and no question follows it. `spent` (the player's next action clears it) is driven. |
 | Dock · Waiting | 3 / 4 | `reconnecting` — modelled in `DuelModel` but no scenario drives it |
 | Dock · Delta | 3 / 4 | `empty` — the handover scenario always has events |
 | Dock · Away | 2 / 3 | `returned` — no presence-restore path in the prototype |
 | Phase rail + turn resource | 4 / 4 | — |
-| Feed rail | 4 / 7 | `empty turn > 1` · `partial (feed resumes here)` · `duel-ended row` |
+| Feed rail | 4 / 7 | `empty turn > 1` · `partial (feed resumes here)` · `duel-ended row`. **`delta-marked` is in the reachable four and, until ZUH-141/ZUH-145, it was not: the mark never rendered, then vanished on `Dismiss`.** Now driven at the right boundary, across a battle-result row, and through dismiss / a later action / the duel's end. |
 | Card inspector | 4 / 9 | `auto-push` (needs a resolving chain) · `pinned` (click and hover are the same gesture in the prototype) · `provenance badge` (none of the 14 captured cards is in the pre-errata corpus) · `hidden card` · `error` |
 | **Pile inspector** | **0 / 5** | **Not implemented at all.** Pile badges render their counts and are not clickable. |
 | **Chain strip** | **0 / 6** | **Not implemented at all.** The captured chains are single-link and resolve inside one frame burst. |
@@ -123,20 +129,48 @@ Run against the built prototype, real mouse events at real coordinates, 1440×90
 
 ---
 
+## 3a · The delta surface is sized for a load nobody has measured, and that is now stated
+
+The permanent 320 px feed rail and the delta strip were specified against ZUH-131 B5: met 13–15 times
+a game, ~30 s of activity per visit, "a handful of rows". **ZUH-139 measures both halves and both are
+wrong** — ~6 visits a game at ~70–88 s intervals, each describing up to **100 s** (`02 §3.5` carries
+the corrected table). What that changes here, stated so nobody has to discover it after tapping the
+build:
+
+- **What is measured about the load:** exactly one thing, and it is ours, not the VOD's.
+  `fixtures/s07-opponent-turn.json` is one complete recorded opponent turn from our own engine — 28
+  events, 18 after the `HINT` filter, **5 rendered delta rows**. **Neither pacing study counted events
+  per turn**, and the same footage shows long turns are long because of *thinking* (a 30.00 s think with
+  zero board change), so seconds do not convert into rows. **No row budget is claimed by this design.**
+- **What is driven about the container:** the dock band holds its reserved **132 px** with a delta of
+  10, 20 and 40 rows, and `elementFromPoint` finds **zero** occluded hand cards at every size, so a busy
+  turn cannot reproduce ZUH-118 break 3. **What the same probe shows is that the expanded list is ~42 px
+  and scrolls with 2 of 5 rows visible** — filed as **ZUH-148**, unfixed, because the remedy is inside a
+  reserved-height band that the presentation layer (ZUH-120) owns.
+- **What the rail is for, under the corrected numbers:** the strip is the notification, the **rail is
+  the reading surface**, and the mark is how the player finds the boundary after the strip is gone. That
+  is the honest answer to "does 320 px earn its space": it is the only surface that can hold a
+  100-second turn, and it is the only part that survives the player's first click.
+
 ## 4 · What I did NOT verify, and will not claim
 
 - **All motion.** Every duration, easing and transition in this design is **authored and
-  unverified**. A still frame cannot show a transition that is too slow, too abrupt or absent. The
-  CEO reviews motion. Values are six tokens in one file so revision is cheap. **This survives
-  ZUH-131 intact:** the pacing study reached only the long end of the scale and **refuses** to give a
-  number for `--m-instant`, `--m-quick`, `--m-base`, `--m-settle` or the 150 ms hover threshold, and
-  gives none for `--m-narrate` or `--m-gap`. `09-pacing-application.md` names what would settle each.
+  unverified**, with exactly one exception. A still frame cannot show a transition that is too slow,
+  too abrupt or absent. The CEO reviews motion. Values are six tokens in one file so revision is cheap.
+  **This survives both pacing studies:** each refuses a number for `--m-instant`, `--m-quick`,
+  `--m-base`, `--m-settle` and the 150 ms hover threshold, because **4 fps is 250 ms a frame** and a
+  90 ms transition is at most one frame. A denser instrument that is still 250 ms does not reach them.
+  **The exception is `--m-narrate` 600 ms**, which ZUH-139 places inside the observed register for one
+  narration beat (a `TURN CHANGE` banner is up ~1 s; the `DRAW PHASE` banner after it is gone within
+  0.5 s) — **two boundaries, medium confidence, the register and not the value.**
 - **Pace and feel.** Same reason. The `--m-gap` round-trip beat (260 ms) is a guess at what a real
   WebSocket round trip feels like; the recorded capture has real inter-frame timings I did not
-  mine for it. ZUH-131 names two 4 fps windows that would measure it and did not have them.
-- **The ZUH-131 pacing footage.** Read and applied — `09-pacing-application.md`, budget by budget.
-  What it changed is the **long** durations (the receipt's and the error line's timers, both deleted);
-  what it could not touch is everything sub-second.
+  mine for it. What *is* measured is that the gap exists and is worth filling: in the reference client
+  an answer reaches its visible consequence in **≈2.0 s, of which ~1.5 s shows nothing happening**.
+- **The pacing footage.** Both studies read and applied — `09-pacing-application.md`, budget by budget,
+  one section per study. What they changed is the **long** durations (the receipt's and the error line's
+  timers, both deleted) and the **load** on the delta surface (§3a). What neither could touch is
+  everything sub-second, and **no number in either is a measurement of our own client.**
 - **Anything below 1440×900.** Out of scope per G1 and not tested. Nothing sub-1440 is recorded as
   passing.
 - **Audio.** Not designed.

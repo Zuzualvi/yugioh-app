@@ -103,10 +103,10 @@ glyph for face-down/defence. Pile badges with counts, permanently placed.
 
 **Deliberate:** the board is **never** replaced by a spinner after the first snapshot.
 
-**The `zone-pick` glow loops for as long as the player takes.** ZUH-131 B4 puts a real decision at
-25–30 s, so the 1.2 s loop runs **~25 times**, not three. **No change is requested** — there is no
-evidence it becomes irritating — but nobody should specify it, review it or test it on the assumption
-that it runs a handful of times. (`09-pacing-application.md` B4.)
+**The `zone-pick` glow loops for as long as the player takes.** A real decision was **measured at
+25.75 s** (ZUH-139), so the 1.2 s loop runs **~21 times**, not three. **No change is requested** —
+there is no evidence it becomes irritating — but nobody should specify it, review it or test it on the
+assumption that it runs a handful of times. (`09-pacing-application.md` B4.)
 
 ---
 
@@ -193,18 +193,28 @@ what line 1 degrades to when context is unavailable, and what shipped was the ba
 | gap | answer sent, next frame not in | replaced by the `resolving` waiting content (§3.4) | wait | `--m-gap` | — |
 
 **A QUESTION NEVER EXPIRES, AND NEITHER DOES A REJECTION. Normative, from ZUH-131 B4 and B2.**
-A real player sat on one decision for **25–30 s** in the observed match, with the longest stretch of
-that match being a card-selection list held open across six consecutive samples. So:
+**Measured, not inferred** (ZUH-139 upgraded this from a 5-second-sampled guess): one dialog —
+`Select the card(s) to add from your Deck to your hand.` — was open **continuously for 25.75 s**
+across 103 consecutive frames at 4 fps, the player browsing inside it, and it ended when **they**
+selected. No timeout, no countdown, no auto-answer, no fade. It is not an upper bound; it is the
+longest one that happens to fall inside a supplied window. So:
 
 - **No question surface has a timeout, a countdown, an auto-answer-on-expiry or a fade.** There is
   nothing to remove — the design never had one — but it was never stated as a rule, and the rule is
   what stops one arriving later as a "safety net".
 - **The band holds one question for at least a minute with no visual decay.** No pulse that becomes
   irritating, no shimmer that loops forty times. §3.4's 1.6 s pulse belongs to the *waiting* readings
-  and stays off questions.
+  and stays off questions. ⚠️ **This requirement is kept but NOT measured** — no single question in the
+  footage lasts a minute. What does is a **turn**: the longest is 100 s, so a question sitting through
+  most of one is plausible. Keep the rule; do not cite a measurement for it.
 - **The `error` line has no timer** (it exited after 8 s). A player who has just been rejected is
-  entering exactly the 25–30 s re-deciding window above; a line they may not have read must not
+  entering exactly the 25.75 s re-deciding window above; a line they may not have read must not
   remove itself. Recovery for "I did not read it" is "read it again", as it is for the delta strip.
+  ⚠️ **This one is an INFERENCE and is doubly unverified.** **No answer is rejected anywhere in 980
+  dense frames** — no error strip, no refusal, no re-ask — so the behaviour has never been observed in
+  the reference client; and it has **no surface in our prototype either** (a dead `error` field, no
+  renderer, no scenario). Its premise (the 25.75 s dwell) is measured; the surface is not. It must not
+  be promoted to an observation.
 
 ### 3.2 Intent line
 
@@ -249,16 +259,26 @@ classification law is not a preference.
 | superseded | **a question takes the band** | receipt clears, question takes the band | — | `--m-instant` |
 | spent | **the player's next action** · control leaves me · `DUEL_END` | gone | — | `--m-instant` |
 
-> **THE RECEIPT HAS NO TIMER — ZUH-131 B1, and this is a behaviour change, not a retuned number.**
-> It faded after `--m-receipt` (2.4 s); that token is **deleted**. The pacing study puts the rhythm
-> around this surface at **25–30 s** and found the reference client answering the same moment — *tell
-> the player what just resolved* — with a dialog that **waits for a click** (`● Draw 1 card.` + `OK`).
-> 2.4 s was the aggressive end of that spectrum, and it was itself a 240× correction of the shipped
-> build's **10 ms** (ZUH-118 break 19).
+> **THE RECEIPT HAS NO TIMER — ZUH-131 B1, upheld by ZUH-139 on better reasoning. A behaviour change,
+> not a retuned number.** It faded after `--m-receipt` (2.4 s); that token is **deleted**.
+>
+> **Why, in the form that survives.** The reference client's timings are **bimodal with an empty
+> valley**: reflexive prompts live **0.25–1.5 s** (four measured at 4 fps) and deliberative surfaces
+> live **25–30 s+** (one dialog measured at 25.75 s; a 30.00 s think with no board change at all).
+> **A 2.4 s artefact does no work in either mode** — in the fast mode a question supersedes it inside
+> ~1 s and the timer never fires; in the slow mode the player is elsewhere for half a minute and it is
+> long gone before they look back. It was itself a 240× correction of the shipped build's **10 ms**
+> (ZUH-118 break 19), and still not enough.
+>
+> ⚠️ **Withdrawn, and it must not come back:** the argument that *"the reference product does not fade
+> this information out — it blocks until the player acknowledges it"*. That rested on reading the 07:55
+> `● Draw 1 card.` dialog as this client's auto-answer receipt; at 4 fps it is a **question** titled
+> `Use which effect?`. **Nothing in 980 dense frames is an auto-answer receipt**, so the footage carries
+> no reference precedent for this surface at all. **And there is no measured floor: do not print "≥10 s"
+> as a figure** — nothing anywhere measures a receipt lifetime.
 >
 > This is the rule §3.5 already applies to the delta strip, so it is **consistency, not novelty**:
-> *it never auto-fades, and recovery for "I did not read it" is "read it again".* If a lifetime is
-> ever reinstated, the study's floor is **≥10 s**.
+> *it never auto-fades, and recovery for "I did not read it" is "read it again".*
 >
 > ⚠️ **The board re-arming is not a supersession.** The client answers a step for you and control
 > comes straight back with `IdleCommand`/`BattleCommand` — a decision, but not a question panel. If
@@ -299,18 +319,54 @@ Expanded, it lists the rows and simultaneously marks the feed rail with a
 | dismissed / spent | player dismisses, or takes their first action | gone, feed mark stays | — | `--m-base` |
 
 **It never auto-fades.** Recovery for "I did not read it" is "read it again".
-**Cessation:** first action this turn · dismiss · control leaves me · `DUEL_END`.
+**Cessation of the STRIP:** first action this turn · dismiss · control leaves me · `DUEL_END`.
 
-**Build it for the traffic it actually gets — ZUH-131 B5.** Turns in the observed match ran **30 s and
-35 s** (two measurable turns, not a distribution), which puts **≈13–15 turns in a game**. So this
-surface is met **13–15 times per game, every ~30 s, and it describes ~30 s of opponent activity**:
-**a handful of rows, not a session log.** Two consequences the budget is explicit about:
+**The strip and the mark have DIFFERENT lifetimes, and that is the point of having both.** The strip is
+the transient summary; **the feed rail's `— since you last acted —` mark is the durable boundary** and
+survives every one of the strip's cessations — dismissal, the player's first action, the duel's end.
+It is **replaced** when control returns again, and only then. (Written down because it was not: the
+mark had no row in `01 §7`'s persistence audit, and the prototype had borrowed its lifetime from the
+strip's, so `Dismiss` silently deleted the transcript's record of where the player last acted. ZUH-145.)
 
-- **Keep the strip *and* the feed rail's `— since you last acted —` mark.** On a 30-second turn the
-  player's first action often comes within a few seconds and takes the strip with it — the rail mark
-  is what makes that safe, and it is doing the load-bearing work.
-- **If the clock ever comes back** (it is deleted), the observed typical turn is **~30 s**. That is the
-  number any per-handover allowance would be built around. Recorded, not proposed.
+**Build it for the traffic it actually gets — and the traffic was wrong in BOTH directions.** ZUH-131 B5
+said this surface is met 13–15 times a game, every ~30 s, describing ~30 s of activity: "a handful of
+rows, not a session log". ZUH-139's turn-badge timeline measures the whole match and **corrects both
+halves**:
+
+| | ZUH-131 B5 | **ZUH-139 measured** |
+|---|---|---|
+| turn duration | 30–35 s (n=2) | **median 35 s, mean 44 s, p25–p75 25–65 s, range 10–100 s (n=27)** |
+| turns per game | ~13–15 | **12, ≥10, 12 — so each player owns about six** |
+| how often the player meets this surface | 13–15× a game | **~6× a game, at intervals of median ~70 s / mean ~88 s** |
+| how much each visit describes | ~30 s of activity | **up to 100 s** |
+
+**So it is a low-traffic, deep surface, not a high-traffic, shallow one — and that inverts what matters
+about it.** Three consequences, and the third is a refusal:
+
+1. **Recoverability, not glanceability, is the requirement.** A surface met six times a game after
+   ~70–88 s away is not something the player learns by repetition; each visit is most of what they know
+   about a turn they did not watch. Losing it to an accidental first click costs far more than B5's
+   numbers implied.
+2. **Therefore the feed rail is the reading surface and the strip is the notification.** The strip is
+   cleared by the player's own first action, which on a real turn arrives within seconds; **the
+   permanent rail and its `— since you last acted —` mark are the only part that survives, and they are
+   what can hold 100 s of opponent activity** — 320 px wide, full height, scrollable, marked at exactly
+   the boundary. Under B5's old numbers the mark was a nice-to-have. Under these it is the half that
+   does the work, which is why it being absent from every build was a defect and not a detail
+   (ZUH-141/ZUH-145).
+3. **No row budget is specified, because nobody has measured one.** Neither study counted *events per
+   opponent turn* — they counted seconds, and the same evidence shows those seconds are mostly
+   **thinking**: a 30.00 s own-turn think with **zero** board change, and 25.75 s of one 100 s turn
+   spent inside a single dialog. **Rows scale with what the opponent DID, not with how long they took.**
+   The one measurement we have is our own: `fixtures/s07-opponent-turn.json` is one complete recorded
+   opponent turn from our own engine — 28 events, 18 after the `HINT` filter, and **5 rendered delta
+   rows**. **What would settle it is in-house and cheap**: count relayed `EVENTS` per opponent turn
+   across the 3,008-frame capture the fixtures were cut from. Until then the design says the surface
+   must not *assume* a handful, and must not break if a turn is unusually busy.
+
+**If the clock ever comes back** (it is deleted), the typical turn is **35 s median and 100 s at the
+top**, not ~30 s — and the first turn of a game is an outlier at **≤10 s** (twice). Any per-handover
+allowance built around a single figure would be wrong at both ends. Recorded, not proposed.
 
 ### 3.6 Opponent has left — and the route out
 
@@ -394,7 +450,7 @@ enumeration reported exactly that as a collision, and this is the fix.**
 | empty, turn 1 | duel just started | `The duel has not started.` | — |
 | empty, turn > 1 | joined or reconnected mid-duel | `Earlier turns are not available.` — never "the duel has not started" | — |
 | default | events exist | grouped rows, newest at the bottom, auto-scrolled | row slide-in `--m-base` |
-| delta-marked | control just returned | `— since you last acted —` rule above the first new row | `--m-narrate` |
+| delta-marked | control just returned — **not** the strip being expanded | `— since you last acted —` rule above the first new row; **it survives the strip's dismissal and the duel's end, and is replaced only by the next handover** (§3.5) | `--m-narrate` |
 | partial | reconnected, no backfill | dashed `— feed resumes here —` above the first post-reconnect row | — |
 | unrecognised event | unknown `kind` | the row renders the kind verbatim; the rail keeps going | — |
 | duel-ended | `DUEL_END` | final row `Duel ended — {reason}` | `--m-narrate` |

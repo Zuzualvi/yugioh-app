@@ -342,7 +342,8 @@ and a table makes a missing half visible.
 |---|---|---|
 | `Intent` | `STATE`-then-`DECISION` gap; every sub-decision; every re-render | response sent and control does not stay mine · player cancels · `DUEL_END` · socket drop |
 | Pending `DECISION` | `STATE` frames; `EVENTS` frames; re-render | **the instant the client sends its response** (optimistically, before any ack) · a newer `DECISION` replaces it · `CONTROL` names the other seat · `DUEL_END` |
-| `Delta` | turn boundaries; log open/close; inspector use | player's first action this turn · explicit dismiss · control leaves me · `DUEL_END` |
+| `Delta` (the strip) | turn boundaries; log open/close; inspector use | player's first action this turn · explicit dismiss · control leaves me · `DUEL_END` |
+| **The feed rail's `— since you last acted —` mark** | **everything the strip does not**: `Show`/`Hide` · the strip's dismissal · the player's actions · `DUEL_END` (the rail stays live, and the boundary is still true) | **replaced by the next handover's boundary** · a new duel |
 | Auto-answer receipt | **everything — it has no timer** (ZUH-131 B1) | a **question** takes the dock band (an armed board does not) · the player's next action · control leaves me · `DUEL_END` |
 | Chain strip | between links; across `STATE` gaps | `CHAIN_END` event + 600 ms · `DUEL_END` |
 | Card inspector (pinned) | auto-push attempts (they queue) | `Esc` · another explicit click · `DUEL_END` |
