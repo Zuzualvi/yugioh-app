@@ -198,6 +198,15 @@ export default function App() {
       }) || 0
     );
   };
+  // WHERE THE FEED RAIL'S `since you last acted` BOUNDARY IS, BY IDENTITY — not by
+  // arithmetic. It was `feed.length - delta.length`, which is only correct at the
+  // instant the delta lands: every event appended afterwards moved the mark one row
+  // further down a rail whose boundary had not moved. The delta's events ARE the
+  // objects appended to the feed, so the boundary is where the first of them sits.
+  // `lastIndexOf`, because the prototype replays the same recorded slice on every
+  // handover, so one object can appear twice and the boundary is the latest append.
+  const deltaBoundary = m.delta?.length ? m.feed.lastIndexOf(m.delta[0]!) : -1;
+
   const parts = useBoardParts({
     m,
     onCard,
@@ -326,7 +335,7 @@ export default function App() {
         <FeedRail
           events={m.feed}
           mySeat={m.mySeat}
-          markAt={m.delta ? Math.max(0, m.feed.length - m.delta.length) : null}
+          markAt={deltaBoundary >= 0 ? deltaBoundary : null}
           names={{ me: scenario.myName, opp: scenario.opponentName }}
           resolve={refResolve}
           midDuel={midDuel}

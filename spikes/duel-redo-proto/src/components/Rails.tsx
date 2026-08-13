@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { DuelEvent, Seat } from "../proto/types";
 import { cardInfo } from "../proto/scenarios";
 
@@ -87,6 +88,26 @@ export function PhaseRail({
  * move a card" is satisfied by construction rather than by discipline. It also
  * gives dead time (half the duel) something to be, and gives the delta a place
  * to expand into.
+ *
+ * ⚠ THE `— since you last acted —` MARK IS A BOUNDARY BETWEEN ROWS, NOT A
+ * PROPERTY OF A ROW (ZUH-141). It used to be a `mark` boolean passed to
+ * `FeedRow`, and it never rendered at all, for two independent reasons:
+ *
+ *   1. `markAt` is an index into `events`, and it was compared against the index
+ *      of `rows` — which `withBattleResults` INSERTS synthetic result rows into.
+ *      The two index spaces diverge at the first battle, and if the mark index
+ *      landed on a result row, `FeedRow` was never called with `mark` at all.
+ *   2. `FeedRow` returns `null` for an event with no description (`PHASE`,
+ *      `HINT`) **before** it rendered the mark — so a mark anchored to an
+ *      undescribable event vanished silently. This is the one that fired: the
+ *      recorded opponent turn in `s07` begins with a `PHASE` event, so the mark
+ *      was attached to a row that draws nothing.
+ *
+ * So the rail owns the mark, positions it in ITS OWN index space, and anchors it
+ * to the first row at or after the boundary **that actually draws**. A boundary
+ * whose own row is invisible moves to the next visible row rather than
+ * disappearing; if nothing after the boundary draws, no mark is rendered, because
+ * a mark with nothing under it would claim a change the rail cannot show.
  */
 export function FeedRail({
   events,
@@ -98,6 +119,7 @@ export function FeedRail({
 }: {
   events: DuelEvent[];
   mySeat: Seat;
+  /** Index into `events` of the first event that arrived while control was away. */
   markAt: number | null;
   names: { me: string; opp: string };
   /** The board is a mid-duel snapshot, so "the duel has not started" would be a lie. */
@@ -107,6 +129,14 @@ export function FeedRail({
   resolve: (ref: unknown) => number;
 }) {
   const rows = withBattleResults(events, mySeat, names, resolve);
+  // The mark's position in ROWS space. `describe` is the single source of truth
+  // for whether a row draws — asking it here is what stops the two from drifting.
+  const markRow =
+    markAt === null
+      ? -1
+      : rows.findIndex(
+          (r) => !r.result && r.srcIndex >= markAt && describe(r.e!, names, mySeat) !== null,
+        );
   return (
     <aside className="feedrail" data-testid="feed-rail">
       <div className="feedhead">
@@ -122,15 +152,22 @@ export function FeedRail({
             {midDuel ? "Earlier turns are not available." : "The duel has not started."}
           </div>
         ) : null}
-        {rows.map((r, i) =>
-          r.result ? (
-            <div className="feedrow result" key={i} data-testid="battle-result">
-              {r.result}
-            </div>
-          ) : (
-            <FeedRow key={i} e={r.e!} mySeat={mySeat} names={names} mark={markAt === i} />
-          ),
-        )}
+        {rows.map((r, i) => (
+          <Fragment key={i}>
+            {i === markRow ? (
+              <div className="feedmark" data-testid="feed-mark">
+                since you last acted
+              </div>
+            ) : null}
+            {r.result ? (
+              <div className="feedrow result" data-testid="battle-result">
+                {r.result}
+              </div>
+            ) : (
+              <FeedRow e={r.e!} mySeat={mySeat} names={names} />
+            )}
+          </Fragment>
+        ))}
       </div>
     </aside>
   );
@@ -154,10 +191,13 @@ function withBattleResults(
   mySeat: Seat,
   names: { me: string; opp: string },
   resolve: (ref: unknown) => number,
-): { e?: DuelEvent; result?: string }[] {
-  const out: { e?: DuelEvent; result?: string }[] = [];
+): { e?: DuelEvent; result?: string; srcIndex: number }[] {
+  // `srcIndex` is the row's index in EVENTS space. It exists because this function
+  // inserts rows, so a row's own index is not the index of the event it came from —
+  // which is the bug the mark used to have (see FeedRail).
+  const out: { e?: DuelEvent; result?: string; srcIndex: number }[] = [];
   events.forEach((e, i) => {
-    out.push({ e });
+    out.push({ e, srcIndex: i });
     if (e.kind !== "BATTLE") return;
     const atkRef = e["attacker"];
     const defRef = e["target"];
@@ -189,6 +229,7 @@ function withBattleResults(
     const dmg = lp ? Math.abs(lp["delta"] as number) : 0;
     const who = dmgSeat === null ? "" : dmgSeat === mySeat ? "you" : names.opp;
     out.push({
+      srcIndex: i,
       result:
         `${label(atkRef)} attacked ${label(defRef)} — ` +
         (destroyed.length ? `${destroyed.join(" and ")} destroyed` : "nothing destroyed") +
@@ -203,12 +244,10 @@ function FeedRow({
   e,
   mySeat,
   names,
-  mark,
 }: {
   e: DuelEvent;
   mySeat: Seat;
   names: { me: string; opp: string };
-  mark: boolean;
 }) {
   const actor = (e["actor"] ?? e["seat"] ?? (e["card"] as { controller?: Seat } | undefined)?.controller) as Seat | undefined;
   const mine = actor === mySeat;
@@ -217,14 +256,11 @@ function FeedRow({
   const detail = describe(e, names, mySeat);
   if (!detail) return null;
   return (
-    <>
-      {mark ? <div className="feedmark">since you last acted</div> : null}
-      <div className={`feedrow ${actor === undefined ? "" : mine ? "mine" : "theirs"}`} data-testid="feed-row">
-        <span className="fverb">{detail.verb}</span>
-        <span className="fname">{name || detail.fallback}</span>
-        <span className="fmove">{detail.move}</span>
-      </div>
-    </>
+    <div className={`feedrow ${actor === undefined ? "" : mine ? "mine" : "theirs"}`} data-testid="feed-row">
+      <span className="fverb">{detail.verb}</span>
+      <span className="fname">{name || detail.fallback}</span>
+      <span className="fmove">{detail.move}</span>
+    </div>
   );
 }
 
