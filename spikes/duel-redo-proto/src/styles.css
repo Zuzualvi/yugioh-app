@@ -76,17 +76,26 @@
   --t-effect: 12px;
 
   /* ── motion · every duration in the prototype is one of these ──────────────
-     ZUH-131 (`docs/specs/2026-08-13-duel-pacing/03-timing-budgets.md`) reached
-     only the long end of this list, so ALL SIX VALUES BELOW ARE UNCHANGED AND
-     STILL AUTHORED AND UNVERIFIED. The study REFUSES a number for --m-instant,
-     --m-quick, --m-base, --m-settle and the 150ms hover-to-inspector threshold:
-     a 5-second sampled VOD — even a 4 fps window, 250ms a frame — cannot see a
-     90ms transition. It gives no number for --m-narrate or --m-gap either, and
-     names the 4 fps window that would measure each. Settling any of them needs
-     a build and a stopwatch, or a capture of our own client. DO NOT READ THE
-     ABSENCE OF A NUMBER AS CONFIRMATION.
+     ZUH-131 and ZUH-139 (`docs/specs/2026-08-13-duel-pacing{,-dense}/`) both reach
+     only the long end of this list. FOUR OF THE FIVE VALUES BELOW REMAIN AUTHORED
+     AND UNVERIFIED, and both studies REFUSE a number for --m-instant, --m-quick,
+     --m-base, --m-settle and the 150ms hover-to-inspector threshold: 4 fps is 250ms
+     per frame, so a 90ms transition is at most one frame and usually zero. A denser
+     instrument that is still 250ms does not reach them. Settling them needs a build
+     and a stopwatch, or a capture of our own client. DO NOT READ THE ABSENCE OF A
+     NUMBER AS CONFIRMATION, and do not let numbers arriving elsewhere make these
+     blanks look like oversights.
+     --m-narrate is the ONE value with any corroboration: in the reference client a
+     TURN CHANGE banner is on screen ~1s and the DRAW PHASE banner after it is gone
+     within 0.5s, so 600ms sits inside the observed register for a single narration
+     beat. TWO BOUNDARIES, MEDIUM CONFIDENCE — the register is corroborated, the
+     value is still not measured.
+     --m-gap keeps its 260ms with no measurement, but the gap it fills is real: an
+     answer takes ~2.0s to reach a visible consequence in the reference client and
+     ~1.5s of that shows nothing happening at all.
      `--m-receipt` is DELETED, not retuned: budget B1 removes the receipt's timer
-     altogether. See `09-pacing-application.md`. */
+     altogether, and no evidence anywhere gives a floor for one. See
+     `09-pacing-application.md`. */
   --m-instant: 90ms;         /* state flips that must not read as animation */
   --m-quick: 140ms;          /* hover, focus, chip in/out */
   --m-base: 200ms;           /* panel content swap, dim on/off */

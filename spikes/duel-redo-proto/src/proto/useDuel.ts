@@ -156,8 +156,12 @@ export function useDuel(scenario: Scenario) {
   // arms the board. There is no fixture socket here, so 1400 ms stands in for that
   // frame arriving — a replay stand-in, NOT a designed duration and not a beat.
   // ZUH-131 B6 observed ~15–20 s of read-only screens between games in the
-  // reference client; the register question that raises (a dock line vs a screen of
-  // its own) is recorded in `09-pacing-application.md` B6 and is not answered here.
+  // reference client — n = 1, and ZUH-139 proved the second instance was destroyed
+  // by an editorial cut rather than missed. What IS measured twice is the front of
+  // that beat: lethal flash → result screen ≈6.5 s, and the result screen carries an
+  // `OK` that blocks rather than auto-advancing. The register question this raises
+  // (a dock line vs a screen of its own) is recorded in `09-pacing-application.md`
+  // B6 and is not answered here.
   useEffect(() => {
     if (scenario.id !== "start") return;
     const t = window.setTimeout(() => setControl("mine"), 1400);
@@ -166,14 +170,25 @@ export function useDuel(scenario: Scenario) {
   }, [scenario]);
 
   /**
-   * THE RECEIPT HAS NO TIMER (ZUH-131 budget B1).
+   * THE RECEIPT HAS NO TIMER (ZUH-131 budget B1, re-tested by ZUH-139).
    *
-   * It was removed after `--m-receipt` (2400 ms). The pacing study measured the
-   * surrounding rhythm of a real match at 25–30 s per screen state, and the
-   * reference client answers the same moment with a dialog that waits for a
-   * click — so 2.4 s-and-gone is the aggressive end of the spectrum. This is the
-   * rule the design already applies to the delta strip: it never auto-fades, and
-   * recovery for "I did not read it" is "read it again".
+   * It was removed after `--m-receipt` (2400 ms). The reason is that the reference
+   * client's own timings are BIMODAL with nothing in between: reflexive prompts
+   * live 0.25–1.5 s (four measured at 4 fps) and deliberative surfaces live
+   * 25–30 s+ (one dialog measured at 25.75 s; a 30.00 s think with no board change
+   * at all). A 2.4 s artefact falls in the empty valley — in the fast mode the next
+   * question supersedes it inside ~1 s and the timer never fires; in the slow mode
+   * the player is elsewhere for half a minute and it is long gone before they look
+   * back. It does no work in either mode. This is also the rule the design already
+   * applies to the delta strip: it never auto-fades, and recovery for "I did not
+   * read it" is "read it again".
+   *
+   * ⚠ An earlier version of this comment cited "the reference product waits for
+   * you — a dialog that blocks until the player clicks". THAT IS WITHDRAWN:
+   * ZUH-139 read the same dialog at 4 fps and it is a QUESTION (`Use which
+   * effect?`), not a receipt. Nothing in 980 frames is an auto-answer receipt, so
+   * this footage carries no precedent for the surface at all. And there is no
+   * measured floor for a receipt lifetime — do not reinstate "≥10 s" as a number.
    *
    * Cessation is below, in four places, and nowhere else:
    *   · a question takes the band (superseded)   · the player's next action
@@ -264,10 +279,13 @@ export function useDuel(scenario: Scenario) {
         setReceipts([]); // B1 cessation · control leaves me
         // Everything the opponent does while it is theirs, then control back.
         if (scenario.delta?.length) {
-          // 2.6 s stands in for a whole opponent turn, which ZUH-131 B5 measured
-          // at ~30 s (two turns, 30 s and 35 s). It is a REVIEW COMPRESSION so a
-          // reviewer is not left staring at a desaturated board — not a designed
-          // duration, and no pacing decision should be read out of it.
+          // 2.6 s stands in for a whole opponent turn. ZUH-139's badge timeline
+          // measures that at a MEDIAN OF 35 s, p75 65 s, max 100 s (n=27) — ZUH-131's
+          // "30–35 s" was near the median but its count double-counted, and control
+          // comes back to a given player only ~6 times a game, every ~70–88 s. This
+          // 2.6 s is a REVIEW COMPRESSION so a reviewer is not left staring at a
+          // desaturated board — not a designed duration, and no pacing decision
+          // should be read out of it.
           const t = window.setTimeout(() => {
             setDelta(scenario.delta!);
             // The boundary is set HERE — at control return, with the strip — and is
