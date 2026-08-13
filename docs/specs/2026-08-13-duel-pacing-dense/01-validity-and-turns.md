@@ -156,4 +156,133 @@ only as a cross-check.
 
 # PART B · Turn duration as a distribution
 
-(See the badge section below — written after the badge sheets were read.)
+## V6 · FIRST: every timestamp printed on the turn-badge montages is ≈2.3 s EARLIER than the frame it shows
+
+**[SCRIPT] + [4FPS · 10-20_11-00]. Confidence: high. Read this before using the badge sheets, and note that it does not affect any duration.**
+
+I found this because the badge sheets and the dense windows flatly contradicted each other at one
+point: the cell captioned **`10:40`** shows **game 2, `Turn 2 / Draw`**, while `dense/10-20_11-00/10-40-0.jpg`
+shows **game 1's `VICTORY` banner sweeping in**. I verified that `dense/` and `overview/` are the *same*
+frames (normalised correlation r = 1.000 for all eight 5 s marks in 10:20–11:00, so the dense window is
+not itself offset).
+
+I then matched each badge cell against every dense frame in three windows, using the badge region
+(native `x∈[1360,1640], y∈[370,590]` → dense `x∈[605,729], y∈[164,262]`) with the per-pixel mean across
+the window subtracted first — which is what defeats the fixed badge artwork that beat ZUH-131's
+template correlation (its 04-method technique 3). **24 of 24 cells best-match a frame 1.25–2.5 s later
+than their caption, median +2.25 s:**
+
+| Badge cell caption | Best-matching dense frame | Offset |
+|---|---|---|
+| `08:10` | `08-12-1` (08:12.25) | +2.25 s |
+| `10:40` | `10-42-2` (10:42.50) | +2.50 s |
+| `04:05` | `04-07-2` (04:07.50) | +2.50 s |
+| `13 others in 04:00/07:50/10:20 windows` | — | +1.25 s … +2.50 s |
+
+With that correction every badge reading becomes consistent with the dense windows — including cell
+`08:10` = `Turn 7 / End`, which lands exactly on the frame where I independently see the `END PHASE`
+banner (V3). **The offset is a constant, so it cancels in every *difference*: turn durations below are
+unaffected.** Only *absolute* placements move, by ~2.3 s. I have filed this as a defect against the
+artifact; it does not need fixing for this brief.
+
+## V7 · The distribution: 27 complete turns across three games. Median 35 s, mean 44 s, range 10–100 s
+
+**[BADGES · sheets 01–10]. Confidence: high for turn numbers, medium for phase labels, ±10 s on every duration.**
+
+The badge reads `Turn N / phase` legibly at native resolution. I transcribed all 11 sheets. **Turn
+numbers reset per game**, which is how the game boundaries fall out of the data (`Turn 12` → `Turn 2`
+between sheets 04's rows; `Turn 10` → `Turn 1` on sheet 07).
+
+⚠️ **±5 s is the sampling floor on each boundary, so every duration below is ±10 s.** A "30 s" turn is
+30 ± 10 s. Two turns are better than that because a dense window brackets them (marked ✚).
+
+**Game 1 — 12 turns, 03:20 → 10:41 (VOD).** Cimoooooooo took the odd turns, MBT the even ones
+(V5: the banner is blue on the feed of the player whose turn starts, and turn 3 starts blue on
+Cimoooooooo's feed).
+
+| Turn | Duration | Turn | Duration |
+|---|---|---|---|
+| 1 | **≤10 s** | 7 | 30 s ✚ |
+| 2 | 35 s | 8 | 45 s |
+| 3 | **29.75 s ✚** (04:05.00 → 04:34.75, both banners seen at 4 fps, ±0.25 s) | 9 | 25 s |
+| 4 | 80 s | 10 | 20 s |
+| 5 | 40 s | 11 | 25 s |
+| 6 | 70 s | 12 | ~25–30 s then the game ends |
+
+**Game 2 — at least 10 turns, 10:41 → 18:55 (VOD).** MBT odd, Cimoooooooo even. **Turn 1 does not
+exist in the artifact — the editor cut it (V4)**, and turn 2 is truncated at its start for the same
+reason.
+
+| Turn | Duration | Turn | Duration |
+|---|---|---|---|
+| 1 | **excised** | 6 | 40 s |
+| 2 | ≥40 s (start excised) | 7 | 35 s |
+| 3 | 55 s | 8 | **100 s** |
+| 4 | 65 s | 9 | 45 s |
+| 5 | 80 s | 10 | ~25–30 s then the game ends |
+
+**Game 3 — 12 turns, 19:15 → 26:10 (VOD).** Cimoooooooo odd, MBT even.
+
+| Turn | Duration | Turn | Duration |
+|---|---|---|---|
+| 1 | **≤10 s** | 7 | 25 s |
+| 2 | 50 s | 8 | 35 s |
+| 3 | 20 s | 9 | 10 s |
+| 4 | 85 s | 10 | ~10–15 s |
+| 5 | 35 s | 11 | ~20 s |
+| 6 | 85 s | 12 | ~35 s then the game ends |
+
+**The distribution over the 27 complete, non-first, non-final turns:**
+
+| | |
+|---|---|
+| median | **35 s** |
+| mean | **44 s** |
+| p25 – p75 | **25 s – 65 s** |
+| min – max | **10 s – 100 s** |
+| n | 27 (10 in game 1, 7 in game 2, 10 in game 3) |
+
+**Per game:** game 1 median 32.5 s / mean 40 s; game 2 median 55 s / mean 60 s; game 3 median 30 s /
+mean 37.6 s. **Game 2 is visibly slower than the other two** — its shortest complete turn (35 s) is
+longer than the median turn of the other two games.
+
+**Turns per game: 12, ≥10, 12.** ZUH-131's P4 arithmetic guessed 13–14. Close, and slightly high.
+
+## V8 · What this does to ZUH-131 P4, C5 and B5 — one confirmation and two corrections
+
+**P4 ("two turns, 30 s and 35 s; that is not a distribution") — its refusal was correct and its two
+numbers were lucky.** 30 s and 35 s straddle the true median of 35 s. But P4's own warning is the part
+that mattered: **a quarter of all turns run 65–100 s**, and the longest is 100 s — more than three times
+the value anyone would have quoted from P4. Turn 3 of game 1, one of P4's two turns, is confirmed
+independently at 4 fps as **29.75 s** (V7 ✚), so P4's measurement was accurate; it was its *coverage*
+that was not.
+
+**C5 / B5 "the player regains control every 30–35 s, so the delta fires 13–15 times per game" — this is
+wrong twice, and the second error is the bigger one.**
+
+1. **The interval is wrong.** Control returns to a given player once per *pair* of turns, so the gap
+   between one of my turns and the next is theirs plus mine: **median ~70 s, mean ~88 s**, not 30–35 s.
+2. **The count is wrong by 2×.** There are 12, ≥10 and 12 turns per game, so **each player owns about
+   six turns per game** — the "control returns" moment (M3) fires **~6 times per game**, not 13–15.
+   ZUH-131 counted every turn boundary rather than every *own*-turn boundary. **The needs model's M3
+   frequency of "~12–20 times per duel" is therefore 2–3× too high** if "handover" means *control comes
+   back to me*; it is right at its low end only if it means *any* turn boundary.
+3. **The design consequence points the other way from B5's.** B5 says design the delta strip for "~30 s
+   of opponent activity — a handful of rows, not a session log". The measured opponent turn is **median
+   35 s, p75 65 s, max 100 s**. **A delta surface must be able to summarise a 100-second turn**, and it
+   is met about six times a game, not fifteen. Fewer visits, each carrying up to three times more to
+   say. **[INFERENCE]** that argues for the delta being scrollable or grouped rather than a fixed
+   handful of rows — I am recording the size, not designing the surface.
+
+## V9 · The first turn of a game is an outlier: ≤10 s, twice
+
+**[BADGES · sheets 01, 07]. Confidence: medium.** Game 1: `Turn 1 / Main 1` at cell `03:25`, `Turn 2 /
+Standby` at cell `03:30`. Game 3: `Turn 1 / Draw` at cell `19:15`, `Turn 2 / Draw` at cell `19:20`. In
+both games the entire first turn falls inside one 5 s sampling gap, so it is **≤10 s** and no Main-phase
+sample of it was ever caught in game 3.
+
+**[INFERENCE]** the player going first opens with a very short turn — set and pass. The alternative
+reading I cannot exclude at 5 s sampling is that the client numbers part of its duel-start animation as
+turn 1. Either way, **the first turn is nothing like the 35 s median**, and a design that budgets the
+opening turn like any other turn will be wrong about it.
+
