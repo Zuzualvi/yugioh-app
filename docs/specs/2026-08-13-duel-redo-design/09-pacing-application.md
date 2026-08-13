@@ -34,7 +34,7 @@ restructuring for it, and **all timing still lives in the one token block** in
 | **B2** · error line's 8 s exit → no timeout | **Applied — behaviour change, spec only** | `02 §3.1` error row and `01 §7` lose the 8 s exit. Extended by the same reasoning to the top-bar transport strip (`02 §9`) — flagged below as an extension, one line to revert. **Not driveable: the error strip has no prototype surface.** |
 | **B3** · keep "no escalation after 2 s", add "none before 5 s" | **Applied — one clause, no number invented** | `03`'s gap rule gains "and no escalation may be introduced earlier than 5 s". No token changed. |
 | **B4** · no question may ever time out | **Confirmed; made normative** | The design already had no question timeout; it was nowhere stated as a rule. Now stated in `02 §3.1` + `04 Q8`. Nothing in the code changed. |
-| **B5** · control returns every ~30–35 s; the delta fires 13–15× a game | **No design change; recorded** | `02 §3.5` gains the frequency and size the surface must be built for. Keeps the delta strip **and** the rail mark, as the budget asks — but the prototype's rail mark **does not render at all** (ZUH-141, found while driving this, not fixed here). |
+| **B5** · control returns every ~30–35 s; the delta fires 13–15× a game | **No design change; recorded** | `02 §3.5` gains the frequency and size the surface must be built for. Keeps the delta strip **and** the rail mark, as the budget asks. Driving this found the rail mark **never rendering** — **fixed** (ZUH-141); one thing on the same element is filed not fixed (ZUH-145). |
 | **B6** · the between-game beat is ~15–20 s | **Partly applied; the register question escalated, not answered** | `03 F9` gains a normative route requirement (rematch re-enters F1 and states turn order before the board arms; no countdown between duels). Making seating a screen of its own is **not** taken — see B6 below. |
 
 **The five values the study refused to give are unchanged and still unverified.** See
@@ -161,15 +161,21 @@ distribution, and so is `02 §3.5` now. What follows for the design:
 - **if the clock ever returns** (it is deleted), the observed typical turn is **~30 s** — the number
   any per-handover allowance would have to be built around. Recorded, not proposed.
 
-*Not observed, and one thing observed to be broken.* The prototype's handover scenario offers no legal
-verb after control returns, so **"the strip clears on the player's first action" (DL2) was not
-driveable** in this build and I am not claiming it works. Worse for this budget: **the feed rail's
-`— since you last acted —` mark does not render at all** when the delta arrives (`.feedmark` count 0,
-delta strip present, 7 feed rows) — `markAt` is an index into `events` while the rail renders
-`withBattleResults(events)`, which inserts rows, so the two index spaces disagree. That is the half
-B5 calls load-bearing. **Filed as ZUH-141; deliberately not fixed here** — it is outside the B1–B6
-application and it is not one of the held usability findings. The design text above is unchanged by
-it: the requirement is right, the prototype does not honour it.
+*Not observed, and one thing that had to be fixed before this budget could be true.* The prototype's
+handover scenario offers no legal verb after control returns, so **"the strip clears on the player's
+first action" (DL2) was not driveable** in this build and I am not claiming it works. And when I drove
+this budget, **the feed rail's `— since you last acted —` mark did not render at all** — the half B5
+calls load-bearing was absent from every build. **Fixed** (ZUH-141): the mark was a property of a row
+and is now a **boundary between rows** owned by the rail, anchored to the first row at or after the
+boundary that actually draws. Two mechanisms were killing it, and the one that fired is the second:
+the mark's index was in events-space while the rail renders rows-space (which
+`withBattleResults` inserts battle-result rows into), **and** `FeedRow` returned `null` for an
+undescribable event before rendering the mark — and the recorded opponent turn begins with a `PHASE`
+event. Its boundary is also no longer derived from `feed.length - delta.length`, which drifted one row
+per event appended after the delta landed.
+
+*Still open on the same element, filed not fixed:* the mark **disappears on `Dismiss`**, where §3.5
+says *"gone, feed mark stays"* — its lifetime is borrowed from the delta's. **ZUH-145.**
 
 Also note the prototype compresses a whole opponent turn into **2.6 s** — a review convenience so
 nobody waits half a minute at a desaturated board, now commented as such in `useDuel.ts`. **No pacing
@@ -262,8 +268,14 @@ Chromium at 1440×900.
   seating.
 - **B2 · there is no error strip in the built file** (0 matching nodes) — which is the evidence that
   B2 could not be driven.
-- **B5 · the feed rail's delta mark is MISSING** in the built file (`.feedmark` count 0 with the delta
-  strip present). Filed as ZUH-141, not fixed here.
+- **B5 · the feed rail's delta mark, after fixing it** (ZUH-141). First handover: one mark node,
+  immediately above `TURN 4` — the first *drawing* row of the recorded opponent turn, whose own first
+  event is a `PHASE` that draws nothing. Pressing `End Turn` again grows the feed and the row below the
+  mark is **unchanged**, so the boundary does not drift. Second handover, with the recorded delta
+  replayed: **a battle-result row now precedes the mark** — the state where the events-space /
+  rows-space divergence bites — and the mark sits above the *second* replay's `TURN 4`, not the first.
+  The same probe found **0** mark nodes before the fix. **Not fixed:** it still disappears on
+  `Dismiss` (ZUH-145).
 
 **Edited but NOT observed**
 
