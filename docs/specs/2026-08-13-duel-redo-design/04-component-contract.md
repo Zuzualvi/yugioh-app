@@ -303,6 +303,8 @@ confirm and no decline. With the clock deleted, a player who reaches one is lock
 | Q7 | The instruction line is generated from the zones the candidate set occupies, not hard-coded. |
 | Q5 | The answer-outcome enumeration passes (CC-A2). |
 | Q6 | A decision whose candidate list contains two entries with the same `name` produces two **different** confirm labels. |
+| Q8 | **No question times out** (ZUH-131 B4). No timer, interval, countdown, auto-answer-on-expiry or fade exists in this component or its children; asserted by a source scan for timer APIs in the question path **and** by a test that holds one question for 60 s and finds the sentence, both control labels and the enabled state unchanged. A real player held one decision for 25–30 s in the observed match. |
+| Q9 | **The amber error line has no timer** (B2). It is cleared only by the question being re-answered or replaced. |
 
 ### 4.2 `IntentLine`
 
@@ -320,8 +322,9 @@ No step array, no step index, no budget, no glyph.
 
 | # | Criterion |
 |---|---|
-| R1 | Visible for `--m-receipt` (2400 ms) minimum, measured by a `MutationObserver` in an E2E test. *The shipped receipt measured **10 ms**.* |
-| R2 | Removed by its own timer, never as a side effect of an unrelated re-render. |
+| R1 | **It has no lifetime and no timer.** Asserted by a test that mounts a receipt, advances fake timers by 60 s with no other input, and finds it still in the DOM. *The shipped receipt measured **10 ms**; its 2.4 s replacement was deleted by ZUH-131 B1.* |
+| R2 | Removed **only** by: a question taking the dock band · the player's next action · control leaving me · `DUEL_END`. No timer removes it, and no unrelated re-render does. Each of the four has its own test. |
+| R5 | **A re-armed board does not remove it.** After the client answers a step, control returns with `IdleCommand`/`BattleCommand`; a test drives that path and asserts the receipt survives. Getting this wrong makes the receipt shorter-lived than the timer it replaced. |
 | R3 | Read-only: no primary button, no imperative copy, past tense. |
 | R4 | Names what was answered, using the same label function as the confirm control. |
 

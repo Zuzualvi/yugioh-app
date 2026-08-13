@@ -343,10 +343,10 @@ and a table makes a missing half visible.
 | `Intent` | `STATE`-then-`DECISION` gap; every sub-decision; every re-render | response sent and control does not stay mine · player cancels · `DUEL_END` · socket drop |
 | Pending `DECISION` | `STATE` frames; `EVENTS` frames; re-render | **the instant the client sends its response** (optimistically, before any ack) · a newer `DECISION` replaces it · `CONTROL` names the other seat · `DUEL_END` |
 | `Delta` | turn boundaries; log open/close; inspector use | player's first action this turn · explicit dismiss · control leaves me · `DUEL_END` |
-| Auto-answer receipt | one full render frame minimum | 2.4 s elapsed · the next decision is presented · control leaves me |
+| Auto-answer receipt | **everything — it has no timer** (ZUH-131 B1) | a **question** takes the dock band (an armed board does not) · the player's next action · control leaves me · `DUEL_END` |
 | Chain strip | between links; across `STATE` gaps | `CHAIN_END` event + 600 ms · `DUEL_END` |
 | Card inspector (pinned) | auto-push attempts (they queue) | `Esc` · another explicit click · `DUEL_END` |
-| Error strip | `STATE`/`EVENTS` frames | dismissed · superseded · 8 s |
+| Error strip | `STATE`/`EVENTS` frames; **no timer** (ZUH-131 B2) | dismissed · superseded · the question is re-answered or replaced |
 | Board | everything; it is never replaced by a spinner | never — the board is the screen |
 | Turn-resource line | every decision within the turn | turn number changes |
 | Opponent-away banner | everything | presence returns · duel ends |

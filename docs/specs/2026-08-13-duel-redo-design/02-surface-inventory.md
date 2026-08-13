@@ -8,12 +8,19 @@ Every screen, panel, band and overlay the duel presents. For each: the job it do
 **player**, entry, exit, every state, and — because motion left unspecified ships as whatever
 emerged — **the motion of each state, by token**.
 
-> ⚠️ **Every motion value below is AUTHORED AND UNVERIFIED.** A still frame cannot show a
-> transition that is too slow, too abrupt or absent. Durations are named tokens in
-> `spikes/duel-redo-proto/src/styles.css` (`--m-instant` 90ms · `--m-quick` 140ms · `--m-base`
-> 200ms · `--m-settle` 320ms · `--m-narrate` 600ms · `--m-receipt` 2400ms · `--m-gap` 260ms), so
-> revising the whole surface's pace is editing seven lines. The ZUH-131 pacing findings should
-> land as new values for these tokens, not as edits in fifty places.
+> ⚠️ **Motion values below are named tokens in `spikes/duel-redo-proto/src/styles.css`**
+> (`--m-instant` 90ms · `--m-quick` 140ms · `--m-base` 200ms · `--m-settle` 320ms · `--m-narrate`
+> 600ms · `--m-gap` 260ms), so revising the whole surface's pace is editing six lines.
+>
+> **ZUH-131's pacing study has landed and its answer is in `09-pacing-application.md`, finding by
+> finding.** What it changed here: `--m-receipt` is **deleted** — the auto-answer receipt has no
+> timer (B1, §3.3) — and the 8 s exits on the error lines are gone (B2, §3.1 and §9). What it did
+> **not** change: **every one of the six tokens above is still AUTHORED AND UNVERIFIED.** The study
+> refuses to give a number for `--m-instant`, `--m-quick`, `--m-base`, `--m-settle` or the 150 ms
+> hover threshold, because they sit below its instrument's resolution, and gives none for
+> `--m-narrate` or `--m-gap` either. A still frame cannot show a transition that is too slow, too
+> abrupt or absent, and neither can a 5-second-sampled VOD. Settling them needs a build and a
+> stopwatch, or a capture of our own client.
 
 **Reference viewport 1440 × 900, and that is also the floor** (PRD G1). Below it is out of scope
 and untested; nothing sub-1440 may be recorded as passing.
@@ -96,6 +103,11 @@ glyph for face-down/defence. Pile badges with counts, permanently placed.
 
 **Deliberate:** the board is **never** replaced by a spinner after the first snapshot.
 
+**The `zone-pick` glow loops for as long as the player takes.** ZUH-131 B4 puts a real decision at
+25–30 s, so the 1.2 s loop runs **~25 times**, not three. **No change is requested** — there is no
+evidence it becomes irritating — but nobody should specify it, review it or test it on the assumption
+that it runs a handful of times. (`09-pacing-application.md` B4.)
+
 ---
 
 ## 2 · Verb chips (ACT mode)
@@ -177,8 +189,22 @@ what line 1 degrades to when context is unavailable, and what shipped was the ba
 | commit-adjacent | the NEXT step has no cancel | confirm reads `… — after this you cannot cancel` | confirm / cancel | `--m-instant` | — |
 | non-cancelable | this step has no cancel | left slot is the flat statement `This step cannot be cancelled`, **not a button** | confirm only | — | — |
 | empty candidates | a variant arrives with none | sentence + decline only | decline | `--m-base` | `--m-base` |
-| error | server rejected the answer | the same question re-renders with an amber one-line strip | re-answer | `--m-quick` | 8 s |
+| error | server rejected the answer | the same question re-renders with an amber one-line strip | re-answer | `--m-quick` | **none — it persists until the question is re-answered or the question changes** |
 | gap | answer sent, next frame not in | replaced by the `resolving` waiting content (§3.4) | wait | `--m-gap` | — |
+
+**A QUESTION NEVER EXPIRES, AND NEITHER DOES A REJECTION. Normative, from ZUH-131 B4 and B2.**
+A real player sat on one decision for **25–30 s** in the observed match, with the longest stretch of
+that match being a card-selection list held open across six consecutive samples. So:
+
+- **No question surface has a timeout, a countdown, an auto-answer-on-expiry or a fade.** There is
+  nothing to remove — the design never had one — but it was never stated as a rule, and the rule is
+  what stops one arriving later as a "safety net".
+- **The band holds one question for at least a minute with no visual decay.** No pulse that becomes
+  irritating, no shimmer that loops forty times. §3.4's 1.6 s pulse belongs to the *waiting* readings
+  and stays off questions.
+- **The `error` line has no timer** (it exited after 8 s). A player who has just been rejected is
+  entering exactly the 25–30 s re-deciding window above; a line they may not have read must not
+  remove itself. Recovery for "I did not read it" is "read it again", as it is for the delta strip.
 
 ### 3.2 Intent line
 
@@ -218,13 +244,27 @@ classification law is not a preference.
 
 | State | Trigger | Sees | Motion in | Motion out |
 |---|---|---|---|---|
-| default | client answered a single-answer decision | the row, naming what it did | fade `--m-base` | fade at `--m-receipt` (2.4 s) |
+| default | client answered a single-answer decision | the row, naming what it did | fade `--m-base` | **none — it persists (no timer)** |
 | stacked | two auto-answers in a row | both rows, oldest on top | as above | staggered |
-| superseded | a question arrives before 2.4 s | receipt clears, question takes the band | — | `--m-instant` |
+| superseded | **a question takes the band** | receipt clears, question takes the band | — | `--m-instant` |
+| spent | **the player's next action** · control leaves me · `DUEL_END` | gone | — | `--m-instant` |
 
-> ZUH-118 break 19 measured the shipped receipt in the DOM for **10 ms**. `--m-receipt` is 2.4 s
-> and the receipt is cleared by a timer that belongs to the receipt, never by an unrelated
-> re-render. **Authored, unverified.**
+> **THE RECEIPT HAS NO TIMER — ZUH-131 B1, and this is a behaviour change, not a retuned number.**
+> It faded after `--m-receipt` (2.4 s); that token is **deleted**. The pacing study puts the rhythm
+> around this surface at **25–30 s** and found the reference client answering the same moment — *tell
+> the player what just resolved* — with a dialog that **waits for a click** (`● Draw 1 card.` + `OK`).
+> 2.4 s was the aggressive end of that spectrum, and it was itself a 240× correction of the shipped
+> build's **10 ms** (ZUH-118 break 19).
+>
+> This is the rule §3.5 already applies to the delta strip, so it is **consistency, not novelty**:
+> *it never auto-fades, and recovery for "I did not read it" is "read it again".* If a lifetime is
+> ever reinstated, the study's floor is **≥10 s**.
+>
+> ⚠️ **The board re-arming is not a supersession.** The client answers a step for you and control
+> comes straight back with `IdleCommand`/`BattleCommand` — a decision, but not a question panel. If
+> that cleared the receipt it would vanish *faster* than the timer it replaced. Only a **question**
+> supersedes it. See `09-pacing-application.md` B1, and
+> `spikes/duel-redo-proto/src/proto/questionTakesTheBand.ts`, where the test is isolated in one file.
 
 ### 3.4 Waiting — three readings that must never look alike
 
@@ -261,6 +301,17 @@ Expanded, it lists the rows and simultaneously marks the feed rail with a
 **It never auto-fades.** Recovery for "I did not read it" is "read it again".
 **Cessation:** first action this turn · dismiss · control leaves me · `DUEL_END`.
 
+**Build it for the traffic it actually gets — ZUH-131 B5.** Turns in the observed match ran **30 s and
+35 s** (two measurable turns, not a distribution), which puts **≈13–15 turns in a game**. So this
+surface is met **13–15 times per game, every ~30 s, and it describes ~30 s of opponent activity**:
+**a handful of rows, not a session log.** Two consequences the budget is explicit about:
+
+- **Keep the strip *and* the feed rail's `— since you last acted —` mark.** On a 30-second turn the
+  player's first action often comes within a few seconds and takes the strip with it — the rail mark
+  is what makes that safe, and it is doing the load-bearing work.
+- **If the clock ever comes back** (it is deleted), the observed typical turn is **~30 s**. That is the
+  number any per-handover allowance would be built around. Recorded, not proposed.
+
 ### 3.6 Opponent has left — and the route out
 
 **Job:** with the clock deleted, this is the ending timeout-forfeit used to provide (PRD C1/C2).
@@ -284,6 +335,18 @@ server fact (ND-10); the player's route out is a control they press.
 **Job:** the first ten seconds, which the previous design had no surface for at all (needs model
 M1, gap 9). `You vs Sakura` · `You go first.` — read from `STATE.currentTurn` on the first
 snapshot, so **no delta is needed for turn order**; only the opponent's name is (ND-11).
+
+**Cessation is an engine event, not a timer — ZUH-131 B6.** The seating statement is replaced when the
+first `DECISION` arms the board. **No timer may be added to dismiss it**, and there is no minimum or
+maximum duration to hit: how long it is on screen is how long the engine takes. *(The prototype's
+1.4 s is a replay stand-in for that frame arriving, not a designed beat.)*
+
+**One thing the study raises here that this design does NOT take.** The reference client spends **~20 s
+of read-only screens between games** and states turn order **full-screen, on its own, before the board
+exists** (P7); the study reads F1's dock line as *the right content in the wrong register*
+**[INFERENCE]**. Making seating a screen of its own is a new surface rather than a duration, it rests
+on an inference from another client, and it collides with **held** usability finding F-18. **It is
+recorded as an open decision for the CEO in `09-pacing-application.md` B6, not decided here.**
 
 ---
 
@@ -415,7 +478,7 @@ asked), `Self chain` and `Activation order` (never wired; ZUH-118 break 16).
 |---|---|---|---|
 | default | connected | green dot + name | — |
 | opponent away | presence lost | amber dot + name; §3.6 carries the sentence | `--m-base` |
-| our socket errored | transport error | one-line amber strip under the bar, dismissible, **never a modal** | `--m-quick` in, 8 s out |
+| our socket errored | transport error | one-line amber strip under the bar, dismissible, **never a modal** | `--m-quick` in, **no timeout out** — dismissed, or gone when the transport recovers |
 | duel ended | `DUEL_END` | `DUEL OVER` pill; Exit and the feed stay live | `--m-base` |
 
 ---
@@ -446,6 +509,13 @@ decision rather than an oversight.
 | dismissed | `Review board` | frozen but **fully inspectable** board; a `Duel over — show result` pill top-centre reopens the card | `--m-base` |
 
 **There is no timeout ending.** It is deleted with the clock.
+
+**And nothing between two duels runs on a timer either — ZUH-131 B6.** The reference client spends
+**~15–20 s** of read-only screens between games (`VICTORY` → result → turn order → transition →
+`DUEL`), so this card is **not a bounce**: it has no exit timer, no countdown, and no auto-advance.
+The player leaves it by pressing something, and `Play {opponent} again` lands on the seating statement
+(§3.7) with turn order stated **before** the board arms — never straight onto an armed board. See
+`03-flows.md` F9 and `09-pacing-application.md` B6.
 
 ---
 

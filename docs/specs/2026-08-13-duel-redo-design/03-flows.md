@@ -9,15 +9,23 @@ gap between an action and the system responding, whether the player can tell wha
 while they wait, and how they recover from each failure.
 
 **Timing values are named tokens, not numbers in prose.** Every duration below is
-`--m-gap` (260 ms, the modelled round trip), `--m-settle` (320 ms), `--m-narrate` (600 ms) or
-`--m-receipt` (2400 ms). ZUH-131's pacing findings should land as new values for those four
-tokens. All of them are **authored and unverified**.
+`--m-gap` (260 ms, the modelled round trip), `--m-settle` (320 ms) or `--m-narrate` (600 ms).
+**All three are still authored and unverified.** ZUH-131's pacing study has landed and did **not**
+give a number for any of them — it reached only the long end of the scale, where a player's attention
+rather than a CSS transition is the unit. Its answer, budget by budget, is
+`09-pacing-application.md`. `--m-receipt` no longer exists: the auto-answer receipt has **no
+lifetime** (B1).
 
 **What fills every gap, once, so no flow repeats it.**
 1. The dock band **does not unmount**. It swaps its content to the `Resolving…` reading.
 2. The **intent line stays**, unchanged, naming the verb and the card.
 3. The board **does not move**. Nothing reflows, ever — the feed rail's width is permanent.
 4. If the gap exceeds 2 s, the same reading persists; there is no second escalation and no clock.
+   **And no escalation may be introduced earlier than 5 s** (ZUH-131 B3): the reference client's
+   own resolution beats run **≥5 s** and neither player treats one as a stall, so a threshold below
+   that would be invented. Above 5 s there is still no number, and this design does not supply one —
+   what the evidence licenses is the *negative*.
+5. **Nothing on this screen ever times out a question, and no rejection removes itself** (B4, B2).
 
 ---
 
@@ -35,6 +43,9 @@ tokens. All of them are **authored and unverified**.
 ND-11.
 **Failure:** the first `STATE` never arrives → the slots stay at 30% and `← Exit` works. There is
 no timeout, so nothing forces an end here; the player leaves.
+**No timer dismisses the seating line either** (ZUH-131 B6): it is replaced when the first
+`DECISION` arms the board. Whether it deserves a louder register than a dock line is an open
+decision, not a duration — `02 §3.7` and `09-pacing-application.md` B6.
 
 ---
 
@@ -121,10 +132,13 @@ enumeration found this; a sample would not have.**
 |---|---|---|
 | 1 | click your monster | chips: `Attack · Inspect` |
 | 2 | click `Attack` | `Resolving…`; the target step arrives with one card |
-| 3 | — | **the client answers it** (one substantive answer) and shows `ANSWERED FOR YOU · Attack Mobius the Frost Monarch` for `--m-receipt` |
-| 4 | — | the attack resolves; feed gains `ATTACK` and the result rows |
+| 3 | — | **the client answers it** (one substantive answer) and shows `ANSWERED FOR YOU · Attack Mobius the Frost Monarch`, which **persists** — no timer (B1) |
+| 4 | — | the attack resolves; feed gains `ATTACK` and the result rows. **The receipt is still there**: the board re-arming is not a supersession |
 
 **Actions to goal: 2.**
+
+**The receipt's exits are the delta strip's**: a question takes the band · the player's next action ·
+control leaves me · `DUEL_END`. `02 §3.3`.
 
 ### 4b · More than one legal target — always presented (PRD A5)
 
@@ -269,12 +283,20 @@ answer path in the component contract, and (b) `Resign` is the floor.
 |---|---|---|
 | — | — | board freezes at full colour, still inspectable; end card fades in over `--m-narrate` |
 | 1 | `Review board` | the card dismisses; a `Duel ended` pill top-centre reopens it |
-| 1' | `Play Sakura again` | (proposed scope — see 02 §10) |
+| 1' | `Play Sakura again` | (proposed scope — see 02 §10) **re-enters F1: the seating statement and turn order come back before the board arms** |
 | 1'' | `Back to Home` | leaves |
 
 **Cause, in game terms and only where we have one:** `Sakura's life points reached 0.` /
 `You resigned.` / `Sakura left the duel and did not come back.` An unrecognised reason renders
 `The duel ended.` plus the reason string verbatim — never a guess.
+
+**Nothing here is on a timer — ZUH-131 B6, and it is a requirement rather than an observation.** The
+reference client spends **~15–20 s** of read-only screens between two games and states turn order
+full-screen before the board exists. So: **the end card has no exit timer and no countdown**, and the
+rematch route **must** land on F1 rather than on an armed board. Both were already true of this
+design; neither was written down, and "not an instant bounce" is exactly what an implementation
+quietly gets wrong. (The louder-register question this raises for F1 is *not* answered here — see
+`09-pacing-application.md` B6.)
 
 🔴 **A finding that lands squarely on this flow.** Driving a full duel against the real engine on
 2026-08-13, **life points reached 0 and the duel did not end**: `duelEnded` stayed `false`, play
@@ -296,7 +318,9 @@ is invisible because a player who cannot back out stops probing altogether.
 - Clicking anything else → the inspector. Free, instant, silent, **never broadcast** — DuelingBook
   broadcasts `Viewing Deck` and its community pays for extensions to stop it.
 - Clicking a card that affords nothing → a 200 ms shake and **no sentence**.
-- Hovering anything → the inspector after 150 ms.
+- Hovering anything → the inspector after 150 ms. **(Authored and unverified: ZUH-131 explicitly
+  refuses a number for this threshold — it is below the footage's resolution. It needs a build and a
+  stopwatch.)**
 - While a question is up, clicking a non-candidate inspects rather than answering.
 
 **No keyboard event may submit a decision. `Esc` never commits anything, anywhere.** Carried

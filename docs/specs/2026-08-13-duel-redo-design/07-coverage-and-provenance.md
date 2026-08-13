@@ -127,12 +127,16 @@ Run against the built prototype, real mouse events at real coordinates, 1440×90
 
 - **All motion.** Every duration, easing and transition in this design is **authored and
   unverified**. A still frame cannot show a transition that is too slow, too abrupt or absent. The
-  CEO reviews motion. Values are seven tokens in one file so revision is cheap.
+  CEO reviews motion. Values are six tokens in one file so revision is cheap. **This survives
+  ZUH-131 intact:** the pacing study reached only the long end of the scale and **refuses** to give a
+  number for `--m-instant`, `--m-quick`, `--m-base`, `--m-settle` or the 150 ms hover threshold, and
+  gives none for `--m-narrate` or `--m-gap`. `09-pacing-application.md` names what would settle each.
 - **Pace and feel.** Same reason. The `--m-gap` round-trip beat (260 ms) is a guess at what a real
   WebSocket round trip feels like; the recorded capture has real inter-frame timings I did not
-  mine for it.
-- **The ZUH-131 pacing footage.** Not read — a separate workstream with its own budget. The
-  sequencing is written so its findings land as new token values, not as edits in prose.
+  mine for it. ZUH-131 names two 4 fps windows that would measure it and did not have them.
+- **The ZUH-131 pacing footage.** Read and applied — `09-pacing-application.md`, budget by budget.
+  What it changed is the **long** durations (the receipt's and the error line's timers, both deleted);
+  what it could not touch is everything sub-second.
 - **Anything below 1440×900.** Out of scope per G1 and not tested. Nothing sub-1440 is recorded as
   passing.
 - **Audio.** Not designed.

@@ -18,6 +18,7 @@ PRD: https://linear.app/zuzu-io/document/prd-22f37a25d15c
 | `06-answer-outcome-matrix.md` | The answer-fidelity evidence |
 | `07-coverage-and-provenance.md` | **Read before trusting any scenario** — what is recorded vs authored, per outcome |
 | `08-usability-findings.md` | Independent usability pass, 22 findings |
+| `09-pacing-application.md` | **ZUH-131's timing budgets applied** — B1–B6 answered one by one, what changed, what is still authored and unverified |
 | `fixtures/` | Recorded from real duels against the real engine |
 | `shots/` | 23 PNGs — the record of what the prototype looked like at hand-over |
 

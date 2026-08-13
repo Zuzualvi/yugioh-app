@@ -31,6 +31,7 @@ this project's PRD.
 | `05-backend-delta.md` | Every prior delta verified **end to end**, plus the new ones |
 | `06-answer-outcome-matrix.md` | Generated evidence: 5 decision points, 19 answers, 0 collisions |
 | `07-coverage-and-provenance.md` | What the prototype does **not** reach, where each fixture came from, and what I did not verify |
+| `09-pacing-application.md` | **What ZUH-131's pacing evidence did to this design — budgets B1–B6 answered one by one**, the values that are still authored and unverified, and what was driven versus only edited |
 | `fixtures/` | The recorded slices, the recorder and the slicing script |
 | `shots/` | Screenshots |
 
