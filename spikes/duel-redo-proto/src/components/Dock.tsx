@@ -190,9 +190,14 @@ function Question({
     chosen.length === 0
       ? `Click ${max === 1 ? "a highlighted card" : `${min === max ? min : `${min}–${max}`} highlighted cards`} ${whereCandidatesAre(cands, m.mySeat)}`
       : `Chosen: ${chosen.map((c) => candidateLabel(c, m.mySeat, cands, m.board)).join(", ")}${max > 1 ? ` (${chosen.length} of ${max})` : ""}`;
-  const confirmLabel =
-    confirmLabelFor(d, selection, m.mySeat, m.intent?.verb, m.board) +
-    (m.step?.commitsNext && selection.length ? " — after this you cannot cancel" : "");
+  // F-08: the clause moves OUT of the button and into the warning line above it.
+  // With it inside, the confirm grew from x691-781 to x454-1018 the moment a card
+  // was chosen, and Cancel jumped left — so the pixel where Cancel had been was
+  // now inside an irreversible confirm. A player returning the mouse to where
+  // Cancel was pressed "you cannot cancel". That is an error-prevention defect at
+  // the exact moment the commit lock exists to prevent errors.
+  const commitWarning = m.step?.commitsNext ? "After this you cannot cancel." : null;
+  const confirmLabel = confirmLabelFor(d, selection, m.mySeat, m.intent?.verb, m.board);
 
   return (
     <div className="question" data-testid="question">
@@ -225,6 +230,11 @@ function Question({
       {cands.length ? (
         <div className="q-count" data-testid="selection-line">
           {selectionLine}
+        </div>
+      ) : null}
+      {commitWarning ? (
+        <div className="commitwarn" data-testid="commit-warning">
+          {commitWarning}
         </div>
       ) : null}
       <div className="q-verbs">

@@ -79,6 +79,8 @@ class D:
         # what the app actually submitted, and the identity of each card that
         # response names — published by the submit path, never read from the label.
         self.submit = None
+        # was the rendered confirm label visually cut off?
+        self.clipped = False
         # what the control the player ACTUALLY PRESSED said, captured at press
         # time. The invariant has two halves; this column proves the second.
         self.named = None
@@ -128,6 +130,13 @@ class D:
 
     def confirm(self):
         self.named = self.pg.locator("[data-testid=decision-confirm]").first.inner_text().replace("\n", " ")
+        # A label whose DOM text is complete but whose RENDERED text is cut is
+        # still a label that does not name the answer. `inner_text` cannot see
+        # that, so measure it.
+        self.clipped = self.pg.evaluate(
+            "() => { const e = document.querySelector('[data-testid=decision-confirm]');"
+            " return e ? (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1) : false; }"
+        )
         self.click("[data-testid=decision-confirm]")
         self.submit = self.pg.evaluate("() => window.__lastSubmit ?? null")
 
@@ -257,7 +266,9 @@ def main():
                 except Exception as e:  # noqa: BLE001
                     named = f"<<reach/apply failed: {e}>>"
                     fp = {"error": str(e), "log": "", "pending": ""}
-                rows.append(dict(answer=label, named=named, fp=fp, errors=errs, submit=d.submit))
+                rows.append(
+                    dict(answer=label, named=named, fp=fp, errors=errs, submit=d.submit, clipped=d.clipped)
+                )
                 page.close()
             results.append(dict(point=point, rows=rows))
         browser.close()
@@ -274,6 +285,16 @@ def main():
             if not sub or not sub.get("identities"):
                 continue  # a decline names no card; nothing to check
             label_checked += 1
+            if row.get("clipped"):
+                label_failures.append(
+                    (
+                        r["point"]["question"],
+                        row["answer"],
+                        ", ".join(sub["identities"]),
+                        sub.get("label"),
+                        "confirm label is VISUALLY TRUNCATED (scrollWidth > clientWidth)",
+                    )
+                )
             for ident in sub["identities"]:
                 if ident not in (sub.get("label") or ""):
                     label_failures.append(

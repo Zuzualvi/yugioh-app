@@ -1,4 +1,5 @@
-import type { CardEntry, DuelDecision, Seat, ZoneCard } from "../proto/types";
+import type { CardEntry, DuelDecision, Loc, Seat, ZoneCard } from "../proto/types";
+import type { PileTarget } from "./Piles";
 import { hand, pile, row } from "../proto/board";
 import type { DuelModel } from "../proto/useDuel";
 import { CardTile, type TileRef } from "./CardTile";
@@ -18,6 +19,7 @@ export function useBoardParts({
   zonePick,
   onZone,
   shakeRef,
+  onPile,
 }: {
   m: DuelModel;
   onCard: (r: TileRef) => void;
@@ -27,6 +29,7 @@ export function useBoardParts({
   zonePick: { controller: Seat; sequence: number }[] | null;
   onZone: (i: number) => void;
   shakeRef: TileRef | null;
+  onPile: (t: PileTarget) => void;
 }) {
   const me = m.mySeat;
   const them = (1 - me) as Seat;
@@ -54,12 +57,24 @@ export function useBoardParts({
     />
   );
 
-  const pileBadge = (seat: Seat, label: string, n: number) => (
-    <div className="pile" key={label + seat} data-testid={`pile-${seat}-${label}`}>
-      <span className="count">{n}</span>
-      <span>{label}</span>
-    </div>
-  );
+  // F-09: these carried `cursor: pointer` with no handler, no role and no tab
+  // stop. A pile whose contents we are not entitled to is marked `sealed` and does
+  // not advertise a click it cannot honour (D4).
+  const pileBadge = (seat: Seat, label: string, loc: Loc, n: number) => {
+    const sealed = loc === "DECK" || (loc === "EXTRA" && seat !== me);
+    return (
+      <button
+        className={`pile ${sealed ? "sealed" : ""}`}
+        key={label + seat}
+        data-testid={`pile-${seat === me ? "mine" : "theirs"}-${label}`}
+        aria-label={`${seat === me ? "Your" : "Their"} ${label}, ${n} cards`}
+        onClick={() => onPile({ seat, loc, label })}
+      >
+        <span className="count">{n}</span>
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   const field = (seat: Seat, mine: boolean) => {
     const mz = row(m.board, seat, "MZONE");
@@ -67,8 +82,8 @@ export function useBoardParts({
     return (
       <div className={`field ${mine ? "mine" : "theirs"}`} data-testid={mine ? "my-field" : "opp-field"}>
         <div className="pilecluster">
-          {pileBadge(seat, "GY", pile(m.board, seat, "GRAVE").length)}
-          {pileBadge(seat, "BAN", pile(m.board, seat, "REMOVED").length)}
+          {pileBadge(seat, "GY", "GRAVE", pile(m.board, seat, "GRAVE").length)}
+          {pileBadge(seat, "BAN", "REMOVED", pile(m.board, seat, "REMOVED").length)}
         </div>
         <div className="rows">
           {(mine ? [mz, sz] : [sz, mz]).map((r, ri) => {
@@ -98,8 +113,8 @@ export function useBoardParts({
           })}
         </div>
         <div className="pilecluster">
-          {pileBadge(seat, "EX", pile(m.board, seat, "EXTRA").length)}
-          {pileBadge(seat, "DECK", (seat === 0 ? m.board.zones.p0_deckCount : m.board.zones.p1_deckCount) ?? 0)}
+          {pileBadge(seat, "EX", "EXTRA", pile(m.board, seat, "EXTRA").length)}
+          {pileBadge(seat, "DECK", "DECK", (seat === 0 ? m.board.zones.p0_deckCount : m.board.zones.p1_deckCount) ?? 0)}
         </div>
       </div>
     );

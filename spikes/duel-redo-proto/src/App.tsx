@@ -8,7 +8,8 @@ import type { TileRef } from "./components/CardTile";
 import { Dock, type Answer } from "./components/Dock";
 import { FeedRail, PhaseRail } from "./components/Rails";
 import { CardArt } from "./components/CardArt";
-import { hand, row } from "./proto/board";
+import { ChainStrip, PileInspector, type PileTarget } from "./components/Piles";
+import { hand, resolveCode, row } from "./proto/board";
 import type { CardEntry, Seat } from "./proto/types";
 
 
@@ -21,12 +22,14 @@ export default function App() {
   const [verbAt, setVerbAt] = useState<{ ref: TileRef; verbs: { label: string; go: () => void }[] } | null>(null);
   const [shake, setShake] = useState<TileRef | null>(null);
   const [inspect, setInspect] = useState<number | null>(null);
+  const [openPile, setOpenPile] = useState<PileTarget | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSelection([]);
     setVerbAt(null);
     setInspect(null);
+    setOpenPile(null);
   }, [m.step, sid]);
 
   /**
@@ -48,6 +51,10 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      if (openPile) {
+        setOpenPile(null);
+        return;
+      }
       if (verbAt) {
         setVerbAt(null);
         return;
@@ -173,6 +180,24 @@ export default function App() {
   };
 
   const info = inspect ? cardInfo(inspect) : null;
+  // A snapshot taken mid-duel: something is on a field, or life points have moved.
+  const midDuel =
+    m.board.lp[0] < 8000 ||
+    m.board.lp[1] < 8000 ||
+    ([0, 1] as Seat[]).some((sd) =>
+      (["MZONE", "SZONE"] as const).some((l) => row(m.board, sd, l).some((c) => c != null)),
+    );
+  const refResolve = (ref: unknown) => {
+    const r = ref as { controller?: Seat; location?: string; sequence?: number } | undefined;
+    if (!r || r.controller === undefined || !r.location) return 0;
+    return (
+      resolveCode(scenario.board, {
+        controller: r.controller,
+        location: r.location as "MZONE",
+        sequence: r.sequence ?? 0,
+      }) || 0
+    );
+  };
   const parts = useBoardParts({
     m,
     onCard,
@@ -184,6 +209,7 @@ export default function App() {
     zonePick,
     onZone: (i) => answer({ kind: "SelectZone", indices: [i] }),
     shakeRef: shake,
+    onPile: (t) => setOpenPile((cur) => (cur && cur.seat === t.seat && cur.loc === t.loc ? null : t)),
   });
 
   return (
@@ -244,6 +270,7 @@ export default function App() {
               <Plate name={scenario.myName} lp={m.board.lp[m.mySeat]} mine />
             </div>
           </div>
+          <ChainStrip events={m.feed} mySeat={m.mySeat} resolve={refResolve} />
           <Dock
             m={m}
             onAnswer={answer}
@@ -259,7 +286,16 @@ export default function App() {
           {verbAt ? (
             <VerbCluster verbs={verbAt.verbs} onClose={() => setVerbAt(null)} />
           ) : null}
-          {info ? (
+          {openPile ? (
+            <PileInspector
+              board={m.board}
+              mySeat={m.mySeat}
+              target={openPile}
+              onClose={() => setOpenPile(null)}
+              broken={scenario.breakArt}
+            />
+          ) : null}
+          {info && !openPile ? (
             <aside className="inspector" data-testid="inspector">
               <div className="inspector-art">
                 <CardArt code={info.passcode} broken={scenario.breakArt} />
@@ -292,6 +328,8 @@ export default function App() {
           mySeat={m.mySeat}
           markAt={m.delta ? Math.max(0, m.feed.length - m.delta.length) : null}
           names={{ me: scenario.myName, opp: scenario.opponentName }}
+          resolve={refResolve}
+          midDuel={midDuel}
         />
       </div>
     </div>

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node inline.mjs",
+    "build": "vite build && node inline.mjs && node publish.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

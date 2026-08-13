@@ -157,3 +157,68 @@ export function resolveCode(
   const hit = pile.find((c) => c.sequence === ref.sequence) ?? pile[ref.sequence];
   return hit?.code ?? 0;
 }
+
+/**
+ * applyEvents — move the board the way the ENGINE'S OWN EVENTS say it moved.
+ *
+ * This is the fix for the defect where the history rail read `LIFE POINTS You
+ * −1900` while the life-point plate still said 8,000: the events were rendered
+ * and never applied, so the two most important readings on the screen
+ * contradicted each other and nothing told the player which was authoritative.
+ *
+ * It adjudicates nothing. `LP_CHANGE` carries the seat and the delta; `MOVE`
+ * carries `from` and `to`. Both are what ocgcore emitted, normalised by the
+ * server. Anything else is ignored rather than guessed at.
+ */
+export function applyEvents(b: Board, events: { kind: string; [k: string]: unknown }[]): Board {
+  for (const e of events) {
+    if (e.kind === "LP_CHANGE") {
+      const seat = e["seat"] as Seat | undefined;
+      const delta = e["delta"] as number | undefined;
+      if (seat === undefined || delta === undefined) continue;
+      const lp = [...b.lp] as [number, number];
+      lp[seat] = Math.max(0, lp[seat] + delta);
+      b.lp = lp;
+      continue;
+    }
+    if (e.kind === "MOVE") {
+      const from = e["from"] as { controller?: Seat; location?: Loc; sequence?: number } | undefined;
+      const to = e["to"] as { controller?: Seat; location?: Loc; sequence?: number } | undefined;
+      if (!from || !to || from.controller === undefined || !from.location) continue;
+      // Only row → pile moves are applied. A pile → pile or pile → row move needs
+      // a source index the event does not always carry, and a wrong move is worse
+      // than an unmoved card.
+      if (!ROW_LOCS.includes(from.location)) continue;
+      if (to.location !== "GRAVE" && to.location !== "REMOVED") continue;
+      const card = take(b, {
+        controller: from.controller,
+        location: from.location,
+        sequence: from.sequence ?? 0,
+      });
+      if (card) put(b, to.controller ?? from.controller, to.location, 0, { ...card, position: 1 });
+    }
+  }
+  return b;
+}
+
+/**
+ * FIXTURE CONSISTENCY — a scenario whose log implies a state its board does not
+ * show must FAIL TO LOAD.
+ *
+ * Same shape as the answer-outcome gate: it makes the class impossible instead of
+ * fixing the instance. A scenario's opening feed asserts things that have already
+ * happened, and the opening board is a real recorded snapshot — so an opening feed
+ * carrying an `LP_CHANGE` or a `MOVE` is claiming a change nobody can show the
+ * board reflects. Those events belong in the arriving stream, where they are
+ * applied, not in the opening one, where they are only narrated.
+ */
+export function assertFeedConsistency(name: string, openingFeed: { kind: string }[]): void {
+  const offenders = openingFeed.filter((e) => e.kind === "LP_CHANGE" || e.kind === "MOVE");
+  if (offenders.length > 0) {
+    throw new Error(
+      `fixture ${name}: opening feed asserts ${offenders.length} state change(s) ` +
+        `(${offenders.map((o) => o.kind).join(", ")}) that the opening board cannot be shown to ` +
+        `reflect. Move them into the arriving event stream, where they are applied.`,
+    );
+  }
+}

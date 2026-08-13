@@ -93,25 +93,110 @@ export function FeedRail({
   mySeat,
   markAt,
   names,
+  resolve,
+  midDuel,
 }: {
   events: DuelEvent[];
   mySeat: Seat;
   markAt: number | null;
   names: { me: string; opp: string };
+  /** The board is a mid-duel snapshot, so "the duel has not started" would be a lie. */
+  midDuel: boolean;
+  /** Resolve an event card ref to a passcode against the board as it was BEFORE
+   *  the events moved it — which is where the card actually was. */
+  resolve: (ref: unknown) => number;
 }) {
+  const rows = withBattleResults(events, mySeat, names, resolve);
   return (
     <aside className="feedrail" data-testid="feed-rail">
       <div className="feedhead">
         <span>What has happened</span>
       </div>
       <div className="feedrows">
-        {events.length === 0 ? <div className="feedempty">The duel has not started.</div> : null}
-        {events.map((e, i) => (
-          <FeedRow key={i} e={e} mySeat={mySeat} names={names} mark={markAt === i} />
-        ))}
+        {events.length === 0 ? (
+          <div className="feedempty">
+            {/* Two different empty states, because they answer different questions.
+                Saying "the duel has not started" while the board shows a mid-duel
+                position is a lie, and it is the only thing on screen that could
+                explain what happened. */}
+            {midDuel ? "Earlier turns are not available." : "The duel has not started."}
+          </div>
+        ) : null}
+        {rows.map((r, i) =>
+          r.result ? (
+            <div className="feedrow result" key={i} data-testid="battle-result">
+              {r.result}
+            </div>
+          ) : (
+            <FeedRow key={i} e={r.e!} mySeat={mySeat} names={names} mark={markAt === i} />
+          ),
+        )}
       </div>
     </aside>
   );
+}
+
+/**
+ * F-10 — the screen must state the RESULT of a battle, not just that one happened.
+ *
+ * Nothing here is computed from the rules. The engine emits ATTACK (who attacked
+ * what), BATTLE (the damage step ran), LP_CHANGE (whose life points moved and by
+ * how much) and MOVE (which card went to the graveyard). This assembles those four
+ * into the one sentence the player is actually asking for, and says `no damage`
+ * explicitly when the engine emitted no LP_CHANGE — because silence about damage
+ * reads as "I do not know", and here we do.
+ *
+ * ATK/DEF come from the card corpus, which is data we hold. If a participant
+ * cannot be identified at all, it is described rather than named, never guessed.
+ */
+function withBattleResults(
+  events: DuelEvent[],
+  mySeat: Seat,
+  names: { me: string; opp: string },
+  resolve: (ref: unknown) => number,
+): { e?: DuelEvent; result?: string }[] {
+  const out: { e?: DuelEvent; result?: string }[] = [];
+  events.forEach((e, i) => {
+    out.push({ e });
+    if (e.kind !== "BATTLE") return;
+    const atkRef = e["attacker"];
+    const defRef = e["target"];
+    const label = (ref: unknown) => {
+      const code = resolve(ref);
+      if (code) {
+        const info = cardInfo(code);
+        return info ? `${info.name} (${info.atk ?? "?"})` : String(code);
+      }
+      const r = ref as { controller?: Seat; sequence?: number } | undefined;
+      if (!r) return "a monster";
+      return `${r.controller === mySeat ? "your" : "their"} monster in Monster ${(r.sequence ?? 0) + 1}`;
+    };
+    // Everything after this BATTLE, up to the next ATTACK, belongs to this battle.
+    const tail: DuelEvent[] = [];
+    for (let j = i + 1; j < events.length; j++) {
+      if (events[j]!.kind === "ATTACK" || events[j]!.kind === "BATTLE") break;
+      tail.push(events[j]!);
+    }
+    const lp = tail.find((t) => t.kind === "LP_CHANGE");
+    const dead = tail.filter((t) => t.kind === "MOVE");
+    const destroyed = dead
+      .map((t) => {
+        const code = resolve((t as { from?: unknown })["from"]);
+        return code ? (cardInfo(code)?.name ?? String(code)) : null;
+      })
+      .filter(Boolean) as string[];
+    const dmgSeat = lp ? (lp["seat"] as Seat) : null;
+    const dmg = lp ? Math.abs(lp["delta"] as number) : 0;
+    const who = dmgSeat === null ? "" : dmgSeat === mySeat ? "you" : names.opp;
+    out.push({
+      result:
+        `${label(atkRef)} attacked ${label(defRef)} — ` +
+        (destroyed.length ? `${destroyed.join(" and ")} destroyed` : "nothing destroyed") +
+        " — " +
+        (dmg ? `${who} took ${dmg} damage` : "no damage"),
+    });
+  });
+  return out;
 }
 
 function FeedRow({

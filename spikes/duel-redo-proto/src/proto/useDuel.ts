@@ -3,7 +3,7 @@ import type { CardEntry, DuelEvent, DuelStateSnapshot, Seat } from "./types";
 import { mayAnswerWithoutAsking, theOnlyAnswer, type DecisionResponse } from "./classify";
 import { playerCancelExists } from "./playerCancelExists";
 import type { Continuation, Step } from "./replay";
-import { clone } from "./board";
+import { applyEvents, clone } from "./board";
 import type { PresenceState, Scenario } from "./scenarios";
 
 export type Control = "mine" | "theirs" | "resolving" | "connecting" | "disconnected" | "ended";
@@ -160,6 +160,11 @@ export function useDuel(scenario: Scenario) {
           return nb;
         });
       }
+      // Recorded engine events move the board. This is what makes the life-point
+      // plate and the history rail agree instead of contradicting each other.
+      if (c.applyRecorded && c.events?.length) {
+        setBoard((b) => applyEvents(clone(b), c.events as { kind: string }[]));
+      }
       // A PHASE event moves the board's own phase, exactly as the next STATE frame
       // would. The rail reads the board and never re-derives the phase itself.
       const phaseEv = c.events?.find((e) => e.kind === "PHASE" && typeof e["phase"] === "number");
@@ -222,6 +227,10 @@ export function useDuel(scenario: Scenario) {
           const t = window.setTimeout(() => {
             setDelta(scenario.delta!);
             setFeed((f) => [...f, ...scenario.delta!]);
+            // The delta's own recorded LP_CHANGE / MOVE events move the board.
+            // Narrating them without applying them is what made the life-point
+            // plate read 8,000 beside a rail row saying -1900.
+            setBoard((b) => applyEvents(clone(b), scenario.delta as { kind: string }[]));
             setControl("mine");
             setStep(scenario.open);
             setSpent(false);

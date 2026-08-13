@@ -26,6 +26,9 @@ export interface Continuation {
   /** Hand control to the opponent when this resolves. */
   handOver?: boolean;
   endDuel?: { winner: Seat | null; reason: string };
+  /** Apply this continuation's events to the board via `applyEvents` — for
+   *  recorded engine events only, never for events the client generated. */
+  applyRecorded?: boolean;
   /** A monster that has now declared an attack; the engine stops offering it. */
   attackerSpent?: { controller: Seat; location: string; sequence: number };
   /**

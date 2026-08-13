@@ -67,6 +67,13 @@
   --thumb-w: 64px;
   --thumb-h: 92px;
   --pile-w: 40px;
+  --verb-slot-w: 180px;
+  --confirm-slot-w: 340px;
+  --inspector-art-h: 200px;
+  /* The effect text is the most load-bearing text on the screen for a player who
+     does not know this format's card pool — which is the actual user. The ported
+     sheet set it at 10.5px inside a 50px box. */
+  --t-effect: 12px;
 
   /* ── motion · every duration in the prototype is one of these ────────── */
   --m-instant: 90ms;         /* state flips that must not read as animation */
@@ -2350,4 +2357,184 @@ img.cardart.fill {
 .verb:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* ── ZUH-121 round 3 · usability-pass majors ─────────────────────────────── */
+
+/* F-08 · NO CONTROL MAY GROW INTO THE SPACE ANOTHER CONTROL JUST VACATED.
+   The verb row is a fixed three-column grid: the left slot is Cancel's and only
+   Cancel's, the right slot is the confirm's and is width-capped. Neither moves
+   when a label changes length. */
+.q-verbs {
+  display: grid;
+  grid-template-columns: var(--verb-slot-w) var(--sp-5) var(--confirm-slot-w);
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+}
+.q-verbs > *:first-child {
+  grid-column: 1;
+  justify-self: stretch;
+  text-align: center;
+}
+.q-verbs > *:last-child {
+  grid-column: 3;
+  justify-self: stretch;
+  max-width: var(--confirm-slot-w);
+  /* NEVER ELLIPSISE THE CONFIRM LABEL. It grows DOWNWARD inside a fixed-width
+     slot, so F-08's geometry rule still holds and nothing invades Cancel's x —
+     but the card name is never cut. `text-overflow: ellipsis` truncated
+     "Tribute Thunder King Rai-Oh (Monster 1)" to "…(Monst…", which removed the
+     one thing distinguishing two identically-named candidates, and the DOM text
+     was still complete so the label-fidelity gate could not see it. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: var(--lh-tight);
+  padding-block: var(--sp-2);
+}
+/* The commit clause lives here, above the buttons, where the discard step
+   already put it — not inside the control it describes. */
+.commitwarn {
+  text-align: center;
+  font-size: var(--t-cap);
+  color: var(--warn);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+/* F-10 · the battle result: one row, the answer to "what did that do" */
+.feedrow.result {
+  display: block;
+  grid-template-columns: none;
+  border-left: 2px solid var(--accent);
+  color: var(--text-0);
+  line-height: var(--lh-body);
+}
+
+/* F-12 · the effect text gets the panel's remaining height, and the art gives it
+   up. The clipped half of Thunder King Rai-Oh's text is the half that says
+   whether the card is dangerous, and the learning-Edison persona is the user. */
+.inspector {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - var(--topbar-h) - var(--sp-9));
+}
+.inspector-art {
+  flex: 0 0 auto;
+  max-height: var(--inspector-art-h);
+  overflow: hidden;
+}
+/* THE EFFECT TEXT IS NEVER CLIPPED.
+   The ported sheet capped `.tb-body` at a literal 50px with `overflow:auto` and no
+   scrollbar, fade or affordance — so Thunder King Rai-Oh cut at "During either
+   player's turn, when", hiding the Special Summon negation, which is the half that
+   decides whether the card is dangerous. The text now takes whatever height it
+   needs; the PANEL is the one scroll container, and it fades at its own fold. */
+.inspector .tb-body {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+  font-size: var(--t-effect);
+}
+.inspector {
+  overflow: auto;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(180deg, #000 calc(100% - var(--sp-5)), transparent);
+}
+
+/* Pile inspector · free, instant, silent, never broadcast */
+.pilesheet {
+  position: absolute;
+  left: var(--sp-4);
+  top: var(--sp-4);
+  bottom: var(--sp-4);
+  width: var(--inspector-w);
+  z-index: var(--z-float);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-4);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  animation: dockin var(--m-base) var(--ease-out);
+}
+.pilesheet .ph {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--t-cap);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.pilesheet .ph .pgrow {
+  flex: 1;
+}
+.pilesheet .pgrid {
+  flex: 1;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+}
+.pilesheet .pempty {
+  padding: var(--sp-8);
+  text-align: center;
+  color: var(--text-2);
+  font-size: var(--t-small);
+}
+.pile {
+  transition: border-color var(--m-quick) var(--ease-out);
+}
+.pile:hover {
+  border-color: var(--accent);
+}
+/* A pile whose contents we are not entitled to must not advertise a click. */
+.pile.sealed {
+  cursor: default;
+}
+.pile.sealed:hover {
+  border-color: var(--border);
+}
+
+/* Chain strip · unprompted, persistent, and it says what is resolving */
+.chainstrip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--t-cap);
+  animation: dockin var(--m-base) var(--ease-out);
+}
+.chainstrip .clink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-2);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.chainstrip .clink.mine {
+  border-color: var(--own);
+}
+.chainstrip .clink.theirs {
+  border-color: var(--opp);
+}
+.chainstrip .clink.resolving {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chainstrip .ord {
+  font-weight: var(--w-bold);
+  font-variant-numeric: tabular-nums;
+}
+.chainstrip .clabel {
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-2);
 }

@@ -9,6 +9,7 @@ import s05 from "../fixtures/s05-chain-window.json";
 import s06 from "../fixtures/s06-hand-discard.json";
 import s07 from "../fixtures/s07-opponent-turn.json";
 import s08 from "../fixtures/s08-battle-command.json";
+import s09 from "../fixtures/s09-battle-resolved.json";
 import cardsJson from "../fixtures/cards.json";
 
 import type { CardEntry, CardInfo, DuelDecision, DuelEvent, DuelStateSnapshot, Seat } from "./types";
@@ -26,7 +27,7 @@ import {
   type Step,
 } from "./replay";
 import { clone, faceUp } from "./replay";
-import { POS_FACEDOWN_DEF, POS_FACEUP_ATK, refOf, resolveCode, take, put } from "./board";
+import { POS_FACEDOWN_DEF, POS_FACEUP_ATK, assertFeedConsistency, refOf, resolveCode, take, put } from "./board";
 
 export const CARDS = cardsJson as unknown as Record<string, CardInfo>;
 export function cardInfo(code: number): CardInfo | null {
@@ -45,6 +46,7 @@ const F = {
   s06: s06 as unknown as Fixture,
   s07: s07 as unknown as Fixture,
   s08: s08 as unknown as Fixture,
+  s09: s09 as unknown as Fixture,
 };
 
 export type PresenceState = "connected" | "away" | "claimable";
@@ -118,11 +120,34 @@ export function candidateLabel(
     );
     return dup ? `${n} (${SLOT[e.location] ?? e.location} ${e.sequence + 1})` : n;
   }
-  // ND-9: the engine redacted a card from its own owner. Say what we know and
-  // nothing more — the location and the slot. Never "Face-down card" for a card
-  // the player owns and is entitled to see.
+  // No name anywhere — the card is genuinely not ours to identify (an opponent's
+  // face-down). DESCRIBE WHAT THE PLAYER CAN SEE, never a bare ordinal: one
+  // evaluator persona read "hand card 7" as a card *called* Hand Card 7, and it
+  // was sitting next to "This step cannot be cancelled".
   const who = e.controller === mySeat ? "your" : "their";
-  return `${who} ${e.location === "SZONE" ? "set card" : e.location === "HAND" ? "hand card" : "card"} ${e.sequence + 1}`;
+  const what =
+    e.location === "SZONE"
+      ? "face-down card"
+      : e.location === "MZONE"
+        ? "face-down monster"
+        : e.location === "HAND"
+          ? "card"
+          : "card";
+  const where =
+    e.location === "MZONE"
+      ? `Monster ${e.sequence + 1}`
+      : e.location === "SZONE"
+        ? `Spell & Trap ${e.sequence + 1}`
+        : e.location === "HAND"
+          ? `${ordinal(e.sequence + 1)} in hand`
+          : `${e.location} ${e.sequence + 1}`;
+  return `${who} ${what}, ${where}`;
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]!);
 }
 
 // ── SC1 · Duel start ──────────────────────────────────────────────────────────
@@ -138,7 +163,7 @@ function scStart(): Scenario {
     opponentName: NAMES.opp,
     myName: NAMES.me,
     board,
-    feed: eventsOf(F.s01),
+    feed: [],
     open: null,
     control: "connecting",
   };
@@ -391,6 +416,64 @@ function branchTarget(
   };
 }
 
+// ── SC4c · A real battle, resolved by the real engine ────────────────────────
+
+/**
+ * The one scenario that shows a battle OUTCOME, and every number in it is
+ * recorded. Uraby (1500) attacks Thunder King Rai-Oh (1900); ocgcore destroyed
+ * Uraby and charged its controller 400. The prototype replays the engine's own
+ * ATTACK / BATTLE / LP_CHANGE / MOVE events and applies them; it computes nothing.
+ */
+function scBattle(): Scenario {
+  const board = firstState(F.s09);
+  const battle = firstDecision(F.s09, "BattleCommand", (d) => d.attacks.length > 0);
+  const target = firstDecision(F.s09, "SelectCard", (d) => d.cards.every((c) => c.location === "MZONE"));
+  const attacker = battle.attacks[0]!;
+  const resolved = eventsOf(F.s09).filter((e) => e.kind !== "HINT" && e.kind !== "PHASE");
+  return {
+    id: "battle",
+    title: "4c · A battle the engine actually resolved",
+    brief:
+      "Recorded end to end. Uraby (1500) attacks Thunder King Rai-Oh (1900): ocgcore destroyed Uraby and charged its controller 400 life points. Every number here came off the wire — attacking into something bigger costs you the monster and the damage.",
+    provenance: F.s09.source,
+    mySeat: F.s09.mySeat,
+    opponentName: NAMES.opp,
+    myName: NAMES.me,
+    board,
+    feed: [],
+    control: "mine",
+    open: {
+      decision: battle,
+      branch: (a) => {
+        if (a.kind !== "BattleCommand") throw new Error("wrong answer kind");
+        if (a.action === "toEP") return { named: "End Turn", handOver: true };
+        if (a.action === "toM2") return { named: "Main Phase 2", events: [ev("PHASE", { phase: 16 })] };
+        return {
+          named: `Attack with ${nameOf(attacker)}`,
+          next: [
+            {
+              decision: target,
+              intent: { verb: "Attack", subject: attacker },
+              branch: (ta) => {
+                if (ta.kind !== "SelectCard") throw new Error("wrong answer kind");
+                if (ta.indices === null) return { named: "Cancel attack", events: [] };
+                const t = target.cards[ta.indices[0] ?? 0]!;
+                return {
+                  named: `Attack ${candidateLabel(t, attacker.controller, target.cards, board)}`,
+                  // The engine's own events, replayed. `applyEvents` moves the board
+                  // from them; nothing here decides who won.
+                  events: resolved,
+                  applyRecorded: true,
+                };
+              },
+            },
+          ],
+        };
+      },
+    },
+  };
+}
+
 // ── SC5 · Chain window — the offer, with and without the deltas ───────────────
 
 function scChain(withContext: boolean): Scenario {
@@ -414,7 +497,7 @@ function scChain(withContext: boolean): Scenario {
     opponentName: NAMES.opp,
     myName: NAMES.me,
     board,
-    feed: eventsOf(F.s05).slice(0, 6),
+    feed: [],
     control: "mine",
     open: {
       decision: chain,
@@ -568,12 +651,13 @@ function scArtFail(): Scenario {
   };
 }
 
-export const SCENARIOS: Scenario[] = [
+const ALL: Scenario[] = [
   scStart(),
   scSummon(),
   scTribute(),
   scAttack(false),
   scAttack(true),
+  scBattle(),
   scChain(true),
   scChain(false),
   scDiscard(),
@@ -584,5 +668,12 @@ export const SCENARIOS: Scenario[] = [
   scEnd("abandoned", 0),
   scArtFail(),
 ];
+
+// FAIL TO LOAD, not fail quietly. A scenario whose opening feed claims a state
+// change its opening board cannot be shown to reflect is a broken fixture, and the
+// app must not start with one.
+for (const sc of ALL) assertFeedConsistency(sc.id, sc.feed);
+
+export const SCENARIOS: Scenario[] = ALL;
 
 export { clone, faceUp };
