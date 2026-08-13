@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CardEntry, DuelEvent, DuelStateSnapshot, Seat } from "./types";
 import { mayAnswerWithoutAsking, theOnlyAnswer, type DecisionResponse } from "./classify";
 import { playerCancelExists } from "./playerCancelExists";
+import { questionTakesTheBand } from "./questionTakesTheBand";
 import type { Continuation, Step } from "./replay";
 import { applyEvents, clone } from "./board";
 import type { PresenceState, Scenario } from "./scenarios";
@@ -132,8 +133,12 @@ export function useDuel(scenario: Scenario) {
 
   useEffect(() => reset(scenario), [scenario, reset]);
 
-  // SC1 only: the duel-start sequence is the one place a timed transition is the
-  // design. Everything else is driven by the player.
+  // SC1 only: the seating statement is replaced when the ENGINE's first DECISION
+  // arms the board. There is no fixture socket here, so 1400 ms stands in for that
+  // frame arriving — a replay stand-in, NOT a designed duration and not a beat.
+  // ZUH-131 B6 observed ~15–20 s of read-only screens between games in the
+  // reference client; the register question that raises (a dock line vs a screen of
+  // its own) is recorded in `09-pacing-application.md` B6 and is not answered here.
   useEffect(() => {
     if (scenario.id !== "start") return;
     const t = window.setTimeout(() => setControl("mine"), 1400);
@@ -141,11 +146,22 @@ export function useDuel(scenario: Scenario) {
     return () => window.clearTimeout(t);
   }, [scenario]);
 
+  /**
+   * THE RECEIPT HAS NO TIMER (ZUH-131 budget B1).
+   *
+   * It was removed after `--m-receipt` (2400 ms). The pacing study measured the
+   * surrounding rhythm of a real match at 25–30 s per screen state, and the
+   * reference client answers the same moment with a dialog that waits for a
+   * click — so 2.4 s-and-gone is the aggressive end of the spectrum. This is the
+   * rule the design already applies to the delta strip: it never auto-fades, and
+   * recovery for "I did not read it" is "read it again".
+   *
+   * Cessation is below, in four places, and nowhere else:
+   *   · a question takes the band (superseded)   · the player's next action
+   *   · control leaves me                        · DUEL_END
+   */
   const pushReceipt = useCallback((text: string, detail: string) => {
-    const r = { id: receiptId++, text, detail };
-    setReceipts((rs) => [...rs, r]);
-    const t = window.setTimeout(() => setReceipts((rs) => rs.filter((x) => x.id !== r.id)), 2400);
-    timers.current.push(t);
+    setReceipts((rs) => [...rs, { id: receiptId++, text, detail }]);
   }, []);
 
   const applyContinuation = useCallback(
@@ -191,10 +207,14 @@ export function useDuel(scenario: Scenario) {
         setEnded(c.endDuel);
         setControl("ended");
         setIntent(null);
+        setReceipts([]); // B1 cessation · DUEL_END
         return;
       }
       if (c.next?.length) {
         const [head, ...rest] = c.next;
+        // B1 cessation · superseded. Only a QUESTION supersedes a receipt; the
+        // board re-arming does not, which is why this is not `if (head)`.
+        if (questionTakesTheBand(head!.decision)) setReceipts([]);
         setQueue(rest);
         const nextIntent = head!.intent ?? from.intent ?? null;
         if (nextIntent) {
@@ -222,8 +242,13 @@ export function useDuel(scenario: Scenario) {
       setQueue([]);
       if (c.handOver) {
         setControl("theirs");
+        setReceipts([]); // B1 cessation · control leaves me
         // Everything the opponent does while it is theirs, then control back.
         if (scenario.delta?.length) {
+          // 2.6 s stands in for a whole opponent turn, which ZUH-131 B5 measured
+          // at ~30 s (two turns, 30 s and 35 s). It is a REVIEW COMPRESSION so a
+          // reviewer is not left staring at a desaturated board — not a designed
+          // duration, and no pacing decision should be read out of it.
           const t = window.setTimeout(() => {
             setDelta(scenario.delta!);
             setFeed((f) => [...f, ...scenario.delta!]);
@@ -243,6 +268,9 @@ export function useDuel(scenario: Scenario) {
       const t = window.setTimeout(() => {
         setControl("mine");
         setStep(scenario.open);
+        // B1 cessation · superseded, on the return to the scenario's own open
+        // decision. Same test: a question supersedes, an armed board does not.
+        if (questionTakesTheBand(scenario.open?.decision)) setReceipts([]);
       }, 320);
       timers.current.push(t);
     },
@@ -274,6 +302,9 @@ export function useDuel(scenario: Scenario) {
         };
       }
       const c = step.branch(a);
+      // B1 cessation · the player's next action. Anything the player submits
+      // clears a receipt they have had every opportunity to read.
+      setReceipts([]);
       applyContinuation(c, step);
     },
     [step, applyContinuation],
@@ -290,6 +321,7 @@ export function useDuel(scenario: Scenario) {
     setLastNamed(c.named);
     setStep(null);
     setIntent(null);
+    setReceipts([]); // B1 cessation · the player's next action (their own cancel)
     setControl("resolving");
     const t = window.setTimeout(() => {
       setControl("mine");
@@ -304,6 +336,7 @@ export function useDuel(scenario: Scenario) {
     setControl("ended");
     setStep(null);
     setIntent(null);
+    setReceipts([]); // B1 cessation · DUEL_END
   }, [scenario]);
 
   const reviewBoard = useCallback(() => setEnded((e) => (e ? { ...e, reviewing: true } : e)), []);
@@ -312,6 +345,7 @@ export function useDuel(scenario: Scenario) {
     setEnded({ winner: scenario.mySeat, reason: "abandoned" });
     setControl("ended");
     setStep(null);
+    setReceipts([]); // B1 cessation · DUEL_END
   }, [scenario]);
 
   const model: DuelModel = useMemo(
