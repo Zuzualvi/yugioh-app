@@ -119,8 +119,18 @@ function DockBody({
   // IdleCommand and BattleCommand are NEVER a question panel. They arm the
   // board; the engine's legal-move list becomes what the board affords. Cleared
   // and carried forward from the previous design.
+  //
+  // ONE STATEMENT AT A TIME (§3.4), and while the delta is EXPANDED the delta is
+  // the statement. This hint is redundant in that moment — the board is armed, the
+  // phase rail is on screen and `End Turn` is in it — and the 132px band is
+  // reserved, so the 32px it occupies is the only space the delta list can be given
+  // without growing the dock over the hand (which is ZUH-118 break 3). Measured:
+  // suppressing it takes the expanded list from 42px showing 2 of 5 rows to 74px
+  // showing 4 of 5, with the band still at exactly 132px. ZUH-148.
   if (d.kind === "IdleCommand" || d.kind === "BattleCommand")
-    return <div className="quiet">Your move — click a card, or use the phase rail.</div>;
+    return m.delta && m.deltaOpen ? null : (
+      <div className="quiet">Your move — click a card, or use the phase rail.</div>
+    );
 
   return <Question m={m} d={d} onAnswer={onAnswer} selection={selection} setSelection={setSelection} />;
 }
