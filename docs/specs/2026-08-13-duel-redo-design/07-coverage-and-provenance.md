@@ -38,7 +38,9 @@ direction that costs most:
 **Two conventions, stated so the count can be checked rather than trusted.** (1) *Reachable* means a
 reviewer can put the built prototype into that state; it does **not** mean the state is fully rendered as
 specified — where it is not, the row says so and names the issue. (2) A row is marked reachable only if
-this re-derivation observed it; three rows are marked **not driven** rather than assumed.
+this re-derivation observed it. **Two rows are marked `not driven` rather than assumed** — the board's
+and the inspector's `art loading`, both sub-4 s transients — and both are counted as **not reachable**, so
+the total is a floor rather than a flattering estimate.
 
 | Surface | Reachable / total | Not reachable, and why |
 |---|---|---|
