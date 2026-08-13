@@ -36,6 +36,23 @@ export interface DuelModel {
   feed: DuelEvent[];
   delta: DuelEvent[] | null;
   deltaOpen: boolean;
+  /**
+   * THE FEED RAIL'S `— since you last acted —` BOUNDARY, AND IT IS NOT THE DELTA'S
+   * (ZUH-145). It is the first event that arrived while control was away, held by
+   * identity so no arithmetic can move it.
+   *
+   * 02 §3.5 gives the delta a `dismissed / spent` state whose behaviour is "gone,
+   * **feed mark stays**", and 02 §7 triggers the mark on "control just returned" —
+   * so the strip is the transient summary and the mark is the durable boundary.
+   * This field exists because the boundary was previously derived from `delta`,
+   * which meant dismissing the summary silently deleted the transcript's record of
+   * where the player's own last action was.
+   *
+   * Survives: Show · Hide · Dismiss · the player's actions · DUEL_END (the rail
+   * stays live after the duel ends, and the boundary is still true).
+   * Ceases: replaced by the next handover's boundary · a new duel.
+   */
+  deltaMark: DuelEvent | null;
   selection: number[];
   presence: PresenceState;
   net: "ok" | "reconnecting";
@@ -91,6 +108,7 @@ export function useDuel(scenario: Scenario) {
   const [feed, setFeed] = useState<DuelEvent[]>(scenario.feed);
   const [delta, setDelta] = useState<DuelEvent[] | null>(null);
   const [deltaOpen, setDeltaOpen] = useState(false);
+  const [deltaMark, setDeltaMark] = useState<DuelEvent | null>(null);
   const [selection, setSelection] = useState<number[]>([]);
   const [presence, setPresence] = useState<PresenceState>(scenario.presence ?? "connected");
   const [net, setNet] = useState<"ok" | "reconnecting">(scenario.net ?? "ok");
@@ -117,6 +135,7 @@ export function useDuel(scenario: Scenario) {
       setFeed(s.feed);
       setDelta(null);
       setDeltaOpen(false);
+      setDeltaMark(null);
       setSelection([]);
       setPresence(s.presence ?? "connected");
       setNet(s.net ?? "ok");
@@ -251,6 +270,10 @@ export function useDuel(scenario: Scenario) {
           // duration, and no pacing decision should be read out of it.
           const t = window.setTimeout(() => {
             setDelta(scenario.delta!);
+            // The boundary is set HERE — at control return, with the strip — and is
+            // never unset with it. 02 §7: the mark's trigger is "control just
+            // returned", not "a summary is open".
+            setDeltaMark(scenario.delta![0] ?? null);
             setFeed((f) => [...f, ...scenario.delta!]);
             // The delta's own recorded LP_CHANGE / MOVE events move the board.
             // Narrating them without applying them is what made the life-point
@@ -360,6 +383,7 @@ export function useDuel(scenario: Scenario) {
       feed,
       delta,
       deltaOpen,
+      deltaMark,
       selection,
       presence,
       net,
@@ -370,7 +394,7 @@ export function useDuel(scenario: Scenario) {
       protoNote,
       spentAttackers,
     }),
-    [scenario, board, control, step, intent, receipts, feed, delta, deltaOpen, selection, presence, net, ended, error, normalSummonSpent, lastNamed, protoNote, spentAttackers],
+    [scenario, board, control, step, intent, receipts, feed, delta, deltaOpen, deltaMark, selection, presence, net, ended, error, normalSummonSpent, lastNamed, protoNote, spentAttackers],
   );
 
   return {

@@ -198,14 +198,19 @@ export default function App() {
       }) || 0
     );
   };
-  // WHERE THE FEED RAIL'S `since you last acted` BOUNDARY IS, BY IDENTITY — not by
-  // arithmetic. It was `feed.length - delta.length`, which is only correct at the
-  // instant the delta lands: every event appended afterwards moved the mark one row
-  // further down a rail whose boundary had not moved. The delta's events ARE the
-  // objects appended to the feed, so the boundary is where the first of them sits.
+  // WHERE THE FEED RAIL'S `since you last acted` BOUNDARY IS.
+  //
+  // Read from `deltaMark` — the mark's OWN state — and not from `delta` (ZUH-145).
+  // Borrowing the delta's lifetime meant `Dismiss` deleted the transcript's record
+  // of where the player last acted, while 02 §3.5 says "gone, feed mark stays".
+  // The strip is the transient summary; the mark is the durable boundary.
+  //
+  // Resolved by IDENTITY, not by arithmetic: it was `feed.length - delta.length`,
+  // which is only correct at the instant the delta lands — every event appended
+  // afterwards moved the mark one row further down a boundary that had not moved.
   // `lastIndexOf`, because the prototype replays the same recorded slice on every
-  // handover, so one object can appear twice and the boundary is the latest append.
-  const deltaBoundary = m.delta?.length ? m.feed.lastIndexOf(m.delta[0]!) : -1;
+  // handover, so one event object can appear twice and the boundary is the latest.
+  const deltaBoundary = m.deltaMark ? m.feed.lastIndexOf(m.deltaMark) : -1;
 
   const parts = useBoardParts({
     m,
