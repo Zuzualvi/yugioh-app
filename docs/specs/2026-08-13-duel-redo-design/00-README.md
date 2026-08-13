@@ -25,7 +25,7 @@ this project's PRD.
 | File | What it is |
 |---|---|
 | **`01-object-model.md`** | The object model, **the decision classification law** (the fix for the unwinnable-game defect), the commit-point call, the disagreement list, the persistence/cessation audit, and the two decisions I am surfacing rather than taking. **Start here.** |
-| `02-surface-inventory.md` | 16 surfaces, 92 state rows, each with its motion by token |
+| `02-surface-inventory.md` | 16 surfaces, 94 state rows, each with its motion by token |
 | `03-flows.md` | 10 flows: sequencing, gaps, failures, recovery, actions-to-goal |
 | `04-component-contract.md` | Component tree against the real paths on `master`, props, variants, acceptance criteria |
 | `05-backend-delta.md` | Every prior delta verified **end to end**, plus the new ones |

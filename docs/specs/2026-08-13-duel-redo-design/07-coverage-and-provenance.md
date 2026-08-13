@@ -13,46 +13,112 @@ something I drove and can point at, or something I am telling you I did not.
 
 ## 1 · Coverage — what the prototype reaches, and what it does not
 
-**Inventory: 16 surfaces · 92 state rows · 10 flows.**
-**Prototype: 14 scenarios · 61 of 92 state rows reachable · 31 not reachable.**
+**Inventory: 16 surfaces · 94 state rows · 10 flows.**
+**Prototype: 14 scenarios · 64 of 94 state rows reachable · 30 not reachable.**
+
+🔴 **This table was RE-DERIVED against the built file on 2026-08-13, and the version it replaces was
+wrong.** Every row below was decided by **driving the downloaded reviewable build**
+(`raw.githubusercontent.com` → `file://`, headless Chromium 1440×900) and reading the DOM — not by
+reading source and not by arithmetic on a previous total. What the earlier version got wrong, in the
+direction that costs most:
+
+- **The pile inspector and the chain strip were recorded as `0 / 5` and `0 / 6`, "not implemented at
+  all". Both have been built since commit `6742523`** — *"Fix seven usability majors; build the two
+  surfaces that had none"* — which landed **before** the SHA this round started from. The rows never
+  caught up, and three successive rounds of edits carried them forward. **They are 4/5 and 2/6, driven.**
+  See §1.2a.
+- **The feed rail's `empty, turn > 1` was recorded as unreachable.** It renders `Earlier turns are not
+  available.` at the load of scenario 7, and has all along.
+- **The denominator was wrong too.** 91 (and my 92) undercounted the inventory by two: `02 §2` verb chips
+  has **4** state rows and was counted as 3; `02 §4` phase rail has **5** and was counted as 4. The
+  mechanical count of state-table rows in `02` is **94** — 93 before budget B1 added the receipt's
+  `spent` row. Arithmetic on a wrong total is how the stale rows survived, so the total is now derived
+  from the table rather than the table from the total.
+
+**Two conventions, stated so the count can be checked rather than trusted.** (1) *Reachable* means a
+reviewer can put the built prototype into that state; it does **not** mean the state is fully rendered as
+specified — where it is not, the row says so and names the issue. (2) A row is marked reachable only if
+this re-derivation observed it; three rows are marked **not driven** rather than assumed.
+
+| Surface | Reachable / total | Not reachable, and why |
+|---|---|---|
+| Board / Field | **12 / 15** | `loading` — no pre-`STATE` state exists; every scenario opens from a snapshot · `art loading` — **not driven**, a sub-4 s transient (the art-*failed* end state is driven, scenario 10) · `disconnected` — no socket to drop. ⚠️ `off-clock` counts as reachable because the board *is* off-clock and inert (End Turn and every phase button disabled, a hand click opens the inspector, no `not your turn`), **but the desaturation the inventory specifies is absent** — `filter: none`, `opacity: 1`, no such class in the build. **ZUH-150.** |
+| Verb chips | **4 / 4** | — *(was recorded as 3/3; there are four rows. `default`, `dismissed` via `Esc`, `empty` — no cluster and no sentence, driven on a hand card during `BattleCommand` — and `disabled`, driven off-clock: cluster 0 nodes, inspector 1.)* |
+| Dock · Question | **5 / 8** | `partial` — no `min !== max` decision in the capture · `empty candidates` — never emitted · `error` — nothing rejects a response. *`gap` is driven: intent line up, dock reading `Resolving…`, 0 question nodes.* |
+| Dock · Intent line | **5 / 5** | — *(all five driven, including `across the gap`: the line's text is byte-identical before and after the sub-decision arrives.)* |
+| Dock · Receipt | **2 / 4** | `stacked` and `superseded` need two auto-answers in sequence; 4a is the only auto-answer path and no question follows it. *`spent` is driven.* |
+| Dock · Waiting | **3 / 4** | `my connection dropped` — no scenario sets `net = reconnecting`. *`opponent is gone` is driven as specified: the dock renders **nothing** while the away banner owns the statement.* |
+| Dock · Delta | **3 / 4** | `empty` — the handover scenario always carries events. |
+| Dock · Away | **2 / 3** | `returned` — no presence-restore path. |
+| Phase rail + turn resource | **5 / 5** | — *(was recorded as 4/4; there are five rows. `question open` is driven — marker stays on `M1` with all 7 buttons disabled, which is F-11's fix — and `turn boundary` is driven: the resource resets to `not yet used` when control returns.)* |
+| Feed rail | **4 / 7** | `partial (— feed resumes here —)` — no reconnect path · `unrecognised event` — every recorded kind has a `describe()` case · `duel-ended row` — the rail renders no `Duel ended — {reason}` row. **`empty, turn > 1` was wrongly listed here and is reachable**, driven at the load of scenario 7. |
+| Card inspector | **3 / 9** | `auto-push` (needs a resolving chain) · `pinned` (click and hover are the same gesture) · `art loading` (**not driven**, transient) · `provenance` and `provenance, art absent` (no captured card is in the pre-errata corpus) · `hidden card` (no route). *`hover`, `empty` and `art failed / 4 s deadline` are driven — the inspector renders name, type and ATK/DEF with **0** `<img>` nodes in scenario 10.* |
+| **Pile inspector** | **4 / 5** | `answer-space` — no decision in the capture has a pile-located candidate. **Built and driven:** `default` (`YOUR GY — 2 CARDS · Uraby · Book of Moon`), `empty` (`Their gy is empty.`), `hidden` (`33 cards. Contents hidden — this is not public information.`), `disabled` — i.e. inspection works **off-clock**, driven. |
+| **Chain strip** | **2 / 6** | `resolving`, `end` — no `CHAIN_SOLVING` or `CHAIN_END` event exists in any fixture · `compressed` — recorded chains are single-link · `unknown code` — every recorded link resolves. **Built and driven:** `empty` (absent, 0 nodes) and `default` — activating in scenario 5 renders `CHAIN 1 Book of Moon` with the owner tint (`clink mine`). |
+| Top bar | **3 / 4** | `our socket errored` — no transport-error surface exists. |
+| Duel-end overlay | **4 / 5** | `unknown reason` — no scenario emits an unrecognised reason. |
+| Cross-surface rules | **3 / 6** | `error` · `partial` · `disconnected` — all three for the reasons above. *`loading` is driven negatively as specified — **0** spinner/loader nodes anywhere in the build; `empty` and `ended` are driven.* |
+
+**The arithmetic, so it can be checked in one pass:**
+12 + 4 + 5 + 5 + 2 + 3 + 3 + 2 + 5 + 4 + 3 + 4 + 2 + 3 + 4 + 3 = **64**, over
+15 + 4 + 8 + 5 + 4 + 4 + 4 + 3 + 5 + 7 + 9 + 5 + 6 + 4 + 5 + 6 = **94**.
+
+**On the 74 / 92 figure that has been quoted elsewhere:** it appears nowhere in this repository, so it is
+not a number this document ever published. I cannot reproduce it and I have **not** tuned the table
+towards it. The closest reconstruction is crediting the two previously-zeroed surfaces at their **full**
+row counts on top of the old figure — 61 + 5 + 6 = **72**, or 63 + 11 = 74 — which is what someone would
+get by asking "are they built?" rather than "which of their states can be driven?". Those two questions
+have different answers, and this table answers the second: **the surfaces exist and 6 of their 11 states
+are reachable.** If the higher figure was meant as "built, therefore covered", both numbers are right
+about different things and this one is the one that survives being tapped.
 
 *(Round 2: `end-overlay/dismissed`, `top-bar/duel-ended` review path and the verb-cluster dismissal
 states became reachable with the blocker fixes.)*
 
-*(Round 3, the pacing passes: **+1 row and +1 reachable**, and that is the whole arithmetic —
-deleting the receipt's timer (B1) gave §3.3 a `spent` state, which is driven. Two states this table
-previously counted as reachable **were not actually rendering**: the feed rail's `delta-marked` row
-never drew at all until ZUH-141, and it then disappeared on `Dismiss` until ZUH-145. Both are now
-driven. The count did not change; it became true.)*
-
-### 1.1 Reachable, by surface
-
-| Surface | Reachable / total | Not reachable, and why |
-|---|---|---|
-| Board / Field | 14 / 15 | `disconnected` — the prototype has no socket to drop |
-| Verb chips | 3 / 3 | — |
-| Dock · Question | 5 / 8 | `partial` (no multi-select decision exists in the captured duel — no `SelectUnselectCard`, no `min !== max`) · `empty candidates` (never emitted) · `error` (nothing rejects a response) |
-| Dock · Intent line | 5 / 5 | — |
-| Dock · Receipt | 2 / 4 | `stacked` and `superseded` need two auto-answers in sequence; the capture has none — **`superseded` is implemented and unreachable, and it was unreachable before too**: 4a is the only auto-answer path and no question follows it. `spent` (the player's next action clears it) is driven. |
-| Dock · Waiting | 3 / 4 | `reconnecting` — modelled in `DuelModel` but no scenario drives it |
-| Dock · Delta | 3 / 4 | `empty` — the handover scenario always has events |
-| Dock · Away | 2 / 3 | `returned` — no presence-restore path in the prototype |
-| Phase rail + turn resource | 4 / 4 | — |
-| Feed rail | 4 / 7 | `empty turn > 1` · `partial (feed resumes here)` · `duel-ended row`. **`delta-marked` is in the reachable four and, until ZUH-141/ZUH-145, it was not: the mark never rendered, then vanished on `Dismiss`.** Now driven at the right boundary, across a battle-result row, and through dismiss / a later action / the duel's end. |
-| Card inspector | 4 / 9 | `auto-push` (needs a resolving chain) · `pinned` (click and hover are the same gesture in the prototype) · `provenance badge` (none of the 14 captured cards is in the pre-errata corpus) · `hidden card` · `error` |
-| **Pile inspector** | **0 / 5** | **Not implemented at all.** Pile badges render their counts and are not clickable. |
-| **Chain strip** | **0 / 6** | **Not implemented at all.** The captured chains are single-link and resolve inside one frame burst. |
-| Top bar | 3 / 4 | `socket errored` amber strip |
-| Duel-end overlay | 4 / 5 | `unknown reason`. `dismissed / Review board` is now reachable. |
-| Cross-surface rules | 3 / 6 | `error` · `partial` · `disconnected` |
+*(Round 3, the pacing passes: B1's deleted timer gave §3.3 a `spent` state, and two states this table
+counted as reachable **were not rendering** — the feed rail's `delta-marked` row never drew until
+ZUH-141, then vanished on `Dismiss` until ZUH-145. Both driven now.)*
 
 ### 1.2 The two surfaces with zero coverage, stated plainly
+
+> **⚠️ SUPERSEDED — this section was true when it was written and was false by the time it was read.
+> Kept verbatim, with the correction appended in §1.2a, because deleting it would hide three rounds in
+> which the document said we had not built something we had. The same append-not-rewrite rule as
+> `04 §4.4a`.**
 
 **Pile inspector** and **chain strip** are specified in the inventory and **built nowhere in the
 prototype.** Both carry forward largely unchanged from the approved design (`2026-08-06-duel-ui-design.md`
 §6 and §9), which is why I spent the budget elsewhere — but "carried forward" is not "shown", and
 neither has been seen rendered in this design's layout. If the CEO's approval is meant to cover
 them, it does not: he has not seen them here.
+
+### 1.2a · Correction — appended 2026-08-13. BOTH SURFACES ARE BUILT, and this document said otherwise for three rounds
+
+**They were built in commit `6742523`** — *"Fix seven usability majors; build the two surfaces that had
+none"* — which is an **ancestor of the SHA this round of work started from**. So they were already in the
+build when §1.2 above was last certified as accurate, and the `0 / 5` and `0 / 6` rows were carried
+forward by rounds of editing that did arithmetic on the headline instead of re-deriving the table.
+
+**What is there, observed by driving the downloaded build — not by reading the source:**
+
+| Surface | State | What the built prototype showed |
+|---|---|---|
+| Pile inspector | `default` | `YOUR GY — 2 CARDS ✕ Uraby Book of Moon` after the recorded battle in scenario 4c |
+| | `empty` | `THEIR GY — 0 CARDS ✕ Their gy is empty.` |
+| | `hidden` | `THEIR DECK — 33 CARDS ✕ 33 cards. Contents hidden — this is not public information.` |
+| | `disabled` (i.e. never) | inspection **works off-clock**: opened from the pile badge while control was the opponent's |
+| | `answer-space` | **not reachable** — no decision in the capture has a pile-located candidate |
+| Chain strip | `empty` | absent, 0 nodes, at the load of scenario 5 |
+| | `default` | `CHAIN 1 Book of Moon`, owner-tinted (`clink mine`), after activating in scenario 5 |
+| | `resolving`, `end`, `compressed`, `unknown code` | **not reachable** — no `CHAIN_SOLVING` or `CHAIN_END` event exists in any fixture, recorded chains are single-link, and every link resolves to a card |
+
+**So the honest statement, which is the one that ships with the invitation to review:** both surfaces are
+**built and can be tapped**, **6 of their 11 states are reachable**, and the 5 that are not are all "no
+recorded frame exists" gaps rather than missing UI — except `answer-space`, which needs a decision the
+capture does not contain. **The CEO asked for these two specifically — "build them or say plainly they are
+out; silence is not an option."** They were built and this document kept saying they were out. That is
+corrected here, and the mechanism that let it happen — editing a total instead of re-deriving a table — is
+recorded in §1.1.
 
 ### 1.3 Flows
 
@@ -61,13 +127,13 @@ them, it does not: he has not seen them here.
 | F1 Seating | ✅ |
 | F2 Summon, with the zone step asked | ✅ end to end, 3 actions |
 | F3 Tribute summon + the commit point | ✅ end to end, 4 actions, both tributes |
-| F4a Attack, one target, auto-answered | ✅ receipt reads `ANSWERED FOR YOU · Attack Mobius the Frost Monarch` |
+| F4a Attack, one target, auto-answered | ✅ receipt reads **`ANSWERED FOR YOU · Attack their face-down monster, Monster 1`** — driven. *(This row previously quoted `Attack Mobius the Frost Monarch`, which is the design's illustrative copy in `03` F4a and **not what this build produces**: the recorded target is a face-down monster, and F-07's fix made the label describe what the player can see rather than name a card the decision never named. Corrected 2026-08-13.)* |
 | F4b Attack, several targets, presented | ✅ both targets + player cancel |
 | F5 Chain window | ✅ both answers, and both with and without MH-3b/ND-9 applied |
 | F6 End-phase discard | ✅ all seven answers |
 | F7 Pass / wait / regain control + delta | ✅ |
 | F8 Opponent leaves → claim | ⚠️ **partial** — the presence transition and the grace period are driven by a prototype button, not by a frame. No `PRESENCE` frame exists (ND-10). |
-| F9 Duel end | ⚠️ **partial** — three reasons render, but the `DUEL_END` frame is hand-authored (see §2), and `Review board` is not wired |
+| F9 Duel end | ⚠️ **partial** — three reasons render and **`Review board` IS wired** (driven: it dismisses the card and a `Duel over — show result` pill reopens it — that was blocker F-02, fixed on this branch). The remaining gap is provenance, not behaviour: the `DUEL_END` frame is hand-authored (see §2). *`Review board is not wired` was stale — corrected 2026-08-13.* |
 | F10 Probing | ✅ verb chips, shake-with-no-text, hover inspector |
 
 ---
@@ -119,7 +185,7 @@ Run against the built prototype, real mouse events at real coordinates, 1440×90
 | Claim | Evidence |
 |---|---|
 | Tribute summon completes and **the chosen tribute is the card that dies** | Driven both ways. Confirm read `Tribute Thunder King Rai-Oh (Monster 1) — after this you cannot cancel` / `(Monster 2)`; the board fingerprints differ in exactly the tributed slot. `06-answer-outcome-matrix.md` §SelectTribute. |
-| The attack-target step is never declined by the client | With one legal target the receipt reads `ANSWERED FOR YOU · Attack Mobius the Frost Monarch` and the attack proceeds. With more than one it is presented (A5). `classify.ts` contains no `cancelable`. |
+| The attack-target step is never declined by the client | With one legal target the receipt reads **`ANSWERED FOR YOU · Attack their face-down monster, Monster 1`** (driven; the recorded target is face-down — `03` F4a's `Mobius` is illustrative copy, not this build's output) and the attack proceeds. With more than one it is presented (A5). `classify.ts` contains no `cancelable`. |
 | **PRD B3 — nothing occludes anything** | `document.elementFromPoint` at the centre of every hand card, every phase button, `End Turn`, `Resign`, and both dock verbs, in the chain scenario with the dock at its tallest: **0 failures**. |
 | The answer-fidelity invariant, by **enumeration** | 5 decision points, **19 answers**, **0 collisions**, 1 legitimately converging pair reported in its own section. `answer-matrix.py` exits non-zero on a collision and exited 0. |
 | Enumeration found a real defect a sample would not have | Two recorded tribute candidates are both `Thunder King Rai-Oh`. The first run reported a collision on the end-phase discard, because two copies of one card leave an identical board. Fixes: the confirm label appends the slot when two candidates share a name; the feed's `MOVE` row names the source slot. |
@@ -175,7 +241,11 @@ build:
   passing.
 - **Audio.** Not designed.
 - **Accessibility beyond `aria-label` and role attributes.** Not audited.
-- **The pile inspector and the chain strip.** Specified, not built, not seen. §1.2.
+- ~~**The pile inspector and the chain strip.** Specified, not built, not seen. §1.2.~~
+  **STRUCK 2026-08-13 — false.** Both are built (commit `6742523`) and both have now been **driven** in
+  the built file: pile inspector 4 of 5 states, chain strip 2 of 6. What remains genuinely unverified
+  about them is the five states no fixture reaches — `answer-space`, and the chain strip's `resolving`,
+  `end`, `compressed` and `unknown code`. See §1.2a.
 - **That any of this works against the real server.** The prototype replays recorded frames; it has
   no socket. Reconnect, error handling, concurrency and persistence are all faked.
 - **The claim that ND-9's replay implications are safe.** I reasoned that responses are index-based
