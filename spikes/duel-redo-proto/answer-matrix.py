@@ -2,10 +2,25 @@
 """
 answer-matrix.py — the answer-fidelity invariant, enforced by ENUMERATION.
 
-INVARIANT
-  For any decision with more than one legal answer, distinct answers must produce
-  distinct observable outcomes, and the outcome must be the one the confirm
-  control named.
+TWO INVARIANTS, AND THEY ARE NOT THE SAME CHECK.
+
+  A · DISTINCT OUTCOMES. For any decision with more than one legal answer,
+      distinct answers must produce distinct observable outcomes.
+
+  B · LABEL FIDELITY. The confirm control and the selection line must NAME THE
+      ANSWER BEING SUBMITTED.
+
+  Check A passed 19 of 19 while the chain window's confirm button named a card the
+  player had not selected, because A compares end states and never reads the label.
+  The previous project carried these as separate requirements F13 and F14 for
+  exactly this reason, and F14 passing is what made everyone comfortable. A gate
+  that checks outcomes and not labels is how this defect family reached the CEO
+  twice.
+
+  B is checked against two INDEPENDENT paths: the app publishes
+  `window.__lastSubmit`, whose `identities` are resolved from the RESPONSE's own
+  indices, and the gate compares them against the label text captured from the DOM
+  at press time. A label sourced from anywhere other than the answer fails.
 
 WHY IT EXISTS
   This defect class was found and reported fixed THREE times in the previous
@@ -61,6 +76,9 @@ FINGERPRINT = """() => {
 class D:
     def __init__(self, pg):
         self.pg = pg
+        # what the app actually submitted, and the identity of each card that
+        # response names — published by the submit path, never read from the label.
+        self.submit = None
         # what the control the player ACTUALLY PRESSED said, captured at press
         # time. The invariant has two halves; this column proves the second.
         self.named = None
@@ -111,6 +129,7 @@ class D:
     def confirm(self):
         self.named = self.pg.locator("[data-testid=decision-confirm]").first.inner_text().replace("\n", " ")
         self.click("[data-testid=decision-confirm]")
+        self.submit = self.pg.evaluate("() => window.__lastSubmit ?? null")
 
     def decline(self):
         self.named = self.pg.locator("[data-testid=decision-decline]").first.inner_text().replace("\n", " ")
@@ -145,7 +164,7 @@ def reach_zone(d):
 
 
 def reach_chain(d):
-    d.scenario("chain-fixed")
+    d.scenario("chain")
     d.wait_q()
 
 
@@ -185,9 +204,9 @@ POINTS = [
         ],
     ),
     dict(
-        scenario="chain-fixed",
+        scenario="chain",
         question="ChainPrompt — respond, or do not",
-        recorded="RECORDED decision; caption and card name hand-authored to show MH-3b/ND-9",
+        recorded="RECORDED verbatim. The candidate arrives code:0/name:\"\" for the asking player's OWN hand card; its identity is resolved from the recorded STATE snapshot, never from a literal",
         reach=reach_chain,
         answers=[
             ("activate the set card", lambda d: (d.pick_board(0), d.confirm())),
@@ -238,13 +257,32 @@ def main():
                 except Exception as e:  # noqa: BLE001
                     named = f"<<reach/apply failed: {e}>>"
                     fp = {"error": str(e), "log": "", "pending": ""}
-                rows.append(dict(answer=label, named=named, fp=fp, errors=errs))
+                rows.append(dict(answer=label, named=named, fp=fp, errors=errs, submit=d.submit))
                 page.close()
             results.append(dict(point=point, rows=rows))
         browser.close()
 
     def board_key(fp):
         return json.dumps({k: v for k, v in fp.items() if k not in ("log", "receipt")}, sort_keys=True)
+
+    # ── INVARIANT B · label fidelity ─────────────────────────────────────────
+    label_failures = []
+    label_checked = 0
+    for r in results:
+        for row in r["rows"]:
+            sub = row.get("submit")
+            if not sub or not sub.get("identities"):
+                continue  # a decline names no card; nothing to check
+            label_checked += 1
+            for ident in sub["identities"]:
+                if ident not in (sub.get("label") or ""):
+                    label_failures.append(
+                        (r["point"]["question"], row["answer"], ident, sub.get("label"), "confirm label")
+                    )
+                if ident not in (sub.get("selectionLine") or ""):
+                    label_failures.append(
+                        (r["point"]["question"], row["answer"], ident, sub.get("selectionLine"), "selection line")
+                    )
 
     failures, log_only, broken = [], [], []
     for r in results:
@@ -271,9 +309,23 @@ def main():
         f.write("control named.\n\n")
         f.write(
             f"**Decision points walked:** {len(results)} · **answers exercised:** "
-            f"{sum(len(r['rows']) for r in results)} · **collisions:** {len(failures)} · "
+            f"{sum(len(r['rows']) for r in results)} · **outcome collisions:** {len(failures)} · "
+            f"**card-naming answers label-checked:** {label_checked} · "
+            f"**label-fidelity failures:** {len(label_failures)} · "
             f"**unreachable:** {len(broken)}\n\n"
         )
+        f.write("## B · Label fidelity — does the control NAME the answer being submitted?\n\n")
+        f.write("Compared against `window.__lastSubmit.identities`, resolved from the response's own\n")
+        f.write("indices. Two independent paths; a label sourced from anywhere else fails.\n\n")
+        if label_failures:
+            f.write("### x LABEL FIDELITY FAILURES\n\n")
+            for q, a, ident, got, where in label_failures:
+                f.write(f"- **{q}** — answer `{a}` submits `{ident}` but the {where} reads `{got}`.\n")
+            f.write("\n")
+        else:
+            f.write(f"OK — {label_checked} card-naming answers checked, every one named by both the\n")
+            f.write("confirm control and the selection line.\n\n")
+        f.write("## A · Distinct outcomes\n\n")
         if failures:
             f.write("## x COLLISIONS\n\n")
             for q, a, b in failures:
@@ -295,14 +347,19 @@ def main():
         for r in results:
             pt = r["point"]
             f.write(f"---\n\n## {pt['question']}\n\n*Scenario:* `{pt['scenario']}` · *{pt['recorded']}*\n\n")
-            f.write("| answer | the control you pressed said | LP | your field | their field | your piles | their piles | screen now says |\n")
-            f.write("|---|---|---|---|---|---|---|---|\n")
+            f.write(
+                "| answer | the control you pressed said | the response actually names | LP "
+                "| your field | their field | your piles | their piles | screen now says |\n"
+            )
+            f.write("|---|---|---|---|---|---|---|---|---|\n")
             for row in r["rows"]:
                 fp = row["fp"]
                 named = (row["named"] or "—").replace("|", "\\|")
+                sub = row.get("submit") or {}
+                ids = ", ".join(sub.get("identities") or []) or "— (no card named)"
                 asks = (fp.get("pending") or fp.get("receipt") or "—").replace("|", "\\|")
                 f.write(
-                    f"| **{row['answer']}** | `{named}` | `{fp.get('lp','')}` | `{fp.get('mine','')}` | "
+                    f"| **{row['answer']}** | `{named}` | `{ids}` | `{fp.get('lp','')}` | `{fp.get('mine','')}` | "
                     f"`{fp.get('theirs','')}` | `{fp.get('myPiles','')}` | `{fp.get('oppPiles','')}` | {asks} |\n"
                 )
             f.write("\n<details><summary>feed tails</summary>\n\n")
@@ -317,13 +374,16 @@ def main():
     print(f"wrote {OUT}")
     print(
         f"points={len(results)} answers={sum(len(r['rows']) for r in results)} "
-        f"collisions={len(failures)} log-only={len(log_only)} unreachable={len(broken)}"
+        f"collisions={len(failures)} label-checked={label_checked} "
+        f"label-failures={len(label_failures)} log-only={len(log_only)} unreachable={len(broken)}"
     )
     for q, a, b in failures:
         print(f"  COLLISION {q}: {a} == {b}")
+    for q, a, ident, got, where in label_failures:
+        print(f"  LABEL {q}: {a} submits {ident!r} but {where} says {got!r}")
     for q, a, e in broken:
         print(f"  UNREACHABLE {q}: {a}: {e}")
-    return 1 if failures else 0
+    return 1 if (failures or label_failures) else 0
 
 
 if __name__ == "__main__":

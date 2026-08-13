@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CardEntry, DuelDecision, DuelEvent, Seat } from "../proto/types";
+import type { CardEntry, DuelDecision, DuelEvent, DuelStateSnapshot, Seat } from "../proto/types";
 import { candidateLabel, cardInfo } from "../proto/scenarios";
 import type { DecisionResponse } from "../proto/classify";
 import { playerCancelExists } from "../proto/playerCancelExists";
@@ -18,6 +18,11 @@ import { CandidateThumb } from "./CardTile";
  *
  * Six mutually exclusive contents, one height, never more than one at a time.
  */
+export type Answer = (
+  a: DecisionResponse,
+  probe?: { identities: string[]; label: string; selectionLine: string },
+) => void;
+
 export function Dock({
   m,
   onAnswer,
@@ -29,7 +34,7 @@ export function Dock({
   setSelection,
 }: {
   m: DuelModel;
-  onAnswer: (a: DecisionResponse) => void;
+  onAnswer: Answer;
   onCancel: () => void;
   onClaim: () => void;
   onDismissDelta: () => void;
@@ -50,6 +55,11 @@ export function Dock({
         <Delta m={m} onDismiss={onDismissDelta} onToggle={onToggleDelta} />
       ) : null}
       {m.presence !== "connected" && !m.ended ? <Away m={m} onClaim={onClaim} /> : null}
+      {m.protoNote ? (
+        <div className="protonote" data-testid="proto-note" role="status">
+          (prototype) {m.protoNote}
+        </div>
+      ) : null}
       <DockBody
         m={m}
         onAnswer={onAnswer}
@@ -67,7 +77,7 @@ function DockBody({
   setSelection,
 }: {
   m: DuelModel;
-  onAnswer: (a: DecisionResponse) => void;
+  onAnswer: Answer;
   selection: number[];
   setSelection: (s: number[]) => void;
 }) {
@@ -156,7 +166,7 @@ function Question({
 }: {
   m: DuelModel;
   d: DuelDecision;
-  onAnswer: (a: DecisionResponse) => void;
+  onAnswer: Answer;
   selection: number[];
   setSelection: (s: number[]) => void;
 }) {
@@ -176,8 +186,12 @@ function Question({
     .filter(({ c }) => c.location === "GRAVE" || c.location === "REMOVED" || c.location === "DECK" || c.location === "EXTRA");
 
   const chosen = selection.map((i) => cands[i]).filter(Boolean) as CardEntry[];
+  const selectionLine =
+    chosen.length === 0
+      ? `Click ${max === 1 ? "a highlighted card" : `${min === max ? min : `${min}–${max}`} highlighted cards`} ${whereCandidatesAre(cands, m.mySeat)}`
+      : `Chosen: ${chosen.map((c) => candidateLabel(c, m.mySeat, cands, m.board)).join(", ")}${max > 1 ? ` (${chosen.length} of ${max})` : ""}`;
   const confirmLabel =
-    confirmLabelFor(d, selection, m.mySeat, m.intent?.verb) +
+    confirmLabelFor(d, selection, m.mySeat, m.intent?.verb, m.board) +
     (m.step?.commitsNext && selection.length ? " — after this you cannot cancel" : "");
 
   return (
@@ -190,7 +204,7 @@ function Question({
               key={`${c.location}-${c.sequence}-${i}`}
               entry={c}
               mySeat={m.mySeat}
-              label={candidateLabel(c, m.mySeat, cands)}
+              label={candidateLabel(c, m.mySeat, cands, m.board)}
               selected={selection.includes(i)}
               onClick={() =>
                 setSelection(
@@ -210,9 +224,7 @@ function Question({
       ) : null}
       {cands.length ? (
         <div className="q-count" data-testid="selection-line">
-          {chosen.length === 0
-            ? `Click ${max === 1 ? "a highlighted card" : `${min === max ? min : `${min}–${max}`} highlighted cards`} on the board`
-            : `Chosen: ${chosen.map((c) => candidateLabel(c, m.mySeat, cands)).join(", ")}${max > 1 ? ` (${chosen.length} of ${max})` : ""}`}
+          {selectionLine}
         </div>
       ) : null}
       <div className="q-verbs">
@@ -233,7 +245,18 @@ function Question({
           className="btn primary"
           data-testid="decision-confirm"
           disabled={cands.length > 0 && !enough}
-          onClick={() => onAnswer(responseFor(d, selection))}
+          onClick={() =>
+            onAnswer(responseFor(d, selection), {
+              // The identities are resolved from the RESPONSE's own indices, not
+              // from the label's text, so the gate compares two independent paths.
+              identities: selection
+                .map((i) => cands[i])
+                .filter(Boolean)
+                .map((c) => candidateLabel(c!, m.mySeat, cands, m.board)),
+              label: confirmLabel,
+              selectionLine,
+            })
+          }
         >
           {confirmLabel}
         </button>
@@ -319,10 +342,16 @@ function Sentence({ m, d }: { m: DuelModel; d: DuelDecision }) {
  * a label that names one card and a response that submits another is not
  * expressible here.
  */
-export function confirmLabelFor(d: DuelDecision, selection: number[], mySeat: Seat, verb?: string): string {
+export function confirmLabelFor(
+  d: DuelDecision,
+  selection: number[],
+  mySeat: Seat,
+  verb?: string,
+  board?: DuelStateSnapshot | null,
+): string {
   const cands: CardEntry[] = "cards" in d ? d.cards : "selects" in d ? d.selects : [];
   const chosen = selection.map((i) => cands[i]).filter(Boolean) as CardEntry[];
-  const names = chosen.map((c) => candidateLabel(c, mySeat, cands)).join(" + ");
+  const names = chosen.map((c) => candidateLabel(c, mySeat, cands, board)).join(" + ");
   switch (d.kind) {
     case "ChainPrompt":
       return chosen.length ? `Activate ${names}` : "Activate";
@@ -390,6 +419,19 @@ function Delta({ m, onDismiss, onToggle }: { m: DuelModel; onDismiss: () => void
 }
 
 // ── the opponent is gone ──────────────────────────────────────────────────────
+
+/**
+ * F-06: one string per candidate-zone set, chosen at render time. "on the board"
+ * was verbatim right in the tribute and attack steps and verbatim wrong in the
+ * chain window and the discard, where every candidate is in the hand.
+ */
+function whereCandidatesAre(cands: CardEntry[], mySeat: Seat): string {
+  const inHand = cands.some((c) => c.location === "HAND" && c.controller === mySeat);
+  const onBoard = cands.some((c) => c.location === "MZONE" || c.location === "SZONE");
+  if (inHand && onBoard) return "in your hand or on the board";
+  if (inHand) return "in your hand";
+  return "on the board";
+}
 
 function deltaRow(e: DuelEvent): string {
   const code = Number(e["code"] ?? (e["card"] as { code?: number } | undefined)?.code ?? 0);

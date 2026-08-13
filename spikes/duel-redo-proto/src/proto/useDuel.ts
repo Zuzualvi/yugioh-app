@@ -38,11 +38,44 @@ export interface DuelModel {
   selection: number[];
   presence: PresenceState;
   net: "ok" | "reconnecting";
-  ended: { winner: Seat | null; reason: string } | null;
+  ended: ({ winner: Seat | null; reason: string } & { reviewing?: boolean }) | null;
   error: string | null;
   normalSummonSpent: boolean;
   /** The label of the control the player last pressed — the matrix reads this. */
   lastNamed: string | null;
+  /** Something the prototype cannot truthfully show at this point. */
+  protoNote: string | null;
+  /** Refs of monsters that have already declared an attack this Battle Phase. */
+  spentAttackers: { controller: Seat; location: string; sequence: number }[];
+}
+
+/**
+ * The label-fidelity probe.
+ *
+ * The answer-outcome matrix proved that distinct answers produce distinct
+ * OUTCOMES. It did not — and could not — prove that the confirm control NAMED the
+ * answer being submitted, and that is the half the chain window failed: the label
+ * came from hand-authored fixture data and the response came from the index.
+ *
+ * So the submit path publishes, for every response it sends: the response payload,
+ * and the resolved identity of each card the response actually names. The gate
+ * asserts the rendered label and the selection line contain those identities.
+ */
+export interface LastSubmit {
+  kind: string;
+  response: DecisionResponse;
+  /** Resolved identity of each card the RESPONSE names — never the label's own text. */
+  identities: string[];
+  /** What the control the player pressed said, captured at press time. */
+  label: string;
+  /** What the selection line said, captured at press time. */
+  selectionLine: string;
+}
+
+declare global {
+  interface Window {
+    __lastSubmit?: LastSubmit;
+  }
 }
 
 let receiptId = 1;
@@ -60,10 +93,14 @@ export function useDuel(scenario: Scenario) {
   const [selection, setSelection] = useState<number[]>([]);
   const [presence, setPresence] = useState<PresenceState>(scenario.presence ?? "connected");
   const [net, setNet] = useState<"ok" | "reconnecting">(scenario.net ?? "ok");
-  const [ended, setEnded] = useState(scenario.ended ?? null);
+  const [ended, setEnded] = useState<
+    ({ winner: Seat | null; reason: string } & { reviewing?: boolean }) | null
+  >(scenario.ended ?? null);
   const [error, setError] = useState<string | null>(null);
   const [normalSummonSpent, setSpent] = useState(false);
   const [lastNamed, setLastNamed] = useState<string | null>(null);
+  const [protoNote, setProtoNote] = useState<string | null>(null);
+  const [spentAttackers, setSpentAttackers] = useState<DuelModel["spentAttackers"]>([]);
   const timers = useRef<number[]>([]);
 
   const reset = useCallback(
@@ -86,6 +123,9 @@ export function useDuel(scenario: Scenario) {
       setError(null);
       setSpent(false);
       setLastNamed(null);
+      setProtoNote(null);
+      setSpentAttackers([]);
+      if (typeof window !== "undefined") delete window.__lastSubmit;
     },
     [],
   );
@@ -111,6 +151,8 @@ export function useDuel(scenario: Scenario) {
   const applyContinuation = useCallback(
     (c: Continuation, from: Step) => {
       setLastNamed(c.named);
+      setProtoNote(c.protoNote ?? null);
+      if (c.attackerSpent) setSpentAttackers((xs) => [...xs, c.attackerSpent!]);
       if (c.mutate) {
         setBoard((b) => {
           const nb = clone(b);
@@ -204,8 +246,17 @@ export function useDuel(scenario: Scenario) {
   }, [step, applyContinuation, pushReceipt]);
 
   const answer = useCallback(
-    (a: DecisionResponse) => {
+    (a: DecisionResponse, probe?: { identities: string[]; label: string; selectionLine: string }) => {
       if (!step) return;
+      if (typeof window !== "undefined" && probe) {
+        window.__lastSubmit = {
+          kind: step.decision.kind,
+          response: a,
+          identities: probe.identities,
+          label: probe.label,
+          selectionLine: probe.selectionLine,
+        };
+      }
       const c = step.branch(a);
       applyContinuation(c, step);
     },
@@ -232,6 +283,15 @@ export function useDuel(scenario: Scenario) {
     timers.current.push(t);
   }, [step, intent, scenario]);
 
+  const resign = useCallback(() => {
+    setEnded({ winner: (1 - scenario.mySeat) as Seat, reason: "resign" });
+    setControl("ended");
+    setStep(null);
+    setIntent(null);
+  }, [scenario]);
+
+  const reviewBoard = useCallback(() => setEnded((e) => (e ? { ...e, reviewing: true } : e)), []);
+
   const claim = useCallback(() => {
     setEnded({ winner: scenario.mySeat, reason: "abandoned" });
     setControl("ended");
@@ -257,8 +317,10 @@ export function useDuel(scenario: Scenario) {
       error,
       normalSummonSpent,
       lastNamed,
+      protoNote,
+      spentAttackers,
     }),
-    [scenario, board, control, step, intent, receipts, feed, delta, deltaOpen, selection, presence, net, ended, error, normalSummonSpent, lastNamed],
+    [scenario, board, control, step, intent, receipts, feed, delta, deltaOpen, selection, presence, net, ended, error, normalSummonSpent, lastNamed, protoNote, spentAttackers],
   );
 
   return {
@@ -275,6 +337,9 @@ export function useDuel(scenario: Scenario) {
       setDeltaOpen(false);
     },
     toggleDelta: () => setDeltaOpen((o) => !o),
+    resign,
+    reviewBoard,
+    showResult: () => setEnded((e) => (e ? { ...e, reviewing: false } : e)),
     reset: () => reset(scenario),
     queueLength: queue.length,
   };

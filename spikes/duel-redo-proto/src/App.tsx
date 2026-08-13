@@ -5,7 +5,7 @@ import { useDuel } from "./proto/useDuel";
 import type { DecisionResponse } from "./proto/classify";
 import { useBoardParts, candidateRefsOf } from "./components/Board";
 import type { TileRef } from "./components/CardTile";
-import { Dock } from "./components/Dock";
+import { Dock, type Answer } from "./components/Dock";
 import { FeedRail, PhaseRail } from "./components/Rails";
 import { CardArt } from "./components/CardArt";
 import { hand, row } from "./proto/board";
@@ -30,13 +30,46 @@ export default function App() {
     setInspect(null);
   }, [m.step, sid]);
 
+  /**
+   * THE KEYBOARD CONTRACT — normative, and it is the reason this handler exists at
+   * all rather than being a convenience.
+   *
+   * The verb cluster advertises "Esc closes — costs nothing" and, before this, no
+   * key handler fired anywhere in the app: a control stating a capability the
+   * product does not have, which is the same class of defect as the screen
+   * asserting a cause the engine never gave.
+   *
+   * NO KEYBOARD EVENT MAY SUBMIT OR COMMIT A DECISION. Escape dismisses transient
+   * UI and takes the player's own cancel where one exists. It deliberately does NOT
+   * answer an OFFER: declining a chain window is a substantive game answer with
+   * consequences, not an escape, and that is exactly the distinction the
+   * classification law draws. On the previous prototype Escape COMMITTED an
+   * irreversible tribute step and destroyed a card the player never chose.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (verbAt) {
+        setVerbAt(null);
+        return;
+      }
+      if (inspect !== null) {
+        setInspect(null);
+        return;
+      }
+      if (m.intent?.cancelable) duel.cancelIntent();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [verbAt, inspect, m.intent, duel]);
+
   const d = m.step?.decision ?? null;
   const armed = (d?.kind === "IdleCommand" || d?.kind === "BattleCommand") && m.control === "mine";
   const answering = !!d && !armed && m.control === "mine";
 
-  const answer = (a: DecisionResponse) => {
+  const answer: Answer = (a, probe) => {
     setVerbAt(null);
-    duel.answer(a);
+    duel.answer(a, probe);
   };
 
   // ── ACT mode: the engine's legal-move list becomes what the board affords ───
@@ -65,7 +98,14 @@ export default function App() {
     }
     if (d.kind === "BattleCommand") {
       const i = d.attacks.findIndex(same);
-      if (i >= 0) out.push({ label: "Attack", go: () => answer({ kind: "BattleCommand", action: "attack", index: i }) });
+      const spent = m.spentAttackers.some(
+        (x) => x.controller === r.controller && x.location === r.location && x.sequence === r.sequence,
+      );
+      // The engine re-issues BattleCommand without a monster that has already
+      // declared. Modelling that is why the verb disappears; the screen still says
+      // nothing about WHY, per D1/D2.
+      if (i >= 0 && !spent)
+        out.push({ label: "Attack", go: () => answer({ kind: "BattleCommand", action: "attack", index: i }) });
     }
     return out;
   }
@@ -88,6 +128,10 @@ export default function App() {
       if (code) setInspect(code);
       return;
     }
+    if (verbAt && sameTile(verbAt.ref, r)) {
+      setVerbAt(null);
+      return;
+    }
     const vs = verbsFor(r);
     if (vs.length === 0) {
       // D1/D2: the screen never states WHY. No sentence, no fabricated cause.
@@ -98,6 +142,10 @@ export default function App() {
     }
     setVerbAt({ ref: r, verbs: vs });
   };
+
+  function sameTile(a: TileRef, b: TileRef) {
+    return a.controller === b.controller && a.location === b.location && a.sequence === b.sequence;
+  }
 
   function codeAt(r: TileRef): number {
     if (r.location === "HAND") return hand(m.board, r.controller)[r.sequence]?.code ?? 0;
@@ -157,8 +205,22 @@ export default function App() {
       </div>
 
       <div className="duel">
-        <TopBar m={m} />
-        <div className="playfield" ref={stageRef} data-testid="playfield">
+        <TopBar m={m} onResign={duel.resign} />
+        <div
+          className="playfield"
+          ref={stageRef}
+          data-testid="playfield"
+          onClick={(e) => {
+            // A click that lands on background — anywhere that is not a card, a
+            // chip or a control — clears the armed card. The armed state was
+            // otherwise sticky and invisible: a verb bar still offering Set/Activate
+            // for a card you had stopped thinking about, one click from firing.
+            if (!(e.target as HTMLElement).closest("button")) {
+              setVerbAt(null);
+              setInspect(null);
+            }
+          }}
+        >
           <div className="boardzone">
             <div className="fieldband">
               {parts.oppHand}
@@ -196,10 +258,7 @@ export default function App() {
           {parts.myHand}
           {answering ? <div className="dimscrim" data-testid="dim-scrim" /> : null}
           {verbAt ? (
-            <VerbCluster
-              verbs={verbAt.verbs}
-              onClose={() => setVerbAt(null)}
-            />
+            <VerbCluster verbs={verbAt.verbs} onClose={() => setVerbAt(null)} />
           ) : null}
           {info ? (
             <aside className="inspector" data-testid="inspector">
@@ -220,7 +279,14 @@ export default function App() {
               <p className="tb-body">{info.desc}</p>
             </aside>
           ) : null}
-          {m.ended ? <EndOverlay m={m} /> : null}
+          {m.ended && !m.ended.reviewing ? (
+            <EndOverlay m={m} onReview={duel.reviewBoard} onRematch={() => setSid("start")} />
+          ) : null}
+          {m.ended?.reviewing ? (
+            <button className="endedpill" data-testid="show-result" onClick={duel.showResult}>
+              Duel over — show result
+            </button>
+          ) : null}
         </div>
         <FeedRail
           events={m.feed}
@@ -233,8 +299,9 @@ export default function App() {
   );
 }
 
-function TopBar({ m }: { m: ReturnType<typeof useDuel>["model"] }) {
+function TopBar({ m, onResign }: { m: ReturnType<typeof useDuel>["model"]; onResign: () => void }) {
   const mine = m.control === "mine" || m.control === "resolving";
+  const [confirming, setConfirming] = useState(false);
   return (
     <header className="topbar" data-testid="top-bar">
       <button className="btn sm">← Exit</button>
@@ -246,10 +313,32 @@ function TopBar({ m }: { m: ReturnType<typeof useDuel>["model"] }) {
         {m.ended ? "DUEL OVER" : mine ? "YOUR TURN" : "THEIR TURN"}
       </span>
       <span className="tb-spacer" />
-      <button className="btn sm">⚙ Settings</button>
-      <button className="btn sm decline" data-testid="resign">
-        Resign
+      <button className="btn sm" disabled title="">
+        ⚙ Settings (prototype)
       </button>
+      {/* E1 — the guarantee of last resort. With no clock, a player stuck on a
+          decision the client cannot answer has nothing else to release them, so an
+          inert Resign would make E1 a claim the screen does not honour. Two-step:
+          a misclick that forfeits is not acceptable. */}
+      {confirming ? (
+        <>
+          <button className="btn sm decline" data-testid="resign-confirm" onClick={onResign}>
+            Confirm resign
+          </button>
+          <button className="btn sm" data-testid="resign-cancel" onClick={() => setConfirming(false)}>
+            Keep playing
+          </button>
+        </>
+      ) : (
+        <button
+          className="btn sm decline"
+          data-testid="resign"
+          disabled={!!m.ended}
+          onClick={() => setConfirming(true)}
+        >
+          Resign
+        </button>
+      )}
     </header>
   );
 }
@@ -274,12 +363,23 @@ function VerbCluster({ verbs, onClose }: { verbs: { label: string; go: () => voi
       <button className="verb" role="menuitem" onClick={onClose}>
         Inspect
       </button>
+      <button className="verb verbclose" data-testid="verb-close" aria-label="Close" onClick={onClose}>
+        ✕
+      </button>
       <span className="verbhint">Esc closes — costs nothing</span>
     </div>
   );
 }
 
-function EndOverlay({ m }: { m: ReturnType<typeof useDuel>["model"] }) {
+function EndOverlay({
+  m,
+  onReview,
+  onRematch,
+}: {
+  m: ReturnType<typeof useDuel>["model"];
+  onReview: () => void;
+  onRematch: () => void;
+}) {
   const e = m.ended!;
   const won = e.winner === m.mySeat;
   const cause: Record<string, string> = {
@@ -305,9 +405,15 @@ function EndOverlay({ m }: { m: ReturnType<typeof useDuel>["model"] }) {
           </span>
         </div>
         <div className="acts">
-          <button className="btn">Review board</button>
-          <button className="btn primary">Play {m.scenario.opponentName} again</button>
-          <button className="btn decline">Back to Home</button>
+          <button className="btn" data-testid="review-board" onClick={onReview}>
+            Review board
+          </button>
+          <button className="btn primary" data-testid="rematch" onClick={onRematch}>
+            Play {m.scenario.opponentName} again
+          </button>
+          <button className="btn decline" data-testid="back-home" disabled title="">
+            Back to Home (prototype: outside the duel screen)
+          </button>
         </div>
       </div>
     </div>

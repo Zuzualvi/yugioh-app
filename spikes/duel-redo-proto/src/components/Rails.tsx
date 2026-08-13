@@ -159,8 +159,16 @@ function describe(e: DuelEvent, names: { me: string; opp: string }, mySeat: Seat
       return { verb: "Activate", move: `chain ${e["link"] ?? ""}`, fallback: "a card" };
     case "CHAIN_SOLVING":
       return { verb: "Resolving", move: `link ${e["link"] ?? ""}`, fallback: "a chain link" };
-    case "ATTACK":
-      return { verb: "Attack", move: e["target"] ? "→ monster" : "→ directly", fallback: "a monster" };
+    case "ATTACK": {
+      // Naming the target is not decoration. Two declarations against different
+      // monsters otherwise leave a byte-identical record, and the enumeration
+      // reported exactly that as an outcome collision. It is also the only thing
+      // on screen that says WHAT was attacked.
+      const t = e["target"] as { location?: string; sequence?: number } | null | undefined;
+      const tc = Number(e["targetCode"] ?? 0);
+      const tname = tc ? (cardInfo(tc)?.name ?? String(tc)) : t ? `their card ${(t.sequence ?? 0) + 1}` : "";
+      return { verb: "Attack", move: t ? `→ ${tname}` : "→ directly", fallback: "a monster" };
+    }
     case "BATTLE":
       return { verb: "Battle", move: "damage step", fallback: "" };
     case "LP_CHANGE": {

@@ -26,6 +26,13 @@ export interface Continuation {
   /** Hand control to the opponent when this resolves. */
   handOver?: boolean;
   endDuel?: { winner: Seat | null; reason: string };
+  /** A monster that has now declared an attack; the engine stops offering it. */
+  attackerSpent?: { controller: Seat; location: string; sequence: number };
+  /**
+   * Something the PROTOTYPE cannot truthfully show. Rendered in the dock in the
+   * prototype's own stub voice so nobody reads a missing outcome as a designed one.
+   */
+  protoNote?: string;
 }
 
 export interface Step {

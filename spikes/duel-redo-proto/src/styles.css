@@ -2299,3 +2299,55 @@ img.cardart.fill {
   color: var(--own);
   pointer-events: none;
 }
+
+/* ── ZUH-121 round 2 · usability-pass fixes ──────────────────────────────── */
+
+/* F-03: a visible close on the verb cluster, beside the Esc hint it advertises */
+.verb.verbclose {
+  color: var(--text-2);
+  padding-inline: var(--sp-3);
+}
+.verb.verbclose:hover {
+  color: var(--text-0);
+}
+
+/* Something the prototype cannot truthfully show, in the prototype's own voice.
+   It must not look like product copy, because a CEO reading a missing outcome as
+   a designed one is exactly the failure this exists to prevent. */
+.protonote {
+  align-self: center;
+  font-size: var(--t-cap);
+  color: var(--warn);
+  border: 1px dashed var(--warn);
+  border-radius: var(--r-2);
+  padding: var(--sp-1) var(--sp-4);
+  opacity: 0.85;
+}
+
+/* F-02: the pill that brings the result card back after Review board */
+.endedpill {
+  position: absolute;
+  top: var(--sp-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-float);
+  font-size: var(--t-small);
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+  transition: color var(--m-quick) var(--ease-out);
+}
+.endedpill:hover {
+  color: var(--text-0);
+}
+
+/* Controls the prototype does not implement are visibly non-interactive, using
+   the same convention the claim stub already used. An unmarked dead button is
+   indistinguishable from a broken one. */
+.btn:disabled,
+.verb:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

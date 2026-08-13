@@ -26,7 +26,7 @@ import {
   type Step,
 } from "./replay";
 import { clone, faceUp } from "./replay";
-import { POS_FACEDOWN_DEF, POS_FACEUP_ATK, refOf, take, put } from "./board";
+import { POS_FACEDOWN_DEF, POS_FACEUP_ATK, refOf, resolveCode, take, put } from "./board";
 
 export const CARDS = cardsJson as unknown as Record<string, CardInfo>;
 export function cardInfo(code: number): CardInfo | null {
@@ -96,11 +96,26 @@ const SLOT: Record<string, string> = { MZONE: "Monster", SZONE: "Spell/Trap", HA
  * as tribute candidates. Two answers whose CONTROLS SAY THE SAME THING is the
  * answer-fidelity defect in its purest form — the confirm label must name the
  * one that will actually be tributed. Enumeration found this; a sample would not.
+ *
+ * `board` matters more. Where the decision carries `code: 0` for a card the asking
+ * player owns, the identity is resolved from the STATE snapshot the client already
+ * holds (`resolveCode`) — a JOIN on recorded data, never a literal. An earlier
+ * revision of this file assigned the string "Dimensional Prison" to every blank
+ * name in a hand-authored scenario, and the confirm button then named a different
+ * card than the one that resolved. That is the answer-fidelity invariant violated
+ * at its root: the LABEL and the RESPONSE came from different sources.
  */
-export function candidateLabel(e: CardEntry, mySeat: Seat, siblings?: CardEntry[]): string {
-  const n = nameOf(e);
+export function candidateLabel(
+  e: CardEntry,
+  mySeat: Seat,
+  siblings?: CardEntry[],
+  board?: DuelStateSnapshot | null,
+): string {
+  const n = nameOf(e) || cardName(resolveCode(board ?? null, e));
   if (n) {
-    const dup = siblings?.some((o) => o !== e && nameOf(o) === n);
+    const dup = siblings?.some(
+      (o) => o !== e && (nameOf(o) || cardName(resolveCode(board ?? null, o))) === n,
+    );
     return dup ? `${n} (${SLOT[e.location] ?? e.location} ${e.sequence + 1})` : n;
   }
   // ND-9: the engine redacted a card from its own owner. Say what we know and
@@ -338,57 +353,63 @@ function scAttack(multi: boolean): Scenario {
   };
 }
 
-function branchTarget(dec: Extract<DuelDecision, { kind: "SelectCard" }>, attacker: CardEntry, a: DecisionResponse): Continuation {
+function branchTarget(
+  dec: Extract<DuelDecision, { kind: "SelectCard" }>,
+  attacker: CardEntry,
+  a: DecisionResponse,
+): Continuation {
   if (a.kind !== "SelectCard") throw new Error("wrong answer kind");
   if (a.indices === null) return { named: "Cancel attack", events: [] };
   const t = dec.cards[a.indices[0] ?? 0]!;
-  const atk = cardInfo(attacker.code)?.atk ?? 0;
-  const dfn = cardInfo(t.code)?.def ?? cardInfo(t.code)?.atk ?? 0;
+  // ⚠ THE PROTOTYPE STOPS AT THE DECLARATION AND DOES NOT RESOLVE THE BATTLE.
+  //
+  // An earlier revision destroyed the target whenever the attacker's ATK exceeded
+  // the target's DEF, which is not the rule: an attack-position defender is
+  // compared on ATK, and the loser is destroyed and its controller takes damage.
+  // A 1900 attacker "destroying" a 2400 Mobius for no damage is a FALSE OUTCOME,
+  // and a CEO tapping this reads a false outcome as a design decision.
+  //
+  // Resolving battle correctly means implementing rules the engine already
+  // implements, which is the exact trap the last round fell into. So: the answer
+  // moves the declaration forward, the feed records WHAT WAS DECLARED, the board
+  // does not change, and the dock says so in the prototype's own stub voice.
   return {
     named: `Attack ${candidateLabel(t, attacker.controller, dec.cards)}`,
-    // Answer-derived: the card you NAMED is the card that is destroyed, and only
-    // when the comparison the ENGINE would make is unambiguous from the recorded
-    // stats. Where it is not, nothing is destroyed and the log says what was
-    // declared — never a fabricated result.
-    mutate: (b) => {
-      if (atk > dfn) {
-        const c = take(b, refOf(t));
-        if (c) put(b, t.controller, "GRAVE", 0, { ...c, position: 1 });
-      }
-    },
     events: [
-      ev("ATTACK", { attacker: refOf(attacker), target: refOf(t), code: attacker.code, targetCode: t.code }),
-      ...(atk > dfn ? [ev("MOVE", { card: refOf(t), code: t.code, to: "GRAVE" })] : []),
+      ev("ATTACK", {
+        attacker: refOf(attacker),
+        target: refOf(t),
+        code: attacker.code,
+        targetCode: t.code,
+        actor: attacker.controller,
+      }),
     ],
+    // The engine re-issues BattleCommand without a monster that has already
+    // declared, so the verb is not offered again. Modelled, not adjudicated.
+    attackerSpent: refOf(attacker),
+    protoNote: "the engine resolves the battle; this prototype stops at the declaration",
   };
 }
 
 // ── SC5 · Chain window — the offer, with and without the deltas ───────────────
 
-function scChain(withDeltas: boolean): Scenario {
+function scChain(withContext: boolean): Scenario {
   const board = firstState(F.s05);
   const chain = firstDecision(F.s05, "ChainPrompt");
   const ctx = contextOf(F.s05);
-  // MH-3b: what the sidecar WOULD carry for a summon-triggered window. Marked
-  // hand-authored — nothing on the wire produces this today.
-  const proposed = withDeltas
-    ? {
-        caption: "Sakura Normal Summoned “Thunder King Rai-Oh”.",
-        ...(ctx ?? {}),
-      }
-    : ctx;
-  // ND-9: what the engine WOULD send if it stopped redacting a player's own cards.
-  const selects = withDeltas
-    ? chain.selects.map((s) => ({ ...s, name: s.name || "Dimensional Prison" }))
-    : chain.selects;
-  const dec: DuelDecision = { ...chain, selects };
   return {
-    id: withDeltas ? "chain-fixed" : "chain",
-    title: withDeltas ? "5b · The same window, with MH-3b and ND-9 shipped" : "5a · A chain window as it arrives today",
-    brief: withDeltas
-      ? "Identical decision. The only difference is two backend deltas: the sidecar names the trigger, and the engine stops redacting your own set card from you."
-      : "Recorded verbatim. The window has no subject and your own set card is anonymous to you. Line 1 degrades to a STATED fallback, never a bare verb.",
-    provenance: F.s05.source + (withDeltas ? " · caption and card name hand-authored to show MH-3b/ND-9" : ""),
+    id: withContext ? "chain" : "chain-nocontext",
+    title: withContext
+      ? "5a · A chain window, with the context the engine actually sent"
+      : "5b · The same window when the engine sends no context at all",
+    brief: withContext
+      ? "Recorded verbatim. The decision carries code:0 for the player's OWN hand card; the identity is resolved from the STATE snapshot the client already holds — a join on recorded data, never a literal."
+      : "Same recorded decision, DECISION_CONTEXT removed — which is what the wire really gives for a summon-triggered window (the sidecar fired twice in 15 scenarios). Line 1 degrades to a STATED fallback, never a bare verb.",
+    provenance:
+      F.s05.source +
+      (withContext
+        ? " · DECISION_CONTEXT as recorded"
+        : " · DECISION_CONTEXT deliberately withheld — a REMOVAL from recorded data, not an addition to it"),
     mySeat: F.s05.mySeat,
     opponentName: NAMES.opp,
     myName: NAMES.me,
@@ -396,26 +417,31 @@ function scChain(withDeltas: boolean): Scenario {
     feed: eventsOf(F.s05).slice(0, 6),
     control: "mine",
     open: {
-      decision: dec,
-      context: proposed,
-      branch: (a) => branchChain(dec as Extract<DuelDecision, { kind: "ChainPrompt" }>, a),
+      decision: chain,
+      context: withContext ? ctx : undefined,
+      branch: (a) => branchChain(chain, a, board),
     },
   };
 }
 
-function branchChain(dec: Extract<DuelDecision, { kind: "ChainPrompt" }>, a: DecisionResponse): Continuation {
+function branchChain(
+  dec: Extract<DuelDecision, { kind: "ChainPrompt" }>,
+  a: DecisionResponse,
+  board: DuelStateSnapshot,
+): Continuation {
   if (a.kind !== "ChainPrompt") throw new Error("wrong answer kind");
   if (a.index === null) {
     return { named: "No response", events: [ev("HINT", { note: "declined" })], handOver: true };
   }
   const c = dec.selects[a.index]!;
+  const code = c.code || resolveCode(board, c);
   return {
-    named: `Activate ${candidateLabel(c, dec.player)}`,
+    named: `Activate ${candidateLabel(c, dec.player, dec.selects, board)}`,
     mutate: (b) => {
       const card = take(b, refOf(c));
       if (card) put(b, c.controller, c.location === "HAND" ? "SZONE" : c.location as "SZONE", c.sequence, { ...card, position: 1 }, 1);
     },
-    events: [ev("CHAINING", { card: refOf(c), code: c.code, link: 1 }), ev("CHAIN_SOLVING", { link: 1, code: c.code })],
+    events: [ev("CHAINING", { card: refOf(c), code, link: 1 })],
     handOver: true,
   };
 }
@@ -548,8 +574,8 @@ export const SCENARIOS: Scenario[] = [
   scTribute(),
   scAttack(false),
   scAttack(true),
-  scChain(false),
   scChain(true),
+  scChain(false),
   scDiscard(),
   scHandover(),
   scAway(),

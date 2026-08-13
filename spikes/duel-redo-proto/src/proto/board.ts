@@ -127,3 +127,33 @@ export function hand(b: Board, seat: Seat): ZoneCard[] {
 export function pile(b: Board, seat: Seat, loc: "GRAVE" | "REMOVED" | "EXTRA"): ZoneCard[] {
   return b.zones[pileKey(seat, loc)] as ZoneCard[];
 }
+
+/**
+ * resolveCode — the client-side identity join.
+ *
+ * A decision payload may carry `code: 0` for a card the asking player owns: the
+ * engine's `isHidden()` redacts by POSITION regardless of controller, and ocgcore
+ * reports every hand card as position 10. But the `STATE` snapshot is NOT redacted
+ * from its owner, so the client already holds the real code at
+ * (controller, location, sequence) and can join the two.
+ *
+ * This is why the chain window can name your own set card WITHOUT ND-9. ND-9 is
+ * still the right fix at source — and it is still required for any candidate whose
+ * location is not in the snapshot at all (DECK) — but the client does not have to
+ * wait for it, and it must never invent a name in the meantime.
+ */
+export function resolveCode(
+  b: Board | null,
+  ref: { controller: Seat; location: Loc; sequence: number },
+): number {
+  if (!b) return 0;
+  const key = pileKey(ref.controller, ref.location);
+  const arr = b.zones[key] as unknown;
+  if (!Array.isArray(arr)) return 0;
+  if (ROW_LOCS.includes(ref.location)) {
+    return (arr as (ZoneCard | null)[])[ref.sequence]?.code ?? 0;
+  }
+  const pile = arr as ZoneCard[];
+  const hit = pile.find((c) => c.sequence === ref.sequence) ?? pile[ref.sequence];
+  return hit?.code ?? 0;
+}
