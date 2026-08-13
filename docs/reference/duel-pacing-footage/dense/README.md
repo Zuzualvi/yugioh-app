@@ -19,6 +19,10 @@ Filenames are `MM-SS-F.jpg`, `F` = quarter-second index. `10-20-2.jpg` is 10:20.
 handful at a time. Bulk-reading a window is ~90k tokens of images and the accumulated-image cap
 has previously killed a thread outright with no recovery.
 
+⚠️ **A second, fatal image limit exists — per-image dimensions, max 2000px.** It is separate
+from the volume cap above, and it killed a thread on 2026-08-13. Nothing here exceeds it, but an
+image you COMPOSITE yourself can. See `INDEX.md`.
+
 ## ⚠️ THREE GAMES, NOT ONE DUEL
 
 Confirmed from the sheets: game 1 ends ~10:35, game 2 `VICTORY` at 18:55, game 3 ends ~26:12 —

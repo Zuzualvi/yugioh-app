@@ -37,6 +37,31 @@ request, and one oversized read late in a long session has previously killed a t
 (`retry_status: terminal`, no recovery). Read what you need to judge; do not read the same
 moment twice.
 
+## 🔴 TWO SEPARATE IMAGE LIMITS. THE SECOND ONE KILLS THREADS AND IS IN NO OTHER DOC.
+
+**1 · Accumulated volume per request.** Reading many images in one request exhausts a cap and
+has previously killed a thread outright (`retry_status: terminal`, no recovery). Read what you
+need to judge; do not read the same moment twice.
+
+**2 · Per-image DIMENSIONS — a different limit, and a fatal one.**
+> `image dimensions exceed max allowed size for many-image requests: 2000 pixels`
+
+**It killed the ZUH-139 researcher on 2026-08-13.** No recovery, no partial credit, the whole
+thread gone.
+
+⚠️ **Nothing in this directory caused it and nothing here can** — contact sheets are 1280×790,
+badge montages 1680×1180, dense frames 854×480, all under the cap. **The fatal image was one
+the agent BUILT.** Compositing crops onto one canvas is a genuinely good technique on this
+corpus — the ZUH-131 researcher said two composited zoom montages changed its delivery more
+than all thirteen contact sheets did — **but a composite you assemble has no size ceiling
+unless you give it one.**
+
+**If you construct an image, measure it before you read it. Neither side may exceed 2000
+pixels.** This limit is discoverable only by hitting it, and hitting it ends your session.
+
+🔑 **And push incrementally.** The first ZUH-139 run lost everything because nothing had been
+pushed when the thread died. Push the validity check first, then each finding as it lands.
+
 ## The 5-second sampling is a REAL gap — treat it as one
 
 `overview/` samples one frame every 5 seconds. **That skips actions.** On a single contact

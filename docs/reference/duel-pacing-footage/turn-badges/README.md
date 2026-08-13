@@ -25,6 +25,10 @@ boundary observed between two samples is known to ±5 s, so a 30 s turn is 30 ±
 report a turn duration to a precision this cannot support — the earlier deliverable was right
 to call a 2-second claim *"an untestable number wearing a fact's clothes."*
 
+⚠️ **A second, fatal image limit exists — per-image dimensions, max 2000px.** It is separate
+from the volume cap above, and it killed a thread on 2026-08-13. Nothing here exceeds it, but an
+image you COMPOSITE yourself can. See `INDEX.md`.
+
 ## Three games, and the badge numbering resets
 
 Game 1 ends ~10:35–10:40 · game 2 `VICTORY` at 18:55 · game 3 ends ~26:12 · room screen 26:20.
