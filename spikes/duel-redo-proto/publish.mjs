@@ -14,8 +14,10 @@
 // worse than no artefact.
 import { mkdirSync, copyFileSync, statSync } from "node:fs";
 
-const SRC = "dist/index.html";
-const OUT = "review/duel-redo-prototype.html";
-mkdirSync("review", { recursive: true });
+// argv[2] = built file, argv[3] = the committed review path. Defaults are the
+// prototype's and are unchanged; the catalogue passes its own.
+const SRC = process.argv[2] ?? "dist/index.html";
+const OUT = process.argv[3] ?? "review/duel-redo-prototype.html";
+mkdirSync(OUT.slice(0, OUT.lastIndexOf("/")), { recursive: true });
 copyFileSync(SRC, OUT);
 console.log(`published ${OUT} (${(statSync(OUT).size / 1024).toFixed(0)} kB, self-contained)`);

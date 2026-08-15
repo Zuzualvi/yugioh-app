@@ -1,0 +1,117 @@
+/* catalogue.css — chrome for `catalogue.tsx` and nothing else.
+   A SEPARATE SHEET, not an appendix to `styles.css`, because the prototype
+   imports that one wholesale: putting this there added 2 kB of page furniture to
+   the file the CEO downloads to review the duel screen, for a page he opens
+   separately. The rails on that page must be the prototype's own rendering, so
+   nothing here styles a `.feedrail`, a `.feedrow` or anything inside one — the two
+   height rules at the end give the rail a box to sit in outside the duel grid and
+   set no colour, type or spacing. */
+.cat-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--sp-7) var(--sp-6) var(--sp-9);
+  color: var(--text-1);
+}
+.cat-page h1 {
+  font-size: 22px;
+  color: var(--text-0);
+  margin: 0 0 var(--sp-4);
+}
+.cat-page h2 {
+  font-size: 15px;
+  color: var(--text-0);
+  margin: var(--sp-8) 0 var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border);
+}
+.cat-lead {
+  font-size: var(--t-small);
+  line-height: 1.55;
+  max-width: 80ch;
+  margin: 0 0 var(--sp-4);
+}
+.cat-lead code,
+.cat-trigger code {
+  color: var(--text-0);
+}
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--sp-5);
+}
+.cat-item {
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  background: var(--bg-1);
+  padding: var(--sp-4);
+}
+.cat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.cat-kind {
+  font-weight: var(--w-bold);
+  color: var(--text-0);
+  font-size: var(--t-small);
+}
+.cat-variant {
+  font-size: var(--t-cap);
+  color: var(--text-2);
+}
+.cat-status {
+  margin-left: auto;
+  font-size: var(--t-cap);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-1);
+  border: 1px solid var(--border);
+}
+.cat-row {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.cat-fallback,
+.cat-none {
+  color: var(--warn, #d8a13a);
+  border-color: var(--warn, #d8a13a);
+}
+.cat-trigger {
+  font-size: var(--t-cap);
+  color: var(--text-2);
+  margin: 0 0 var(--sp-2);
+  line-height: 1.5;
+}
+.cat-note {
+  font-size: var(--t-cap);
+  color: var(--text-1);
+  background: var(--bg-2);
+  border-left: 2px solid var(--border);
+  padding: var(--sp-2) var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  line-height: 1.5;
+}
+/* The rail is `position: relative` inside the duel grid; here it needs a box to
+   sit in. Height only — no colour, no type, no spacing of its own. */
+.cat-rail .feedrail {
+  height: auto;
+  max-height: 260px;
+}
+.cat-rail-tall .feedrail {
+  max-height: 520px;
+}
+.cat-foot {
+  margin-top: var(--sp-7);
+  color: var(--text-2);
+}
+.cat-findings {
+  font-size: var(--t-small);
+  line-height: 1.6;
+  max-width: 88ch;
+  padding-left: var(--sp-5);
+  color: var(--text-1);
+}
+.cat-findings li {
+  margin-bottom: var(--sp-3);
+}
