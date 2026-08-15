@@ -121,6 +121,49 @@ Two of the eight items that have passed through this list have had that property
 The corollary, for the deltas that remain: each of §2's must-haves should be re-read against the
 same question before anyone builds it.
 
+### 2b · The gate, run on "a card must be readable at the moment of deciding" — appended 2026-08-13
+
+The CEO's requirement is that **every candidate he could select, and the subject of the question, are
+readable in full at the moment of choosing.** Reading a card needs one thing from the wire: an identity
+the client can look a card up by. So this ran the §2a gate — *is the answer already in what the client is
+sent?* — over every decision kind, **before** proposing anything. **It proposes nothing.**
+
+**Candidates: FREE, everywhere, today.** `CardEntrySchema` on `master` is
+`{ code, name, controller, location, sequence }` and every candidate list is built from it — `cards`,
+`selects`, `selectCards`/`unselectCards`, `must`/`optional`, and the counter and sort lists. The client
+holds the whole card corpus, so a non-zero `code` is a complete reading. Where `code` is `0` the client
+joins against its own `STATE` snapshot, which is **not** redacted from its owner (§2a). **No delta.**
+
+**Subjects, kind by kind.** "Subject" = the card the question is *about*, as distinct from the cards it
+offers. Read off `duelDecision.ts` and `duelEvent.ts` on `master`:
+
+| Decision kind | Is there a card subject? | Identifiable from what the client is sent today? |
+|---|---|---|
+| `SelectEffectYN` | yes — the card whose effect is offered | ✅ **in the payload**: `card: CardEntry`, plus `description` |
+| `SelectPosition` | yes — the card being positioned | ✅ **in the payload**: `card: CardEntry` |
+| `SelectCard` · `SelectTribute` · `SelectZone` · `SelectUnselectCard` · `SelectSum` · `SelectCounter` · `SelectDisfield` · `SortCard` | yes — the intent the player started | ✅ **client-side**, from the `Intent` object the client owns. ⚠️ **but only through the STATE join**: the recorded payload carries `code: 0` for the asking player's **own** hand card, so the subject of your own tribute summon is redacted from you. Driven: the raw code is 0 and the join returns `73125233`. That is ND-9's residue, already on the list. |
+| `SortChain` | yes — the chain links themselves | ✅ `cards: CardEntry[]` |
+| `ChainPrompt` | **yes, and it is the one that matters** — the activation you are responding to | 🔴 **only when the sidecar fires.** `DECISION_CONTEXT.activatingCard` is an `EventCardRef` **with a code**, so when it arrives the identity is free — but it fired **twice in fifteen recorded scenarios**, both times only because a chain already existed, and **the commonest window of all, *respond to a summon*, has no subject on the wire.** |
+| `SelectYesNo` · `SelectOption` | no card — the subject is `description` / `options[]`, engine-resolved strings | n/a — nothing to look up, and the strings are already sent |
+| `AnnounceRace` · `AnnounceAttrib` · `AnnounceNumber` | no card subject | n/a |
+| `AnnounceCard` | no card subject; `filter.codes[]` are the *answers* | n/a — and the codes make those answers readable |
+| `IdleCommand` · `BattleCommand` | not questions — they arm the board | n/a; `activates[]` even carries a `description` per effect |
+
+**The gate's verdict: no new delta, and one existing item is confirmed rather than added.**
+
+- Requirement (a), **every candidate readable**, is **free today** — no change to any frame.
+- Requirement (b), **the subject readable**, is free for every kind above **except `ChainPrompt`
+  without a sidecar**, which is exactly the hole **MH-3b** already exists to close. It does not become a
+  new delta; it becomes the **use case that decides MH-3b's priority**, alongside the measured ~1 s
+  response budget already recorded above.
+- **ND-9's residue is confirmed by driving rather than by argument**: the subject of the player's own
+  intent is `code: 0` on the wire and survives only because the client joins its own snapshot. That is
+  the same finding §2a records, now with a second consumer.
+
+**What this cost to establish: nothing but reading the contract.** Which is the point of the gate — the
+version of this task that skipped it would have proposed "send the subject with every decision", and the
+answer is that the wire already carries it everywhere but one, and that one is filed.
+
 ## 3 · Constraints inventory
 
 - **Live users:** near-zero. That is the premise of the project.

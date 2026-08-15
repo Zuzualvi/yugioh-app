@@ -189,7 +189,14 @@ with consequences, so it is presented every time. There is no setting.
 | 1 | click a candidate | confirm reads `Activate Dimensional Prison` |
 | 2 | confirm, **or** `No response` | either answer is a first-class button of equal weight, decline on the left |
 
-**Actions to goal: 2, or 1 to decline.**
+**Actions to goal: 2, or 1 to decline. Actions to READ any of it: 0.**
+
+**Everything on this screen is readable while the question is up, and the subject arrives already
+open.** `"Book of Moon" was activated.` puts *Book of Moon* in the inspector with no gesture at all;
+hovering or tab-focusing any candidate — or any card that is not one — reads it in full; none of that
+touches the selection. That is `02 §6.1`, and it exists because the opposite was built: hover-to-inspect
+was suppressed exactly while a decision was presented, so on this screen a player who does not know the
+cards could not find out what any of them did.
 
 **The budget for this whole surface is about ONE SECOND, measured.** Four response prompts in the
 reference client, put to two competitive players, were on screen and answered in **0.25–1.5 s** — and in
@@ -218,7 +225,7 @@ closes it.**
 
 | Goes wrong | Sees | Recovers by |
 |---|---|---|
-| the player wants to read the card first | hover or click anything → inspector; **inspection never answers the question** | reading, then answering |
+| the player wants to read the card first | hover, focus or click anything → inspector; **inspection never answers the question** | reading, then answering |
 | the window is your own priority on your own summon | same surface, and line 1 names *your* card in *your* colour | answering |
 | the response is rejected | the question re-renders with an amber line | re-answering |
 
@@ -366,7 +373,10 @@ they point in opposite directions, so both are stated:
 - Clicking a card that affords nothing → a 200 ms shake and **no sentence**.
 - Hovering anything → the inspector after 150 ms. **(Authored and unverified: ZUH-131 explicitly
   refuses a number for this threshold — it is below the footage's resolution. It needs a build and a
-  stopwatch.)**
+  stopwatch.)** **Keyboard focus is the same trigger** — a player tabbing the board reads what a pointer
+  would, which is the accessibility half of `02 §6.1` and costs one handler.
+- **None of this stops while a question is up.** Probing is how a learning player answers at all; a
+  screen that switches reading off at the moment it demands an answer is asking for a guess.
 - While a question is up, clicking a non-candidate inspects rather than answering.
 
 **No keyboard event may submit a decision. `Esc` never commits anything, anywhere.** Carried

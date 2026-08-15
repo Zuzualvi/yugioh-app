@@ -478,8 +478,9 @@ through: **the panel shows the card the player touched.** ZUH-118 breaks 6/7 are
 
 | State | Trigger | Sees | Motion |
 |---|---|---|---|
-| auto-push | a chain link starts resolving; the opponent activates | that card's text, no click | `--m-base` |
-| hover | 150 ms over any card | the card | `--m-quick` |
+| auto-push | a chain link starts resolving; the opponent activates; **a question arrives whose subject the client can identify** | that card's text, no click, no gesture at all | `--m-base` |
+| hover | 150 ms over any card — **including while a question is up, and including a candidate** | the card | `--m-quick` |
+| **focus** | the card tile or candidate thumb receives keyboard focus | the same reading a pointer gets | `--m-quick` |
 | pinned | explicit click | thin blue rule; auto-push queues behind it | `--m-quick` |
 | art loading | image in flight | **all the text already readable**; a placeholder holding 813:1185 | shimmer 1.1 s |
 | art failed / 4 s deadline | `onError` or deadline | no image, no placeholder, no broken glyph — the panel is what it was before art | — |
@@ -487,6 +488,43 @@ through: **the panel shows the card the player touched.** ZUH-118 breaks 6/7 are
 | provenance, art absent | overridden card, art not shown | **no badge** — nothing on screen to differ from | — |
 | hidden card | `code === 0` **and the card is not yours** | `Face-down card` + its location | — |
 | empty | nothing inspected | **panel absent**, not an empty frame | `--m-quick` |
+
+### 6.1 · Reading a card at the moment of deciding — normative
+
+**The player must be able to read, in full, every card the question is about and every card they could
+answer it with, without dismissing the question and without changing their answer.** This is the
+learning-Edison player — the actual user — and it is not a nicety: a screen that demands an answer
+about cards the player cannot read is asking them to guess.
+
+1. **Every candidate is readable in full** — name, type, level/stats and complete effect text — while
+   the question is up. Hover, or keyboard focus, on a candidate wherever it lives: a board tile, a hand
+   tile, or a **dock thumb** (the only candidates the dock draws itself are those with no tile on the
+   board, and they need their own route in).
+2. **The subject of the question is readable by the same means, and is pushed without being asked
+   for.** When a question arrives, the inspector shows the card the question is *about* — the opponent's
+   activation, or the player's own intent — so `"Book of Moon" was activated. Chain a card or effect?`
+   arrives with *Book of Moon* already open.
+3. **Reading never submits, changes or discards an answer.** Inspection and selection are different
+   gestures on different handlers: hovering a candidate reads it, clicking it selects it, and no reading
+   path touches the selection, the confirm label or the question. This is `CC-A4` restated for the
+   pointer.
+4. **Where the subject cannot be identified from what the client is sent, nothing is pushed and nothing
+   is guessed** (D1). The sentence already degrades honestly — `The engine did not say what.` — and the
+   inspector stays absent rather than showing a card that might be the wrong one.
+5. **One reading surface, one set of rules.** The inspector is it. The pre-errata provenance clause,
+   the art-failure fallback and the `Face-down card` rule apply unchanged, because there is no second
+   place a card is read.
+
+**Why this is the inspector and NOT a text pane in the dock — the earlier reasoning, and where it was
+wrong.** This design deliberately put *thumbnails yes, text panes no* in the question surface, on the
+grounds that the thumbnails **are** the answer space and a second copy of the text costs width while the
+inspector is inches away. **The first half of that is still right and the second half was wrong.** A text
+pane in the dock would spend the reserved band's width on a duplicate of a surface we already have,
+create a second place where card text and art can disagree — and the provenance rule would then need two
+implementations, which is how conventions drift. What actually failed was never the *place*; it was the
+*trigger*: **hover-to-inspect was switched off exactly while a decision was presented**, so the surface
+the argument relied on was unreachable in the one moment it was needed. Fixing the trigger costs no
+width, adds no surface and no second rule.
 
 **A hand card is never "face-down".** ocgcore reports every hand card with `position: 10`
 (`FACEDOWN_ATTACK|FACEDOWN_DEFENSE`); those bits are meaningless in the hand. Reading them there

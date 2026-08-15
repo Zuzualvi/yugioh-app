@@ -14,7 +14,7 @@ something I drove and can point at, or something I am telling you I did not.
 ## 1 · Coverage — what the prototype reaches, and what it does not
 
 **Inventory: 16 surfaces · 94 state rows · 10 flows.**
-**Prototype: 14 scenarios · 64 of 94 state rows reachable · 30 not reachable.**
+**Prototype: 14 scenarios · 65 of 94 state rows reachable · 29 not reachable.**
 
 🔴 **This table was RE-DERIVED against the built file on 2026-08-13, and the version it replaces was
 wrong.** Every row below was decided by **driving the downloaded reviewable build**
@@ -54,7 +54,7 @@ the total is a floor rather than a flattering estimate.
 | Dock · Away | **2 / 3** | `returned` — no presence-restore path. |
 | Phase rail + turn resource | **5 / 5** | — *(was recorded as 4/4; there are five rows. `question open` is driven — marker stays on `M1` with all 7 buttons disabled, which is F-11's fix — and `turn boundary` is driven: the resource resets to `not yet used` when control returns.)* |
 | Feed rail | **4 / 7** | `partial (— feed resumes here —)` — no reconnect path · `unrecognised event` — every recorded kind has a `describe()` case · `duel-ended row` — the rail renders no `Duel ended — {reason}` row. **`empty, turn > 1` was wrongly listed here and is reachable**, driven at the load of scenario 7. |
-| Card inspector | **3 / 9** | `auto-push` (needs a resolving chain) · `pinned` (click and hover are the same gesture) · `art loading` (**not driven**, transient) · `provenance` and `provenance, art absent` (no captured card is in the pre-errata corpus) · `hidden card` (no route). *`hover`, `empty` and `art failed / 4 s deadline` are driven — the inspector renders name, type and ATK/DEF with **0** `<img>` nodes in scenario 10.* |
+| Card inspector | **4 / 9** | `pinned` (click and hover are still the same gesture; **re-driven** — 0 `.pinned` nodes) · `art loading` (**not driven**, transient) · `provenance` and `provenance, art absent` (no captured card is in the pre-errata corpus) · `hidden card` (no route). *`hover`, `empty` and `art failed / 4 s deadline` are driven. **`auto-push` moved into the reachable four**: it was listed as needing a resolving chain, and the subject push now enters the same state from a question arriving — scenario 5a opens with `Book of Moon` in the inspector and **no gesture at all**. Re-driven on this row rather than inferred from the change.* |
 | **Pile inspector** | **4 / 5** | `answer-space` — no decision in the capture has a pile-located candidate. **Built and driven:** `default` (`YOUR GY — 2 CARDS · Uraby · Book of Moon`), `empty` (`Their gy is empty.`), `hidden` (`33 cards. Contents hidden — this is not public information.`), `disabled` — i.e. inspection works **off-clock**, driven. |
 | **Chain strip** | **2 / 6** | `resolving`, `end` — no `CHAIN_SOLVING` or `CHAIN_END` event exists in any fixture · `compressed` — recorded chains are single-link · `unknown code` — every recorded link resolves. **Built and driven:** `empty` (absent, 0 nodes) and `default` — activating in scenario 5 renders `CHAIN 1 Book of Moon` with the owner tint (`clink mine`). |
 | Top bar | **3 / 4** | `our socket errored` — no transport-error surface exists. |
@@ -62,7 +62,7 @@ the total is a floor rather than a flattering estimate.
 | Cross-surface rules | **3 / 6** | `error` · `partial` · `disconnected` — all three for the reasons above. *`loading` is driven negatively as specified — **0** spinner/loader nodes anywhere in the build; `empty` and `ended` are driven.* |
 
 **The arithmetic, so it can be checked in one pass:**
-12 + 4 + 5 + 5 + 2 + 3 + 3 + 2 + 5 + 4 + 3 + 4 + 2 + 3 + 4 + 3 = **64**, over
+12 + 4 + 5 + 5 + 2 + 3 + 3 + 2 + 5 + 4 + 4 + 4 + 2 + 3 + 4 + 3 = **65**, over
 15 + 4 + 8 + 5 + 4 + 4 + 4 + 3 + 5 + 7 + 9 + 5 + 6 + 4 + 5 + 6 = **94**.
 
 **On the 74 / 92 figure that has been quoted elsewhere:** it appears nowhere in this repository, so it is
@@ -76,6 +76,12 @@ about different things and this one is the one that survives being tapped.
 
 *(Round 2: `end-overlay/dismissed`, `top-bar/duel-ended` review path and the verb-cluster dismissal
 states became reachable with the blocker fixes.)*
+
+*(Round 4, the readability requirement: the card inspector's `auto-push` became reachable — the
+subject of a question is now pushed to it on arrival (`02 §6.1`), which is the same state the row
+already specified for "the opponent activates". **One row moved, re-driven, and the total re-derived
+from the table**: 64 → 65. Nothing else in the table changed; `pinned` was re-checked and is still not
+reachable.)*
 
 *(Round 3, the pacing passes: B1's deleted timer gave §3.3 a `spent` state, and two states this table
 counted as reachable **were not rendering** — the feed rail's `delta-marked` row never drew until

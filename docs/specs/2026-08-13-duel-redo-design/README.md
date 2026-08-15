@@ -32,8 +32,8 @@ around that and do not copy it into a feature branch to save the work. What surv
 is: this document set, the fixtures, the stylesheet and its markup contract, and the backend deltas.
 `shots/` exists so the look has a record after the branch is gone.
 
-**Coverage: 64 of 94 states reachable in the prototype**, re-derived row by row against the built file
-on 2026-08-13. `07` §1.1 states which 30 are not and why; most are "no recorded frame exists". **The pile
+**Coverage: 65 of 94 states reachable in the prototype**, re-derived row by row against the built file
+on 2026-08-13. `07` §1.1 states which 29 are not and why; most are "no recorded frame exists". **The pile
 inspector and the chain strip ARE built** — 4/5 and 2/6 states driven — and this document said for three
 rounds that they were not: see `07` §1.2a for the correction and how it survived. A prototype is done to
 a stated coverage, never just done, and the statement has to be re-derived rather than carried.
