@@ -427,7 +427,40 @@ the next handover.
 | FR4 | **Where identity is unresolvable, the row uses a descriptor built only from `controller` and `location`** — never a code we guessed and never a slot. A test drives an opponent's hidden card and asserts `their face-down monster`. |
 | FR5 | **`MOVE` renders `from → to`**, both from the event's own fields. A test asserts a destroyed monster reads *monster zone → graveyard* and **not** *graveyard → graveyard*. |
 | FR6 | **Disambiguation survives without being visible**: each row carries `data-ref`, and the answer-outcome fingerprint reads it. A test asserts two moves differing only in source slot produce different fingerprints while rendering identical prose. |
+| FR8 | 🔴 **A row is resolved against the state AS OF THAT ROW** — after events 0..n-1 of the batch it arrived in. **Not** against the batch's start state, and **not** against its end state. See §7.2, which is the half of this contract that engineering must build and the prototype does not have. |
 | FR7 | **The battle line takes its defender from the `ATTACK` event, not `BATTLE.target`** — recorded, a direct attack sends `ATTACK.target: null` and `BATTLE.target` pointing at a `DECK` slot. A test asserts a direct attack reads *attacked directly*. |
+
+### 7.2 · Resolving a row's identity — the per-event fold. **Normative, and it binds the real client**
+
+FR1 says a row names its card wherever the player is entitled. **This section says *when* to look it up,
+and it is the part a builder will otherwise get wrong**, because both of the obvious answers are wrong:
+
+| Model | What it gets wrong |
+|---|---|
+| Resolve every row against the board **as it was before the batch** | Cannot name a card that **arrived during** the batch. A monster summoned at event 2 and attacking at event 4 is not in the pre-batch board at all, so its attack row falls back to a descriptor for a monster the player watched arrive. |
+| Resolve every row against the board **as it is now** | Names whatever occupies that slot **now**. After a battle the attacker has left the field; after a later turn a different card is in that zone. This is the F-01 defect family — a label sourced from a different moment than the thing it labels. |
+
+**The rule: resolve row *n* against the state after events 0..n-1** — the fold, not either endpoint. Two
+consequences, both testable:
+
+1. **Resolve when the event is appended, and STORE the identity on the row.** Do not re-resolve at
+   render time: a re-render happens against a board that has since moved, so a row that named a card
+   correctly when it arrived would name a different one an hour later. Identity is a property of the
+   moment, and a transcript is a record of moments.
+2. **A ref is never tried against two states.** Falling back from one to the other is precisely how a
+   row comes to name the wrong card. Where the fold cannot identify it, the honest descriptor (FR4).
+
+**In the real client this is nearly free, and that is why it must be written down rather than left to be
+rediscovered.** The server interleaves `STATE` frames with `EVENTS` frames; a client that applies each
+frame as it lands *already holds* the correct state at the moment each event is appended. The failure
+mode only appears in a client that batches — which the prototype does, per scenario, which is why the
+prototype cannot satisfy this and the shipped client can. **`07 §1.4` states that limitation for the
+build the CEO taps; this section states the requirement for the build engineering ships.** They are
+deliberately not the same sentence.
+
+*(Acceptance: a test that appends a summon and an attack by the summoned monster **in one batch**, and
+asserts the attack row names the monster. A prototype-shaped client fails it; a frame-at-a-time client
+passes it without special-casing.)*
 
 ## 8 · `CardInspector`
 

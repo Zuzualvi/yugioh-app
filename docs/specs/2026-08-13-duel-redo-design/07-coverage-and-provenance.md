@@ -205,6 +205,50 @@ fixtures are recorded, never invented).
 | F9 Duel end | ⚠️ **partial** — three reasons render and **`Review board` IS wired** (driven: it dismisses the card and a `Duel over — show result` pill reopens it — that was blocker F-02, fixed on this branch). The remaining gap is provenance, not behaviour: the `DUEL_END` frame is hand-authored (see §2). *`Review board is not wired` was stale — corrected 2026-08-13.* |
 | F10 Probing | ✅ verb chips, shake-with-no-text, hover inspector |
 
+### 1.4 · A stated limitation of the replay: the rail resolves per BATCH, the contract requires per EVENT
+
+**Read this before tapping scenario 7.** The rail there shows three rows that are honest and vague where
+they could be specific, and the reason is a property of the prototype, not of the design.
+
+Driven in the built file, scenario *7 · Pass the turn, wait, get it back*, after pressing `End Turn` and
+waiting for control to return:
+
+```
+TURN   4
+MOVE   their card in hand         hand → monster zone
+SUMMON Thunder King Rai-Oh        hand → field
+ATTACK their face-down monster    → directly          ← the monster named one row above
+BATTLE their face-down monster    damage step         ← the same monster
+       their face-down monster attacked directly — nothing destroyed — you took 1900 damage
+LIFE POINTS You -1900
+```
+
+**The `SUMMON` row names the monster and the `ATTACK` row two lines below it does not.** Both are about
+the same card. Nothing here is untrue — `their face-down monster` is exactly what the board the row
+resolves against knew — but the player watched that monster arrive, so the design requires it to be
+named (`02 §5.1` point 1).
+
+**Why.** A rail row resolves identity against the board **as it was before the batch of events it is
+narrating**, because a transcript describes the past and resolving against the *current* board would name
+whatever occupies that slot now (F-01's defect family). That rule is right for a card that existed before
+the batch and cannot reach one that **arrived during** it: this monster is summoned at event 2 and attacks
+at event 4 of the same delivery.
+
+- **The contract requires the correct model** — resolve row *n* against the state after events 0..n-1, the
+  fold rather than either endpoint (`04 §7.2`, FR8).
+- **The prototype cannot satisfy it**, because it replays a scenario's events as one batch against one
+  snapshot. **The shipped client does not have this problem**: the server interleaves `STATE` frames with
+  `EVENTS` frames, so a client that applies each frame as it lands already holds the right state when each
+  event is appended.
+- **Not fixed here, deliberately.** It would mean changing how the rail is fed — a design change to a
+  ringfenced surface — to buy fidelity in a disposable artifact and nothing in the product. **ZUH-153.**
+
+*Three rendered lines, in one scenario: the `ATTACK` row, the `BATTLE` row and the battle-result line
+beneath them. **The `MOVE` row above them is a different case and is correct** — `their card in hand` is
+the opponent's hand, which the snapshot redacts because we are genuinely not entitled to it (`02 §5.1`
+point 3). And the ordinary case is unaffected: a card that existed before the batch is named — scenario
+4c reads `ATTACK Uraby → Thunder King Rai-Oh` and `MOVE Uraby monster zone → graveyard`.*
+
 ---
 
 ## 2 · Fixture provenance, per set
@@ -302,6 +346,8 @@ build:
   WebSocket round trip feels like; the recorded capture has real inter-frame timings I did not
   mine for it. What *is* measured is that the gap exists and is worth filling: in the reference client
   an answer reaches its visible consequence in **≈2.0 s, of which ~1.5 s shows nothing happening**.
+- **That the rail names every card it could.** It does not, in one place, and the place is named: the
+  three rows in scenario 7 above (§1.4). The prototype resolves per batch; `04 §7.2` requires per event.
 - **The pacing footage.** Both studies read and applied — `09-pacing-application.md`, budget by budget,
   one section per study. What they changed is the **long** durations (the receipt's and the error line's
   timers, both deleted) and the **load** on the delta surface (§3a). What neither could touch is
