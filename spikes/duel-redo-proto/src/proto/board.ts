@@ -170,8 +170,24 @@ export function resolveCode(
  * carries `from` and `to`. Both are what ocgcore emitted, normalised by the
  * server. Anything else is ignored rather than guessed at.
  */
+/**
+ * Every event kind that ASSERTS A STATE CHANGE. If a kind is in here it must be
+ * applied below; if it is applied below it must be in here. The rail narrates these
+ * kinds, so a kind that is narrated and not applied is a surface whose log and whose
+ * board disagree — requirement D7, and the F-04/F-05 defect family.
+ *
+ * `CHAINING`, `CHAIN_SOLVING`, `CHAIN_SOLVED`, `CHAIN_END`, `PHASE`, `TURN`, `ATTACK`,
+ * `BATTLE` and `HINT` are deliberately absent: they announce, they do not move a card
+ * or change a total. `ATTACK`/`BATTLE` are the interesting ones — the destruction that
+ * follows arrives as its own `MOVE`, and the damage as its own `LP_CHANGE`.
+ */
+export const STATE_ASSERTING_KINDS = new Set(["LP_CHANGE", "MOVE", "SUMMON", "SPSUMMON", "SET"]);
+
 export function applyEvents(b: Board, events: { kind: string; [k: string]: unknown }[]): Board {
   for (const e of events) {
+    // The set above is the dispatch, so it cannot drift from the handlers below:
+    // anything that only announces is skipped here rather than in six places.
+    if (!STATE_ASSERTING_KINDS.has(e.kind)) continue;
     if (e.kind === "LP_CHANGE") {
       const seat = e["seat"] as Seat | undefined;
       const delta = e["delta"] as number | undefined;
@@ -184,18 +200,50 @@ export function applyEvents(b: Board, events: { kind: string; [k: string]: unkno
     if (e.kind === "MOVE") {
       const from = e["from"] as { controller?: Seat; location?: Loc; sequence?: number } | undefined;
       const to = e["to"] as { controller?: Seat; location?: Loc; sequence?: number } | undefined;
-      if (!from || !to || from.controller === undefined || !from.location) continue;
-      // Only row → pile moves are applied. A pile → pile or pile → row move needs
-      // a source index the event does not always carry, and a wrong move is worse
-      // than an unmoved card.
-      if (!ROW_LOCS.includes(from.location)) continue;
-      if (to.location !== "GRAVE" && to.location !== "REMOVED") continue;
+      if (!from || !to || from.controller === undefined || !from.location || !to.location) continue;
+      // EVERY DIRECTION IS APPLIED NOW, not only row → pile.
+      //
+      // The old restriction — "a pile → row move needs a source index the event does
+      // not always carry" — is not what the recorded data shows: every recorded MOVE
+      // carries `from.sequence`, and `take()` already falls back to a positional splice
+      // when a pile entry's own sequence does not match. What the restriction actually
+      // produced was a board that never received the opponent's summon while the rail
+      // narrated it (ZUH-152), which is the defect class D7 forbids.
       const card = take(b, {
         controller: from.controller,
         location: from.location,
         sequence: from.sequence ?? 0,
       });
-      if (card) put(b, to.controller ?? from.controller, to.location, 0, { ...card, position: 1 });
+      if (!card) continue;
+      const seat = to.controller ?? from.controller;
+      const seq = ROW_LOCS.includes(to.location) ? (to.sequence ?? 0) : 0;
+      // A card entering a pile lies face-up in it; a card entering a row keeps the
+      // position it had until a SUMMON/SET below states one. Nothing here adjudicates.
+      const position = ROW_LOCS.includes(to.location) ? card.position : 1;
+      put(b, seat, to.location, seq, { ...card, position });
+      continue;
+    }
+    // PLACEMENT EVENTS. The event carries its own ref — controller, location, sequence
+    // — and its own code and position, all recorded. Applying them is a JOIN on
+    // recorded data, never an invention (D6): a SUMMON says "this card, with this
+    // code, is now in this zone", and until now the board ignored it while the rail
+    // announced it.
+    if (e.kind === "SUMMON" || e.kind === "SPSUMMON" || e.kind === "SET") {
+      const ref = e["card"] as
+        | { code?: number; controller?: Seat; location?: Loc; sequence?: number }
+        | undefined;
+      if (!ref || ref.controller === undefined || !ref.location) continue;
+      if (!ROW_LOCS.includes(ref.location)) continue;
+      const seq = ref.sequence ?? 0;
+      const key = pileKey(ref.controller, ref.location);
+      const row = b.zones[key] as (ZoneCard | null)[];
+      const existing = row[seq] ?? null;
+      const position = (e["position"] as number | undefined) ?? existing?.position ?? 1;
+      // The MOVE that carried the card here may have arrived first with `code: 0`
+      // (the wire redacts by position, ND-9). The placement event carries the real
+      // code, so it fills the identity in rather than duplicating the card.
+      const code = ref.code || existing?.code || 0;
+      row[seq] = { ...(existing ?? {}), code, sequence: seq, position } as ZoneCard;
     }
   }
   return b;
