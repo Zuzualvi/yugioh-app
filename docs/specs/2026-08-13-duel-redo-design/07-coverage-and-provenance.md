@@ -144,15 +144,26 @@ prototype's own rendering, not a mock-up.
 
 | | Kinds | What the rail does |
 |---|---|---|
-| Authored row | `SUMMON` `SET` `MOVE` `CHAINING` `CHAIN_SOLVING` `LP_CHANGE` `ATTACK` `BATTLE` `TURN` | **9** |
-| **No template — prints the raw engine enum** | `SPSUMMON` `CHAIN_SOLVED` `CHAIN_END` | **3** |
-| **No row at all** — `describe()` returns `null`, deliberately | `PHASE` `HINT` | **2** |
+| Authored row | `SUMMON` **`SPSUMMON`** `SET` `MOVE` `CHAINING` `CHAIN_SOLVING` `LP_CHANGE` `ATTACK` `BATTLE` `TURN` | **10** |
+| **No row at all** — `describe()` returns `null`, each a recorded decision (`02 §5`) | `PHASE` `HINT` `CHAIN_SOLVED` `CHAIN_END` | **4** |
+| No template — prints the raw engine enum | **none** | **0** |
+
+**Corrected 2026-08-13.** This table first read 9 / 3 / 2: `SPSUMMON` printed the raw enum
+`SPSUMMON Raiza the Storm Monarch`, and so did `CHAIN_SOLVED` and `CHAIN_END`. `SPSUMMON` now has a row
+(**provisional copy, ZUH-123**); the two chain-bookkeeping kinds now draw **nothing**, decided rather
+than fallen through, because the chain strip carries both — with the dependency on that strip shipping
+recorded in `02 §5`. **No kind in the contract's union prints its enum any more**, so the rail's
+`unrecognised event` state is now reachable only by a kind the contract does not have, which is the
+forward-compatibility case it exists for.
 
 **This does not change the numbers in §1.1**, and the reason matters: §1.1 counts what a reviewer can
-reach **in the 14 duel scenarios**, and no scenario emits `SPSUMMON`, `CHAIN_SOLVED` or `CHAIN_END`, so
-the feed rail's `unrecognised event` state stays **not reachable there**. It is now *demonstrated* on the
-catalogue page instead. **`SPSUMMON` appears in no recorded fixture at all** — the other thirteen kinds
-all do — so the catalogue is the first time that row has ever been rendered.
+reach **in the 14 duel scenarios**. Re-driven rather than assumed — the verbs every scenario can render
+are `ATTACK`, `BATTLE`, `LIFE POINTS`, `MOVE`, `SUMMON`, `TURN`, and **none of the three changed kinds
+appears in any of them**, before or after. So the feed rail's `unrecognised event` state stays **not
+reachable** there and its row is unchanged. **`SPSUMMON` appears in no recorded fixture at all** — the
+other thirteen kinds all do — so it remains **unexercised by every scenario** and the catalogue page is
+the only place its row has ever been rendered. **No fixture was invented to demonstrate it** (D6:
+fixtures are recorded, never invented).
 
 ### 1.3 Flows
 

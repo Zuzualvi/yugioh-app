@@ -455,6 +455,31 @@ A `MOVE` row names the **slot** it came from, not only the card. Two copies of o
 identical board, so without the slot the feed cannot record which one moved — **the answer-outcome
 enumeration reported exactly that as a collision, and this is the fix.**
 
+**WHICH OF THE CONTRACT'S 14 EVENT KINDS DRAW, AND THE FOUR THAT DELIBERATELY DO NOT.** The rail can
+only ever be asked to render `DuelEventSchema`'s union (`packages/contracts/src/duelEvent.ts`), and
+**every one of the fourteen now has an authored answer — none falls through to its raw enum.** Ten draw
+a row. Four draw nothing, and each is a **decision with a reason**, not an omission:
+
+| Kind | Why no row |
+|---|---|
+| `PHASE` | The **phase rail** carries the phase. A row would duplicate a permanent surface. |
+| `HINT` | Engine chatter addressed to the entitled player — ten of them in one recorded opponent turn. |
+| `CHAIN_SOLVED` | The **chain strip** moves its `resolving` highlight off the link. `CHAIN_SOLVING` keeps its row because it is the transcript's causal anchor — between the activation rows above it and the consequence rows (`MOVE`, `LP_CHANGE`) below. `CHAIN_SOLVED` adds nothing between those two; the consequences arrive as their own events. |
+| `CHAIN_END` | The **chain strip clearing itself is the signal** (§8, `end`). |
+
+⚠️ **The two chain decisions depend on the chain strip shipping.** If it is ever cut, `CHAIN_END`
+becomes invisible to the player and both must be revisited. Recorded here so that dependency is not
+discovered later.
+
+**`SPSUMMON` gained a row on 2026-08-13** and until then printed the raw engine enum at the player —
+the rail's commonest fallback in real play, since a large share of Edison summons are Special Summons.
+The event does not say **where** the monster came from (hand, graveyard, Extra Deck, banishment), so the
+row states the **destination** and not a source it would have to invent (D1/D2). **The string is
+provisional and owned by ZUH-123**, with the rail's other four wording issues — `MOVE`'s location
+vocabulary, `TURN` not naming the turn player, `CHAIN_SOLVING`'s doubled noun, and the missing owner
+tint where the contract carries no `actor`. **A row that exists beats a row that is well written**;
+those are queued, not forgotten.
+
 | State | Trigger | Sees | Motion |
 |---|---|---|---|
 | empty, turn 1 | duel just started | `The duel has not started.` | — |
@@ -462,7 +487,7 @@ enumeration reported exactly that as a collision, and this is the fix.**
 | default | events exist | grouped rows, newest at the bottom, auto-scrolled | row slide-in `--m-base` |
 | delta-marked | control just returned — **not** the strip being expanded | `— since you last acted —` rule above the first new row; **it survives the strip's dismissal and the duel's end, and is replaced only by the next handover** (§3.5) | `--m-narrate` |
 | partial | reconnected, no backfill | dashed `— feed resumes here —` above the first post-reconnect row | — |
-| unrecognised event | unknown `kind` | the row renders the kind verbatim; the rail keeps going | — |
+| unrecognised event | a `kind` **outside the contract's union** | the row renders the kind verbatim; the rail keeps going | — |
 | duel-ended | `DUEL_END` | final row `Duel ended — {reason}` | `--m-narrate` |
 
 ---
