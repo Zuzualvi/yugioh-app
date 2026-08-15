@@ -10,8 +10,40 @@ import { FeedRail, PhaseRail } from "./components/Rails";
 import { CardArt } from "./components/CardArt";
 import { ChainStrip, PileInspector, type PileTarget } from "./components/Piles";
 import { hand, resolveCode, row } from "./proto/board";
-import type { CardEntry, Seat } from "./proto/types";
+import type { CardEntry, DuelDecision, Seat } from "./proto/types";
 
+
+/**
+ * The subject of a decision — the card the question is ABOUT — from what the client
+ * is already sent. Returns null rather than guessing; see `05-backend-delta.md` §2b
+ * for the per-kind enumeration this implements.
+ */
+function subjectCodeOf(
+  step: { decision: DuelDecision; context?: { activatingCard?: { code?: number } } } | null,
+  intent: { subject: CardEntry | null } | null,
+  /** The same STATE join the candidate labels use. */
+  join: (ref: CardEntry | null | undefined) => number,
+): number | null {
+  if (!step) return null;
+  const ctx = step.context?.activatingCard?.code;
+  if (ctx) return ctx;
+  const d = step.decision as { kind: string; card?: CardEntry };
+  // SelectEffectYN and SelectPosition carry their own subject card in the payload.
+  if (d.kind === "SelectEffectYN" || d.kind === "SelectPosition") {
+    const code = d.card?.code || join(d.card);
+    if (code) return code;
+  }
+  // Otherwise the subject is the player's own intent, where one is in flight.
+  //
+  // ⚠ THE RAW CODE IS NOT ENOUGH, AND THAT IS ND-9, NOT AN OVERSIGHT. The recorded
+  // decisions carry `code: 0` for the asking player's OWN hand cards, so the subject
+  // of the player's own tribute summon is redacted from the player who started it.
+  // The client already holds the real identity in its STATE snapshot, so it joins —
+  // exactly as the candidate labels do. Without the join this push is silently empty
+  // on every intent-driven step, which is how it was first built.
+  const s = intent?.subject ?? null;
+  return (s?.code || join(s)) || null;
+}
 
 export default function App() {
   const [sid, setSid] = useState(SCENARIOS[1]!.id);
@@ -25,12 +57,28 @@ export default function App() {
   const [openPile, setOpenPile] = useState<PileTarget | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * THE SUBJECT OF THE QUESTION IS PUSHED TO THE INSPECTOR WHEN THE QUESTION ARRIVES.
+   *
+   * "Read the card my opponent just activated" is the other half of being able to
+   * answer: the sentence names it, and until now nothing showed it. The subject is
+   * taken from what the client is already sent, in this order — the sidecar's
+   * `activatingCard`, then a decision that carries its own subject card
+   * (`SelectEffectYN`, `SelectPosition`), then the player's own intent. Where none
+   * of those identifies a card, NOTHING is pushed and nothing is guessed (D1).
+   *
+   * It is a push, not a pin: the next hover replaces it, and it never touches
+   * `selection`.
+   */
   useEffect(() => {
     setSelection([]);
     setVerbAt(null);
-    setInspect(null);
     setOpenPile(null);
-  }, [m.step, sid]);
+    setInspect(subjectCodeOf(m.step, m.intent, (r) => (r ? resolveCode(m.board, r) : 0)));
+    // `m.board` is read inside the join; it is not a trigger — a board change must
+    // not re-push a subject over what the player is currently reading.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.step, m.intent, sid]);
 
   /**
    * THE KEYBOARD CONTRACT — normative, and it is the reason this handler exists at
@@ -215,9 +263,16 @@ export default function App() {
   const parts = useBoardParts({
     m,
     onCard,
-    onHover: (c) => {
-      if (!answering) setInspect(c);
-    },
+    // READING A CARD IS NOT ANSWERING (CC-A4), SO A QUESTION MUST NOT SWITCH IT OFF.
+    //
+    // This used to read `if (!answering) setInspect(c)` — hover-to-inspect was
+    // suppressed exactly while a decision was presented, which is the one moment the
+    // player needs to know what their options do. The design already required the
+    // opposite (`03` F5: "hover or click anything → inspector; inspection never
+    // answers the question"), so this was the build contradicting the spec. Hovering
+    // a candidate reads it; it does not select it — selection is a click, on a
+    // different handler, and nothing here touches `selection`.
+    onHover: (c) => setInspect(c),
     candidateRefs: answering ? candidateRefsOf(d) : [],
     selectedRefs: answering ? candidateRefsOf(d).filter((_, i) => selection.includes(i)) : [],
     zonePick,
@@ -287,6 +342,7 @@ export default function App() {
           <ChainStrip events={m.feed} mySeat={m.mySeat} resolve={refResolve} />
           <Dock
             m={m}
+            onInspect={setInspect}
             onAnswer={answer}
             onCancel={duel.cancelIntent}
             onClaim={duel.claim}

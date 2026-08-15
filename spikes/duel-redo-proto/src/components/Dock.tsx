@@ -25,6 +25,7 @@ export type Answer = (
 
 export function Dock({
   m,
+  onInspect,
   onAnswer,
   onCancel,
   onClaim,
@@ -34,6 +35,9 @@ export function Dock({
   setSelection,
 }: {
   m: DuelModel;
+  /** Read a card without choosing it — the dock's own thumbs are the only answer
+   *  space with no tile on the board, so they need their own route to the inspector. */
+  onInspect: (code: number) => void;
   onAnswer: Answer;
   onCancel: () => void;
   onClaim: () => void;
@@ -63,6 +67,7 @@ export function Dock({
       <DockBody
         m={m}
         onAnswer={onAnswer}
+        onInspect={onInspect}
         selection={selection}
         setSelection={setSelection}
       />
@@ -73,11 +78,13 @@ export function Dock({
 function DockBody({
   m,
   onAnswer,
+  onInspect,
   selection,
   setSelection,
 }: {
   m: DuelModel;
   onAnswer: Answer;
+  onInspect: (code: number) => void;
   selection: number[];
   setSelection: (s: number[]) => void;
 }) {
@@ -132,7 +139,16 @@ function DockBody({
       <div className="quiet">Your move — click a card, or use the phase rail.</div>
     );
 
-  return <Question m={m} d={d} onAnswer={onAnswer} selection={selection} setSelection={setSelection} />;
+  return (
+    <Question
+      m={m}
+      d={d}
+      onAnswer={onAnswer}
+      onInspect={onInspect}
+      selection={selection}
+      setSelection={setSelection}
+    />
+  );
 }
 
 // ── the intent line ───────────────────────────────────────────────────────────
@@ -171,12 +187,14 @@ function Question({
   m,
   d,
   onAnswer,
+  onInspect,
   selection,
   setSelection,
 }: {
   m: DuelModel;
   d: DuelDecision;
   onAnswer: Answer;
+  onInspect: (code: number) => void;
   selection: number[];
   setSelection: (s: number[]) => void;
 }) {
@@ -232,6 +250,7 @@ function Question({
                       : [...selection, i].slice(0, max),
                 )
               }
+              onHover={onInspect}
               broken={m.scenario.breakArt}
             />
           ))}

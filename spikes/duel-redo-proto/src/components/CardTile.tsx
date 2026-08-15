@@ -72,6 +72,10 @@ export function CardTile({
       data-testid={`slot-${ref_.location}-${ref_.sequence}`}
       onClick={() => onClick?.(ref_)}
       onMouseEnter={() => shown.code && onHover?.(shown.code)}
+      // Keyboard parity: a player tabbing the board reads the same card a pointer
+      // would. Focus never answers anything — it is the inspector's second trigger,
+      // not a third gesture.
+      onFocus={() => shown.code && onHover?.(shown.code)}
       aria-label={info ? info.name : fd ? "Face-down card" : "Card"}
     >
       <span className={cls}>
@@ -99,6 +103,7 @@ export function CandidateThumb({
   label,
   selected,
   onClick,
+  onHover,
   broken,
 }: {
   entry: CardEntry;
@@ -106,6 +111,10 @@ export function CandidateThumb({
   label: string;
   selected: boolean;
   onClick: () => void;
+  /** Read the card without choosing it. The ONLY candidates the dock draws itself
+   *  are those with no tile on the board, so without this they are the one answer
+   *  space on the screen that cannot be read before it is answered. */
+  onHover?: (code: number) => void;
   broken?: boolean;
 }) {
   const own = entry.controller === mySeat;
@@ -115,6 +124,8 @@ export function CandidateThumb({
       className={`cand ${selected ? "sel" : ""}`}
       data-testid="decision-candidate"
       onClick={onClick}
+      onMouseEnter={() => entry.code && onHover?.(entry.code)}
+      onFocus={() => entry.code && onHover?.(entry.code)}
       aria-label={label}
     >
       <span className="thumb">
