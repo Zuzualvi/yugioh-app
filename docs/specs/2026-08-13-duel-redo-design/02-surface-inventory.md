@@ -481,6 +481,16 @@ to say what happened; a row that says it happened to *a card* has not said it.
    "1" invented from a field that is not there. `applyEvents` had always read `from`/`to` correctly, so
    the board and the rail disagreed about every move.*
 
+6. **The board shows what the rail narrates.** A summon the rail announces puts a card on the board; an
+   attack it announces is made by a monster the board contains. The rail and the board are two views of
+   one state, and a surface whose narration and whose state disagree must fail loudly rather than render
+   (**D7**). *This was wrong: the replay applied only row → pile moves, so the opponent's summon was
+   announced and never placed — the rail said a monster attacked and the field was empty. ZUH-152.*
+   **Every event kind that asserts a state change is applied** — `MOVE` (in every direction),
+   `LP_CHANGE`, `SUMMON`, `SPSUMMON`, `SET` — and the kinds that only announce (`ATTACK`, `BATTLE`, the
+   chain kinds, `PHASE`, `TURN`, `HINT`) are deliberately not: the destruction an attack causes arrives
+   as its own `MOVE` and its damage as its own `LP_CHANGE`.
+
 **How the transcript keeps its disambiguation without showing an index.** Two copies of one card leave an
 identical board, and the answer-outcome enumeration reported exactly that as a collision — which is why a
 slot used to be printed. **It does not have to be visible to do that job.** The row carries its identity

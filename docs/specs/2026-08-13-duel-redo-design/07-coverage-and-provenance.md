@@ -77,6 +77,22 @@ about different things and this one is the one that survives being tapped.
 *(Round 2: `end-overlay/dismissed`, `top-bar/duel-ended` review path and the verb-cluster dismissal
 states became reachable with the blocker fixes.)*
 
+*(Round 6, ZUH-152 — the board now shows what the rail narrates: **no coverage row moved**, and that was
+established by **re-running all three coverage drivers against the new build and diffing the verdicts**,
+which came back identical, rather than by reasoning about it. The change is what the board *contains*,
+not which states exist.)*
+
+⚠️ **A finding about the GUARD, not just the replay, because the Product Lead asked for it either way.**
+`assertFeedConsistency` did not catch ZUH-152 and **could not have**: it inspects the **opening feed
+only**, and its premise is stated in its own comment — offending events "belong in the arriving event
+stream, **where they are applied**". That premise was false. `applyEvents` silently ignored every kind it
+did not handle, so an *arriving* `SUMMON`, or any pile → row `MOVE`, was narrated and never applied — the
+exact case the guard assumed impossible. The hole is at the guard's own assumption, not at its edge. The
+code now carries the invariant explicitly (`STATE_ASSERTING_KINDS` in `board.ts` is the dispatch, so the
+set and the handlers cannot drift apart), **but the QA criterion for D7 is not mine to write** and is
+left to the Product Lead: the shape it wants is *every state-asserting kind in an arriving stream is
+applied, or the scenario fails to load*.
+
 *(Round 5, the rail's card identity: **no row moved.** Every rail state was already reachable or not
 for reasons the naming change does not touch — the change is what a reachable row *says*, not which rows
 exist. Re-checked by driving every scenario's rail rather than assumed. One finding came out of it and is
