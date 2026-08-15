@@ -122,6 +122,32 @@ out; silence is not an option."** They were built and this document kept saying 
 corrected here, and the mechanism that let it happen — editing a total instead of re-deriving a table — is
 recorded in §1.1.
 
+### 1.2b · The feed rail's full vocabulary, outside the scenarios
+
+The scenarios each hit three or four event kinds, so **the rail's whole vocabulary is never visible in
+one place** — which is what "the scenarios look inconsistent" is. A second reviewable page renders it
+all: **`spikes/duel-redo-proto/review/feed-rail-catalogue.html`** on `proto/duel-redo`, self-contained,
+same download-and-open route as the prototype.
+
+**The authority is the contract, not the engine.** `packages/contracts/src/duelEvent.ts` on `master`
+defines `DuelEventSchema` as a discriminated union of **exactly 14 kinds**, and that union is what the
+server puts in an `EVENTS` frame; ocgcore's larger message set is mapped down at the engine/server
+boundary (ADR-0007). Verified against the file on `master`, and the branch's copy is identical to it.
+Every rail on that page is the **real `FeedRail` with the real stylesheet** — the rows are the
+prototype's own rendering, not a mock-up.
+
+| | Kinds | What the rail does |
+|---|---|---|
+| Authored row | `SUMMON` `SET` `MOVE` `CHAINING` `CHAIN_SOLVING` `LP_CHANGE` `ATTACK` `BATTLE` `TURN` | **9** |
+| **No template — prints the raw engine enum** | `SPSUMMON` `CHAIN_SOLVED` `CHAIN_END` | **3** |
+| **No row at all** — `describe()` returns `null`, deliberately | `PHASE` `HINT` | **2** |
+
+**This does not change the numbers in §1.1**, and the reason matters: §1.1 counts what a reviewer can
+reach **in the 14 duel scenarios**, and no scenario emits `SPSUMMON`, `CHAIN_SOLVED` or `CHAIN_END`, so
+the feed rail's `unrecognised event` state stays **not reachable there**. It is now *demonstrated* on the
+catalogue page instead. **`SPSUMMON` appears in no recorded fixture at all** — the other thirteen kinds
+all do — so the catalogue is the first time that row has ever been rendered.
+
 ### 1.3 Flows
 
 | Flow | Driven in the prototype? |
