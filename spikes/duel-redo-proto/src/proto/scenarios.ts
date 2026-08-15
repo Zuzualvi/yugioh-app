@@ -113,6 +113,11 @@ export function candidateLabel(
   siblings?: CardEntry[],
   board?: DuelStateSnapshot | null,
 ): string {
+  // ONE IDENTITY SOURCE, and it is `board.ts: resolveCode` — the join against the
+  // STATE snapshot. The feed rail resolves through the same function (via
+  // `cardIdentity.ts`, which wraps the caller's own `resolve` closure). Two
+  // FORMATTERS — this one appends a slot when two candidates share a name, the rail
+  // never shows a slot — over ONE lookup. D5 is about the lookup, not the wording.
   const n = nameOf(e) || cardName(resolveCode(board ?? null, e));
   if (n) {
     const dup = siblings?.some(

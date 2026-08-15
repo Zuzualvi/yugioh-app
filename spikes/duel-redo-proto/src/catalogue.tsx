@@ -67,6 +67,8 @@ interface Template {
  * against the STATE snapshot; here every ref carries its own code, so the join is
  * the identity function and the rows show their best case.
  */
+// Every ref on this page carries its own code, so the join is the identity function:
+// the page demonstrates ROWS, not the STATE join.
 const resolve = (r: unknown) => (r as { code?: number } | undefined)?.code ?? 0;
 const NAMES = { me: "You", opp: "Sakura" };
 
@@ -108,8 +110,12 @@ const TEMPLATES: Template[] = [
     trigger: "A card changes zone (MOVE, msg 50). The row names the SLOT it came from, not only the card.",
     status: "row",
     events: [
+      // Recorded shape: `card` is the card's ref AFTER the move and carries no
+      // sequence; `from` and `to` are the movement. Authoring `card` as the SOURCE —
+      // which this page did at first — hides the defect that the rail used to read it
+      // as one.
       ev("MOVE", {
-        card: ref(CARD.uraby, ME, "HAND", 2),
+        card: { code: CARD.uraby, controller: ME, location: "MZONE" },
         from: ref(CARD.uraby, ME, "HAND", 2),
         to: ref(CARD.uraby, ME, "MZONE", 1),
       }, ME),
@@ -122,7 +128,7 @@ const TEMPLATES: Template[] = [
     status: "row",
     events: [
       ev("MOVE", {
-        card: ref(CARD.uraby, ME, "MZONE", 1),
+        card: { code: CARD.uraby, controller: ME, location: "GRAVE" },
         from: ref(CARD.uraby, ME, "MZONE", 1),
         to: ref(CARD.uraby, ME, "GRAVE", 0),
       }, ME),
@@ -135,7 +141,7 @@ const TEMPLATES: Template[] = [
     status: "row",
     events: [
       ev("MOVE", {
-        card: ref(CARD.bookOfMoon, ME, "DECK", 0),
+        card: { code: CARD.bookOfMoon, controller: ME, location: "HAND" },
         from: ref(CARD.bookOfMoon, ME, "DECK", 0),
         to: ref(CARD.bookOfMoon, ME, "HAND", 5),
       }, ME),
@@ -148,7 +154,7 @@ const TEMPLATES: Template[] = [
     status: "row",
     events: [
       ev("MOVE", {
-        card: ref(CARD.mobius, THEM, "MZONE", 1),
+        card: { code: CARD.mobius, controller: THEM, location: "REMOVED" },
         from: ref(CARD.mobius, THEM, "MZONE", 1),
         to: ref(CARD.mobius, THEM, "REMOVED", 0),
       }, THEM),
@@ -296,7 +302,7 @@ const COMPOSITES: Template[] = [
       }),
       ev("LP_CHANGE", { seat: ME, delta: -400, reason: "damage" }),
       ev("MOVE", {
-        card: ref(CARD.uraby, ME, "MZONE", 0),
+        card: { code: CARD.uraby, controller: ME, location: "GRAVE" },
         from: ref(CARD.uraby, ME, "MZONE", 0),
         to: ref(CARD.uraby, ME, "GRAVE", 0),
       }, ME),
@@ -406,7 +412,14 @@ function App() {
         than three kinds at a time.
       </p>
       <div className="cat-rail cat-rail-tall">
-        <FeedRail events={ALL_IN_ONE} mySeat={ME} markAt={null} names={NAMES} resolve={resolve} midDuel />
+        <FeedRail
+          events={ALL_IN_ONE}
+          mySeat={ME}
+          markAt={null}
+          names={NAMES}
+          resolve={resolve}
+          midDuel
+        />
       </div>
 
       <h2>One kind at a time</h2>

@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import type { DuelEvent, Seat } from "../proto/types";
 import { cardInfo } from "../proto/scenarios";
+import { eventCardLabel, identify, locationWord, refKey } from "../proto/cardIdentity";
+import type { IdentityRef } from "../proto/cardIdentity";
 
 const PHASES = ["DP", "SP", "M1", "BP", "M2", "EP"];
 /** The web-side phase codes carried on every STATE frame
@@ -124,8 +126,18 @@ export function FeedRail({
   names: { me: string; opp: string };
   /** The board is a mid-duel snapshot, so "the duel has not started" would be a lie. */
   midDuel: boolean;
-  /** Resolve an event card ref to a passcode against the board as it was BEFORE
-   *  the events moved it — which is where the card actually was. */
+  /**
+   * ONE SNAPSHOT, AND IT IS THE PAST ONE — the board as it was BEFORE these events
+   * moved anything.
+   *
+   * A rail row describes something that already happened, so it resolves against the
+   * board as it was when it happened. Resolving against the CURRENT board names
+   * whatever occupies that slot now: after a battle the attacker has left the field,
+   * and the row would either fall back to a descriptor or — worse — name the card
+   * that replaced it. **A ref is never tried against both snapshots.** Falling back
+   * from one to the other is exactly how a row comes to name the wrong card, which is
+   * the F-01 defect family.
+   */
   resolve: (ref: unknown) => number;
 }) {
   const rows = withBattleResults(events, mySeat, names, resolve);
@@ -135,7 +147,7 @@ export function FeedRail({
     markAt === null
       ? -1
       : rows.findIndex(
-          (r) => !r.result && r.srcIndex >= markAt && describe(r.e!, names, mySeat) !== null,
+          (r) => !r.result && r.srcIndex >= markAt && describe(r.e!, names, mySeat, resolve) !== null,
         );
   return (
     <aside className="feedrail" data-testid="feed-rail">
@@ -164,7 +176,7 @@ export function FeedRail({
                 {r.result}
               </div>
             ) : (
-              <FeedRow e={r.e!} mySeat={mySeat} names={names} />
+              <FeedRow e={r.e!} mySeat={mySeat} names={names} resolve={resolve} />
             )}
           </Fragment>
         ))}
@@ -196,20 +208,35 @@ function withBattleResults(
   // inserts rows, so a row's own index is not the index of the event it came from —
   // which is the bug the mark used to have (see FeedRail).
   const out: { e?: DuelEvent; result?: string; srcIndex: number }[] = [];
+  /**
+   * ⚠ THE DEFENDER COMES FROM THE `ATTACK` EVENT, NOT FROM `BATTLE.target`.
+   *
+   * Recorded verbatim, a direct attack produces `ATTACK { target: null }` and then
+   * `BATTLE { target: { controller: 0, location: "DECK", sequence: 0 } }` — the
+   * engine points the battle's target at a DECK slot as a placeholder when there is
+   * no defending card. Reading it as a card produced `attacked their card in the
+   * deck`, which is a sentence about a card that was never in the battle. The
+   * `ATTACK` event's own `target` is the honest source: `null` means direct.
+   */
+  let lastAttack: DuelEvent | null = null;
   events.forEach((e, i) => {
     out.push({ e, srcIndex: i });
+    if (e.kind === "ATTACK") lastAttack = e;
     if (e.kind !== "BATTLE") return;
-    const atkRef = e["attacker"];
-    const defRef = e["target"];
+    const atk = lastAttack as DuelEvent | null;
+    const atkRef = (atk?.["attacker"] ?? e["attacker"]) as unknown;
+    const direct = atk !== null && atk["target"] === null;
+    const defRef = direct ? null : ((atk?.["target"] ?? e["target"]) as unknown);
+    // The battle line names its participants through the SAME join and the SAME
+    // descriptor as every other row — it used to end in `their monster in Monster 2`,
+    // a slot index for a card the player is usually entitled to see. ATK is appended
+    // where we know it, because this line is a comparison.
     const label = (ref: unknown) => {
-      const code = resolve(ref);
-      if (code) {
-        const info = cardInfo(code);
-        return info ? `${info.name} (${info.atk ?? "?"})` : String(code);
-      }
-      const r = ref as { controller?: Seat; sequence?: number } | undefined;
-      if (!r) return "a monster";
-      return `${r.controller === mySeat ? "your" : "their"} monster in Monster ${(r.sequence ?? 0) + 1}`;
+      const r = ref as IdentityRef | undefined;
+      const code = identify(r, resolve);
+      const info = code ? cardInfo(code) : null;
+      if (info) return `${info.name} (${info.atk ?? "?"})`;
+      return eventCardLabel(r, mySeat, resolve) || "a monster";
     };
     // Everything after this BATTLE, up to the next ATTACK, belongs to this battle.
     const tail: DuelEvent[] = [];
@@ -231,7 +258,7 @@ function withBattleResults(
     out.push({
       srcIndex: i,
       result:
-        `${label(atkRef)} attacked ${label(defRef)} — ` +
+        `${label(atkRef)} attacked ${direct ? "directly" : label(defRef)} — ` +
         (destroyed.length ? `${destroyed.join(" and ")} destroyed` : "nothing destroyed") +
         " — " +
         (dmg ? `${who} took ${dmg} damage` : "no damage"),
@@ -244,21 +271,39 @@ function FeedRow({
   e,
   mySeat,
   names,
+  resolve,
 }: {
   e: DuelEvent;
   mySeat: Seat;
   names: { me: string; opp: string };
+  resolve: (r: unknown) => number;
 }) {
   const actor = (e["actor"] ?? e["seat"] ?? (e["card"] as { controller?: Seat } | undefined)?.controller) as Seat | undefined;
   const mine = actor === mySeat;
-  const code = (e["code"] ?? (e["card"] as { code?: number } | undefined)?.code ?? 0) as number;
-  const name = code ? (cardInfo(code)?.name ?? String(code)) : "";
-  const detail = describe(e, names, mySeat);
+  // WHICH REF IDENTIFIES THIS ROW'S CARD. A `MOVE` is identified by where the card
+  // WAS (`from`) — joining on `card` would look it up at its destination, which is
+  // where it already is. An `ATTACK` is identified by its attacker. Everything else
+  // carries `card`.
+  // WHICH REF IDENTIFIES THIS ROW'S CARD. A `MOVE` is identified by where the card
+  // WAS (`from`); joining on `card` would look it up at its destination, which is how
+  // this row came to read `GRAVE 1 → GRAVE`. An `ATTACK`/`BATTLE` is identified by its
+  // attacker. Everything else carries `card`.
+  const ident = (e["from"] ?? e["attacker"] ?? e["card"]) as IdentityRef | undefined;
+  const code = (e["code"] as number | undefined) || identify(ident, resolve);
+  const name = code ? (cardInfo(code)?.name ?? "") : "";
+  const detail = describe(e, names, mySeat, resolve);
   if (!detail) return null;
   return (
-    <div className={`feedrow ${actor === undefined ? "" : mine ? "mine" : "theirs"}`} data-testid="feed-row">
+    <div
+      className={`feedrow ${actor === undefined ? "" : mine ? "mine" : "theirs"}`}
+      data-testid="feed-row"
+      // The disambiguation the visible row no longer carries. Two copies of one card
+      // leave an identical board; this is how the transcript still tells them apart
+      // without showing the player an array index.
+      data-ref={refKey(ident)}
+    >
       <span className="fverb">{detail.verb}</span>
-      <span className="fname">{name || detail.fallback}</span>
+      <span className="fname">{name || (ident ? eventCardLabel(ident, mySeat, resolve) : detail.fallback)}</span>
       <span className="fmove">{detail.move}</span>
     </div>
   );
@@ -275,20 +320,37 @@ function locOf(v: unknown): string {
   return "";
 }
 
-function describe(e: DuelEvent, names: { me: string; opp: string }, mySeat: Seat) {
+function describe(
+  e: DuelEvent,
+  names: { me: string; opp: string },
+  mySeat: Seat,
+  resolve: (r: unknown) => number,
+) {
+  /** One labeller, one join — see `proto/cardIdentity.ts`. */
+  const label = (ref: IdentityRef | null | undefined) => eventCardLabel(ref, mySeat, resolve);
   switch (e.kind) {
     case "SUMMON":
       return { verb: "Summon", move: "hand → field", fallback: "a monster" };
     case "SET":
       return { verb: "Set", move: "hand → field", fallback: "a card" };
     case "MOVE": {
-      // The row names the SLOT it came from, not only the card. Two copies of the
-      // same card leave an identical board, so without the slot the feed cannot
-      // record WHICH one moved — and the answer-outcome enumeration reported that
-      // as a collision, correctly.
-      const from = e["card"] as { location?: string; sequence?: number } | undefined;
-      const src = from ? `${from.location ?? ""} ${(from.sequence ?? 0) + 1}` : "";
-      return { verb: "Move", move: `${src} → ${locOf(e["to"])}`.trim(), fallback: "a card" };
+      // ⚠ THIS ROW USED TO STATE A MOVEMENT THAT DID NOT HAPPEN. It read `e.card` as
+      // the source — but in a recorded `MOVE`, `card` is the card's ref AFTER the
+      // move and carries no sequence, while the contract's own `from` and `to` are
+      // the movement. A card destroyed in battle therefore rendered
+      // `GRAVE 1 → GRAVE`: destination → destination, with a "1" invented from a
+      // missing field. `applyEvents` had always read `from`/`to` correctly, so the
+      // board and the rail disagreed about every move.
+      //
+      // The slot index is gone from the VISIBLE row — a sequence number is an array
+      // position wearing a noun. The disambiguation it existed for (two copies of one
+      // card leave an identical board; the answer-outcome enumeration reported that
+      // as a collision) now travels as `data-ref` on the row, which the gate reads
+      // and the player does not.
+      const from = e["from"] as { location?: string } | undefined;
+      const src = locationWord(from?.location ?? locOf(e["card"]));
+      const dst = locationWord(locOf(e["to"]));
+      return { verb: "Move", move: src && dst ? `${src} → ${dst}` : dst || src, fallback: "a card" };
     }
     case "SPSUMMON":
       // A Special Summon can come from anywhere — hand, graveyard, Extra Deck,
@@ -326,9 +388,14 @@ function describe(e: DuelEvent, names: { me: string; opp: string }, mySeat: Seat
       // monsters otherwise leave a byte-identical record, and the enumeration
       // reported exactly that as an outcome collision. It is also the only thing
       // on screen that says WHAT was attacked.
-      const t = e["target"] as { location?: string; sequence?: number } | null | undefined;
+      //
+      // It used to print `their card 2` whenever the target's code was 0 — a slot
+      // index, for a card the player is usually entitled to see. It now goes through
+      // the same STATE join as everything else, and falls back to an honest
+      // descriptor rather than an index.
+      const t = e["target"] as IdentityRef | null | undefined;
       const tc = Number(e["targetCode"] ?? 0);
-      const tname = tc ? (cardInfo(tc)?.name ?? String(tc)) : t ? `their card ${(t.sequence ?? 0) + 1}` : "";
+      const tname = tc ? (cardInfo(tc)?.name ?? label(t)) : label(t);
       return { verb: "Attack", move: t ? `→ ${tname}` : "→ directly", fallback: "a monster" };
     }
     case "BATTLE":

@@ -235,6 +235,12 @@ export default function App() {
     ([0, 1] as Seat[]).some((sd) =>
       (["MZONE", "SZONE"] as const).some((l) => row(m.board, sd, l).some((c) => c != null)),
     );
+  /**
+   * Resolve an event card ref against the board as it was BEFORE these events moved
+   * anything — which is where the card actually was when the event happened. A
+   * transcript row describes the past, so it resolves against the past; see the note
+   * on `FeedRail`.
+   */
   const refResolve = (ref: unknown) => {
     const r = ref as { controller?: Seat; location?: string; sequence?: number } | undefined;
     if (!r || r.controller === undefined || !r.location) return 0;

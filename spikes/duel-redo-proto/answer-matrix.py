@@ -67,7 +67,18 @@ FINGERPRINT = """() => {
     pending: (t('[data-testid=decision-sentence]')[0] || ''),
     receipt: (t('[data-testid=auto-receipt]')[0] || ''),
     intent: (t('[data-testid=intent-line]')[0] || ''),
-    log: t('[data-testid=feed-row]').join(' ; '),
+    // THE ROW'S IDENTITY REF, NOT ITS PROSE.
+    //
+    // The rail used to print a slot index at the player (`MOVE a card GRAVE 1 →
+    // GRAVE`), and this fingerprint read that index as its disambiguator. The index
+    // is gone from the visible row — a sequence number is an array position wearing a
+    // noun — and travels as `data-ref` instead. So the gate reads the ref: two
+    // discards that differ only by which hand card moved still produce different
+    // fingerprints, and they now do so through a machine-readable attribute that
+    // cannot drift when the copy owner rewrites the sentence.
+    log: [...document.querySelectorAll('[data-testid=feed-row]')]
+           .map(e => e.innerText.replace(/\\n/g,' ').trim() + '#' + (e.getAttribute('data-ref') || ''))
+           .join(' ; '),
     ended: !!document.querySelector('[data-testid=duel-end]')
   };
 }"""
