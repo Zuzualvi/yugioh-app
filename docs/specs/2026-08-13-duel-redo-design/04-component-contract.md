@@ -417,6 +417,18 @@ the next handover.
 
 ---
 
+### 7.1 · Naming, appended 2026-08-13
+
+| # | Criterion |
+|---|---|
+| FR1 | **Every row names its card where the player is entitled**, resolved through the **same single lookup as the confirm labels** (`resolveCode`). A source scan asserts the rail contains no second identity path. |
+| FR2 | **Refs resolve against the pre-event board**, never the current one, and **never against both** — a test drives a battle and asserts the attacker is still named after it has left the field. |
+| FR3 | **No row renders an engine enum or a slot index.** A test asserts no rendered row matches `/\b(MZONE\|SZONE\|GRAVE\|REMOVED\|EXTRA\|OVERLAY\|FZONE)\b/` or `/\bcard \d+\b/`. |
+| FR4 | **Where identity is unresolvable, the row uses a descriptor built only from `controller` and `location`** — never a code we guessed and never a slot. A test drives an opponent's hidden card and asserts `their face-down monster`. |
+| FR5 | **`MOVE` renders `from → to`**, both from the event's own fields. A test asserts a destroyed monster reads *monster zone → graveyard* and **not** *graveyard → graveyard*. |
+| FR6 | **Disambiguation survives without being visible**: each row carries `data-ref`, and the answer-outcome fingerprint reads it. A test asserts two moves differing only in source slot produce different fingerprints while rendering identical prose. |
+| FR7 | **The battle line takes its defender from the `ATTACK` event, not `BATTLE.target`** — recorded, a direct attack sends `ATTACK.target: null` and `BATTLE.target` pointing at a `DECK` slot. A test asserts a direct attack reads *attacked directly*. |
+
 ## 8 · `CardInspector`
 
 | # | Criterion |

@@ -451,9 +451,42 @@ the delta expands into.
 summoned Raiza". Names tinted by owner; **every name resolved through `mySeat`**, never a
 seat-indexed array (ZUH-118 breaks 9, 10, 25 are all that one defect).
 
-A `MOVE` row names the **slot** it came from, not only the card. Two copies of one card leave an
-identical board, so without the slot the feed cannot record which one moved — **the answer-outcome
-enumeration reported exactly that as a collision, and this is the fix.**
+### 5.1 · Naming cards in the rail — normative
+
+**Every row names a card by its real name wherever the player is entitled to know it.** The row's job is
+to say what happened; a row that says it happened to *a card* has not said it.
+
+1. **Identity comes from ONE lookup** — the join against the `STATE` snapshot the client already holds
+   (`board.ts: resolveCode`), which is the same lookup the confirm labels use. **Not a second source**:
+   D5 exists because a parallel source for one fact produced `Activate "Dimensional Prison"` over a Book
+   of Moon. Two *formatters* over one lookup is fine — the dock appends a slot when two candidates share
+   a name, the rail never shows a slot at all.
+2. **A row resolves against the board as it was BEFORE the events it describes.** A transcript row
+   describes the past. Resolving against the current board names whatever occupies that slot *now* —
+   after a battle the attacker has left the field — and a ref is **never tried against both**, because
+   falling back from one snapshot to the other is how a row comes to name the wrong card.
+3. **Where the player is genuinely not entitled — an opponent's face-down or hidden card — the row uses
+   an honest generic descriptor** (`their face-down monster`, `their card in hand`) built **only** from
+   `controller` and `location`, both of which the opponent may legitimately see. **Never a slot index and
+   never an engine enum.** Getting this wrong in the other direction leaks hidden information, which is
+   ND-7's territory.
+4. **No row exposes an engine enum or a raw slot number.** `GRAVE`, `MZONE`, `SZONE` are identifiers, not
+   words; `their card 2` is an array position wearing a noun. The location vocabulary is **microcopy,
+   owned by ZUH-123, and lives in ONE map** (`proto/cardIdentity.ts`) so the copy owner changes it once.
+   The placeholders are plain: *hand · deck · monster zone · spell & trap zone · graveyard · banished ·
+   extra deck*.
+5. **No row states a movement that did not happen.** A `MOVE` is `from → to`, both of which the contract
+   carries. *This was wrong: the row read `card` as its source, and `card` is the card's ref **after** the
+   move — so a monster destroyed in battle rendered `GRAVE 1 → GRAVE`, destination to destination, with a
+   "1" invented from a field that is not there. `applyEvents` had always read `from`/`to` correctly, so
+   the board and the rail disagreed about every move.*
+
+**How the transcript keeps its disambiguation without showing an index.** Two copies of one card leave an
+identical board, and the answer-outcome enumeration reported exactly that as a collision — which is why a
+slot used to be printed. **It does not have to be visible to do that job.** The row carries its identity
+ref as `data-ref`, the gate's fingerprint reads that attribute instead of the prose, and the player reads
+a sentence. The invariant is stronger for it: an attribute cannot drift when the copy owner rewrites the
+row.
 
 **WHICH OF THE CONTRACT'S 14 EVENT KINDS DRAW, AND THE FOUR THAT DELIBERATELY DO NOT.** The rail can
 only ever be asked to render `DuelEventSchema`'s union (`packages/contracts/src/duelEvent.ts`), and

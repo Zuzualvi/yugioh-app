@@ -160,6 +160,24 @@ offers. Read off `duelDecision.ts` and `duelEvent.ts` on `master`:
   intent is `code: 0` on the wire and survives only because the client joins its own snapshot. That is
   the same finding §2a records, now with a second consumer.
 
+### The same gate, run again on "every rail row names its card" — appended 2026-08-13
+
+**Verdict: no new delta, and one place where the wire genuinely does not carry it.**
+
+| What the rail needs | Already in what the client is sent? |
+|---|---|
+| The card in a `SUMMON` / `SPSUMMON` / `SET` row | ✅ **in the event**: recorded `SUMMON` carries `card.code = 71564252`. The engine sends the code where the player is entitled. |
+| The card in a `MOVE` row | ✅ **by join** on `from`, against the pre-event `STATE`. The event itself carries `code: 0`. |
+| The attacker and target of `ATTACK` / `BATTLE` | ✅ **by join**, same route. The events carry `code: 0` even for a monster summoned face-up in front of the player. |
+| An **opponent's hidden card** | ❌ **and correctly so** — the snapshot redacts it because we are not entitled. The row says `their face-down monster`. This is the requirement, not a gap. |
+| 🔴 A card that arrived **during the events being narrated** | ❌ **in the prototype only.** Its identity is in a later `STATE` frame, which the real client applies and the prototype's replay does not (`applyEvents` skips pile → row moves). **Filed as ZUH-152.** Not a wire gap: the frame exists and carries it. |
+
+**So the requirement is free on the wire.** The one row that still reads `their face-down monster` where
+the player *is* entitled — the attacker in the recorded opponent turn — is a **prototype replay
+limitation**, not a missing frame, and it is filed rather than papered over. **No delta is proposed, and
+MH-3b is not raised by this**: MH-3b is about a *decision's* subject, and every rail row's subject is a
+card ref the client can already resolve.
+
 **What this cost to establish: nothing but reading the contract.** Which is the point of the gate — the
 version of this task that skipped it would have proposed "send the subject with every decision", and the
 answer is that the wire already carries it everywhere but one, and that one is filed.

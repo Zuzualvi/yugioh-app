@@ -77,6 +77,14 @@ about different things and this one is the one that survives being tapped.
 *(Round 2: `end-overlay/dismissed`, `top-bar/duel-ended` review path and the verb-cluster dismissal
 states became reachable with the blocker fixes.)*
 
+*(Round 5, the rail's card identity: **no row moved.** Every rail state was already reachable or not
+for reasons the naming change does not touch — the change is what a reachable row *says*, not which rows
+exist. Re-checked by driving every scenario's rail rather than assumed. One finding came out of it and is
+filed, not fixed: the rail narrates a summon and an attack the board never shows, because the prototype's
+replay applies only row → pile moves (**ZUH-152**). That is why the opponent's attacker still reads
+`their face-down monster` in scenario 7 — its identity is in a later `STATE` frame the real client
+applies and this replay does not.)*
+
 *(Round 4, the readability requirement: the card inspector's `auto-push` became reachable — the
 subject of a question is now pushed to it on arrival (`02 §6.1`), which is the same state the row
 already specified for "the opponent activates". **One row moved, re-driven, and the total re-derived
