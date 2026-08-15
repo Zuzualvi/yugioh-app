@@ -90,9 +90,9 @@ const TEMPLATES: Template[] = [
     kind: "SPSUMMON",
     variant: "mine",
     trigger: "Any Special Summon — Synchro, Fusion, a monster that summons itself (SPSUMMONING, msg 62)",
-    status: "fallback",
+    status: "row",
     note:
-      "⚠️ NO TEMPLATE. `describe()` has no case for SPSUMMON, so it falls to the default branch and the row prints the raw engine enum with no movement text. In Edison a large share of summons are Special Summons.",
+      "Until 2026-08-13 this printed the raw engine enum `SPSUMMON` at the player. It now has a row. The event does not say WHERE the monster came from — a Special Summon can come from the hand, the graveyard, the Extra Deck or banishment — so the row states the destination and not a source it would have to invent. ⚠️ Provisional copy, owned by ZUH-123. Still produced by no recorded fixture, so this page is the only place it has ever been rendered.",
     events: [ev("SPSUMMON", { card: ref(CARD.raiza, ME, "MZONE", 2), position: 5 }, ME)],
   },
   {
@@ -180,17 +180,18 @@ const TEMPLATES: Template[] = [
     kind: "CHAIN_SOLVED",
     variant: "—",
     trigger: "One chain link has finished resolving (CHAIN_SOLVED, msg 73)",
-    status: "fallback",
-    note: "⚠️ NO TEMPLATE. Falls to the default branch and prints the raw enum.",
+    status: "none",
+    note:
+      "NO ROW, and this is now a decision rather than a fallthrough — it used to print the raw enum. The chain strip already carries this: it moves its `resolving` highlight off the link. CHAIN_SOLVING keeps its row because it is the transcript's causal anchor, between the activation rows above and the consequence rows (MOVE, LP_CHANGE) below; CHAIN_SOLVED adds nothing between those two.",
     events: [ev("CHAIN_SOLVED", { link: 2 })],
   },
   {
     kind: "CHAIN_END",
     variant: "—",
     trigger: "The whole chain has resolved (CHAIN_END, msg 74)",
-    status: "fallback",
+    status: "none",
     note:
-      "⚠️ NO TEMPLATE. Falls to the default branch and prints the raw enum — and it is also the event the chain strip needs in order to clear itself.",
+      "NO ROW, decided rather than fallen through. This is the event the CHAIN STRIP consumes to clear itself, so the strip disappearing IS the signal; a rail row would duplicate it, exactly as a PHASE row would duplicate the phase rail. ⚠️ This depends on the chain strip shipping — if the strip is cut, CHAIN_END becomes invisible and the decision must be revisited.",
     events: [ev("CHAIN_END", {})],
   },
   {
@@ -392,11 +393,11 @@ function App() {
         drawn by hand.
       </p>
       <p className="cat-lead">
-        Of the 14 kinds: <b>{9} render an authored row</b>, <b>{3} have no template</b> and print the
-        raw engine enum (<code>SPSUMMON</code>, <code>CHAIN_SOLVED</code>, <code>CHAIN_END</code>), and{" "}
-        <b>{2} render nothing at all</b> by design (<code>PHASE</code>, <code>HINT</code>). One kind —{" "}
-        <code>SPSUMMON</code> — has <b>never appeared in any recorded fixture</b>, so it has never been
-        seen in a scenario.
+        Of the 14 kinds: <b>10 render an authored row</b>, <b>4 render nothing at all, by decision</b>{" "}
+        (<code>PHASE</code>, <code>HINT</code>, <code>CHAIN_SOLVED</code>, <code>CHAIN_END</code>) — and{" "}
+        <b>none prints a raw engine enum any more</b>. <code>SPSUMMON</code> was the last one that did;
+        it now has a row, and it has still <b>never appeared in any recorded fixture</b>, so this page is
+        the only place it has ever been rendered.
       </p>
 
       <h2>All of it in one rail, in sequence</h2>
@@ -429,19 +430,22 @@ function App() {
       </p>
       <ol className="cat-findings">
         <li>
-          <b>Three contract kinds have no template and print the raw engine enum:</b>{" "}
-          <code>SPSUMMON</code> → <code>SPSUMMON Raiza the Storm Monarch</code> with no movement text,{" "}
-          <code>CHAIN_SOLVED</code> and <code>CHAIN_END</code> → the bare word, no card, no context.{" "}
-          <code>SPSUMMON</code> is the one that matters most: in Edison a large share of summons are
-          Special Summons, and this row is the only place the rail would say so.
+          <b>FIXED — no contract kind prints a raw engine enum any more.</b> <code>SPSUMMON</code> used
+          to render as <code>SPSUMMON Raiza the Storm Monarch</code> and now has a row;{" "}
+          <code>CHAIN_SOLVED</code> and <code>CHAIN_END</code> used to print the bare word and now draw
+          nothing, which is a <i>decision</i> — the chain strip carries both, and a rail row would
+          duplicate a surface that exists. The only way to reach a raw kind now is an event kind the
+          contract does not have, which is the forward-compatibility case the rail is meant to survive.
         </li>
         <li>
-          <b>Engine location enums are shown to the player</b> in every <code>MOVE</code> row —{" "}
+          <b>QUEUED for ZUH-123 (microcopy), deliberately not changed here:</b>{" "}
+          <b>engine location enums are shown to the player</b> in every <code>MOVE</code> row —{" "}
           <code>HAND 3 → MZONE</code>, <code>MZONE 2 → GRAVE</code>, <code>DECK 1 → HAND</code>. The
           source slot carries a number and the destination does not, so the two halves of one row are
           written in different registers.
         </li>
         <li>
+          <b>QUEUED for ZUH-123:</b>{" "}
           <b>
             <code>CHAIN_SOLVING</code> reads <code>RESOLVING a chain link link 2</code>
           </b>{" "}
@@ -449,6 +453,7 @@ function App() {
           reference to name.
         </li>
         <li>
+          <b>QUEUED for ZUH-123:</b>{" "}
           <b>
             <code>TURN</code> renders <code>TURN 5</code> and says nothing about whose turn it is
           </b>
@@ -464,13 +469,16 @@ function App() {
         </li>
         <li>
           <b>
-            <code>PHASE</code> and <code>HINT</code> draw nothing
+            Four kinds draw nothing: <code>PHASE</code>, <code>HINT</code>, <code>CHAIN_SOLVED</code>,{" "}
+            <code>CHAIN_END</code>
           </b>{" "}
-          — deliberate, and worth knowing: roughly half the events in a recorded opponent turn are these
-          two, so a rail that looks sparse is not dropping information it could show.
+          — all four deliberate, and each because another surface already carries it: the phase rail, the
+          engine's own chatter budget, and the chain strip twice. Worth knowing that roughly half the
+          events in a recorded opponent turn are <code>PHASE</code> and <code>HINT</code>, so a rail that
+          looks sparse is not dropping information it could show.
         </li>
         <li>
-          <b>Owner tint is absent wherever the contract carries no actor</b> — <code>BATTLE</code>,{" "}
+          <b>QUEUED for ZUH-123:</b> <b>owner tint is absent wherever the contract carries no actor</b> — <code>BATTLE</code>,{" "}
           <code>CHAIN_SOLVING</code>, <code>CHAIN_SOLVED</code>, <code>CHAIN_END</code> and{" "}
           <code>TURN</code> all render untinted.
         </li>
@@ -478,8 +486,9 @@ function App() {
           <b>
             <code>SPSUMMON</code> has never appeared in any recorded fixture
           </b>{" "}
-          — the other thirteen all do — so it has never been seen in a scenario, and this page is the
-          first time its row has been rendered at all.
+          — the other thirteen all do — so it is unexercised by every scenario, and this page is the only
+          place its row has ever been rendered. <b>No fixture was invented to demonstrate it</b> (D6:
+          fixtures are recorded, never invented), which is precisely what this page is for.
         </li>
       </ol>
       <p className="cat-lead cat-foot">

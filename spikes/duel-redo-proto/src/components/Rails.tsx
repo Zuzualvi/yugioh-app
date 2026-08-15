@@ -290,10 +290,37 @@ function describe(e: DuelEvent, names: { me: string; opp: string }, mySeat: Seat
       const src = from ? `${from.location ?? ""} ${(from.sequence ?? 0) + 1}` : "";
       return { verb: "Move", move: `${src} → ${locOf(e["to"])}`.trim(), fallback: "a card" };
     }
+    case "SPSUMMON":
+      // A Special Summon can come from anywhere — hand, graveyard, Extra Deck,
+      // banished — and the event does not say which. So the row states the
+      // destination and NOT a source it would have to invent (D1/D2). Until this
+      // existed the row printed the raw engine enum `SPSUMMON` at the player, and
+      // in Edison a large share of summons are Special Summons.
+      // ⚠ PROVISIONAL COPY, owned by ZUH-123. A row that exists beats a row that is
+      // well written; the copy owner rewrites this deliberately rather than
+      // inheriting it by default.
+      return { verb: "Special Summon", move: "→ field", fallback: "a monster" };
     case "CHAINING":
       return { verb: "Activate", move: `chain ${e["link"] ?? ""}`, fallback: "a card" };
     case "CHAIN_SOLVING":
       return { verb: "Resolving", move: `link ${e["link"] ?? ""}`, fallback: "a chain link" };
+    // ── DELIBERATELY NO ROW, and this is a decision rather than a fallthrough ────
+    // `CHAIN_SOLVED` (that link is finished) and `CHAIN_END` (the whole chain is
+    // finished) are chain bookkeeping, and the CHAIN STRIP already carries both:
+    // it moves its `resolving` highlight off the link, and on `CHAIN_END` it clears
+    // itself. A rail row would duplicate a surface that exists — which is exactly
+    // the reason `PHASE` draws nothing while the phase rail carries the phase.
+    //
+    // `CHAIN_SOLVING` KEEPS its row on purpose: it is the transcript's causal
+    // anchor, the line between the activation rows above it and the consequence
+    // rows (MOVE, LP_CHANGE) below it. `CHAIN_SOLVED` adds nothing between those
+    // two — the consequences arrive as their own events.
+    //
+    // ⚠ This decision DEPENDS on the chain strip shipping. If the strip is ever
+    // cut, `CHAIN_END` becomes invisible to the player and this must be revisited.
+    case "CHAIN_SOLVED":
+    case "CHAIN_END":
+      return null;
     case "ATTACK": {
       // Naming the target is not decoration. Two declarations against different
       // monsters otherwise leave a byte-identical record, and the enumeration
